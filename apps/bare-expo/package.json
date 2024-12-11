@@ -68,6 +68,8 @@
     "react-native-svg": "15.11.1",
     "react-native-view-shot": "4.0.2",
     "react-native-webview": "13.13.0",
+    "react-native-vision-camera": "^4.6.3",
+    "react-native-worklets-core": "^1.5.0",
     "test-suite": "*"
   },
   "devDependencies": {
