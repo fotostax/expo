@@ -4,6 +4,7 @@ import expo.modules.plugin.configuration.ExpoAutolinkingConfig
 import expo.modules.plugin.gradle.afterAndroidApplicationProject
 import expo.modules.plugin.gradle.applyAarProject
 import expo.modules.plugin.gradle.applyPlugin
+import expo.modules.plugin.gradle.beforeProject
 import expo.modules.plugin.gradle.beforeRootProject
 import expo.modules.plugin.gradle.linkAarProject
 import expo.modules.plugin.gradle.linkBuildDependence
@@ -14,8 +15,20 @@ import expo.modules.plugin.text.Colors
 import expo.modules.plugin.text.Emojis
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
+import org.gradle.internal.extensions.core.extra
 
-class SettingsManager(val settings: Settings) {
+class SettingsManager(
+  val settings: Settings,
+  searchPaths: List<String>? = null,
+  ignorePaths: List<String>? = null,
+  exclude: List<String>? = null
+) {
+  private val autolinkingOptions = AutolinkingOptions(
+    searchPaths,
+    ignorePaths,
+    exclude
+  )
+
   /**
    * Resolved configuration from `expo-modules-autolinking`.
    */
@@ -23,6 +36,7 @@ class SettingsManager(val settings: Settings) {
     val command = AutolinkigCommandBuilder()
       .command("resolve")
       .useJson()
+      .useAutolinkingOptions(autolinkingOptions)
       .build()
 
     val result = settings.providers.exec { env ->
@@ -43,6 +57,11 @@ class SettingsManager(val settings: Settings) {
         .forEach(project::applyAarProject)
     }
 
+    // Defines the required features for the core module
+    settings.gradle.beforeProject("expo-modules-core") { project ->
+      project.extra.set("coreFeatures", config.coreFeatures)
+    }
+
     settings.gradle.beforeRootProject { rootProject: Project ->
       config.allPlugins.forEach(rootProject::linkBuildDependence)
       config.extraDependencies.forEach { mavenConfig ->
@@ -61,7 +80,7 @@ class SettingsManager(val settings: Settings) {
         }
     }
 
-    settings.gradle.extensions.create("expoGradle", ExpoGradleExtension::class.java, config)
+    settings.gradle.extensions.create("expoGradle", ExpoGradleExtension::class.java, config, autolinkingOptions)
   }
 
   /**

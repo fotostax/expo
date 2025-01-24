@@ -1,10 +1,10 @@
 /* eslint-env jest */
 import JsonFile from '@expo/json-file';
-import execa from 'execa';
 import path from 'path';
 
 import { runExportSideEffects } from './export-side-effects';
-import { bin, findProjectFiles, getRouterE2ERoot } from '../utils';
+import { executeExpoAsync } from '../../utils/expo';
+import { findProjectFiles, getRouterE2ERoot } from '../utils';
 
 runExportSideEffects();
 
@@ -14,11 +14,10 @@ describe('export-no-ssg', () => {
 
   beforeAll(async () => {
     console.time('export-server');
-    await execa(
-      'node',
-      [bin, 'export', '-p', 'web', '-p', 'ios', '--output-dir', 'dist-server-no-ssg', '--no-ssg'],
+    await executeExpoAsync(
+      projectRoot,
+      ['export', '-p', 'web', '-p', 'ios', '--output-dir', 'dist-server-no-ssg', '--no-ssg'],
       {
-        cwd: projectRoot,
         env: {
           NODE_ENV: 'production',
           EXPO_USE_STATIC: 'server',
@@ -71,5 +70,13 @@ describe('export-no-ssg', () => {
     expect((json.apiRoutes as any[]).length).toBeGreaterThan(0);
     expect(json.htmlRoutes).toEqual([]);
     expect(json.notFoundRoutes).toEqual([]);
+  });
+
+  // Ensure the `/server/_expo/routes.json` contains the right file paths and named regexes.
+  // This test is created to avoid and detect regressions on Windows
+  it('has expected routes manifest entries', async () => {
+    expect(
+      await JsonFile.readAsync(path.join(outputDir, 'server/_expo/routes.json'))
+    ).toMatchSnapshot();
   });
 });
