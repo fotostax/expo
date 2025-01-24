@@ -8,8 +8,6 @@ import android.os.PersistableBundle;
 
 import java.util.List;
 
-import javax.annotation.Nullable;
-
 public interface TaskManagerUtilsInterface {
   /**
    * Creates pending intent that represents the task containing all its params.
@@ -29,7 +27,7 @@ public interface TaskManagerUtilsInterface {
   /**
    * Executes a task directly
    */
-  void executeTask(TaskInterface task, Bundle data, @Nullable TaskExecutionCallback callback);
+  void executeTask(TaskInterface task, Bundle data);
 
   /**
    * Cancels scheduled job with given identifier.

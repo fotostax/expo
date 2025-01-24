@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
+import execa from 'execa';
 
 import { clearEnv, restoreEnv } from '../../__tests__/export/export-side-effects';
 import { getRouterE2ERoot } from '../../__tests__/utils';
-import { createExpoServe, executeExpoAsync } from '../../utils/expo';
-import { pageCollectErrors } from '../page';
+import { bin, ExpoServeLocalCommand } from '../../utils/command-instance';
 
 test.beforeAll(() => clearEnv());
 test.afterAll(() => restoreEnv());
@@ -12,73 +12,110 @@ const projectRoot = getRouterE2ERoot();
 const testName = '02-server-actions';
 const inputDir = 'dist-' + testName;
 
-test.describe(inputDir, () => {
-  // Configure this describe block to run serially on a single worker so we don't bundle multiple times to the same on-disk location.
-  test.describe.configure({ mode: 'serial' });
+test.beforeAll(async () => {
+  // Could take 45s depending on how fast the bundler resolves
+  test.setTimeout(560 * 1000);
+});
 
-  const expoServe = createExpoServe({
+let serveCmd: ExpoServeLocalCommand;
+
+// These tests modify the same files in the file system, so run them in serial
+test.describe.configure({ mode: 'serial' });
+
+test.beforeAll('bundle and serve', async () => {
+  console.time('expo export');
+  await execa('node', [bin, 'export', '-p', 'web', '--output-dir', inputDir], {
     cwd: projectRoot,
     env: {
       NODE_ENV: 'production',
+      EXPO_USE_STATIC: 'single',
+      E2E_ROUTER_SRC: testName,
+      EXPO_UNSTABLE_SERVER_FUNCTIONS: '1',
+      E2E_ROUTER_JS_ENGINE: 'hermes',
+      EXPO_USE_METRO_REQUIRE: '1',
+      E2E_CANARY_ENABLED: '1',
+      E2E_RSC_ENABLED: '1',
+      TEST_SECRET_VALUE: 'test-secret',
+      CI: '1',
     },
+    stdio: 'inherit',
+  });
+  console.timeEnd('expo export');
+
+  serveCmd = new ExpoServeLocalCommand(projectRoot, {
+    NODE_ENV: 'production',
   });
 
-  test.beforeAll('bundle and serve', async () => {
-    console.time('expo export');
-    await executeExpoAsync(projectRoot, ['export', '-p', 'web', '--output-dir', inputDir], {
-      env: {
-        NODE_ENV: 'production',
-        EXPO_USE_STATIC: 'single',
-        E2E_ROUTER_SRC: testName,
-        E2E_SERVER_FUNCTIONS: '1',
-        E2E_ROUTER_JS_ENGINE: 'hermes',
-        EXPO_USE_METRO_REQUIRE: '1',
-        E2E_CANARY_ENABLED: '1',
-        E2E_RSC_ENABLED: '1',
-        TEST_SECRET_VALUE: 'test-secret',
-        CI: '1',
-      },
-    });
-    console.timeEnd('expo export');
+  console.time('npx serve');
+  await serveCmd.startAsync([inputDir, '--port=' + randomPort()]);
+  console.timeEnd('npx serve');
+  console.log('Server running:', serveCmd.url);
+});
 
-    console.time('expo serve');
-    await expoServe.startAsync([inputDir]);
-    console.timeEnd('expo serve');
-  });
-  test.afterAll('Close server', async () => {
-    await expoServe.stopAsync();
-  });
+function randomPort() {
+  return Math.floor(Math.random() * 1000 + 3000);
+}
 
+test.afterAll('Close server', async () => {
+  await serveCmd.stopAsync();
+});
+
+test.describe(inputDir, () => {
   // This test generally ensures no errors are thrown during an export loading.
   test('loads without hydration errors', async ({ page }) => {
-    // Listen for console logs and errors
-    const pageErrors = pageCollectErrors(page);
-
     console.time('Open page');
     // Navigate to the app
-    await page.goto(expoServe.url.href);
+    await page.goto(serveCmd.url!);
+
     console.timeEnd('Open page');
+
+    // Listen for console errors
+    const errorLogs: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        errorLogs.push(msg.text());
+      }
+    });
+
+    // Listen for uncaught exceptions and console errors
+    const errors: string[] = [];
+    page.on('pageerror', (error) => {
+      errors.push(error.message);
+    });
 
     console.time('hydrate');
     // Wait for the app to load
     await page.waitForSelector('[data-testid="index-text"]');
     console.timeEnd('hydrate');
 
-    expect(pageErrors.all).toEqual([]);
+    expect(errorLogs).toEqual([]);
+    expect(errors).toEqual([]);
   });
 
   test('increments client state without re-rendering server component', async ({ page }) => {
-    // Listen for console logs and errors
-    const pageErrors = pageCollectErrors(page);
+    await page.goto(serveCmd.url!);
 
-    await page.goto(expoServe.url.href);
+    // Listen for console errors
+    const errorLogs: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        errorLogs.push(msg.text());
+      }
+    });
+    // Listen for uncaught exceptions and console errors
+    const errors: string[] = [];
+    page.on('pageerror', (error) => {
+      errors.push(error.message);
+    });
 
     console.time('hydrate');
     // Wait for the app to load
     await page.waitForSelector('[data-testid="index-text"]');
+
     console.timeEnd('hydrate');
 
-    expect(pageErrors.all).toEqual([]);
+    expect(errorLogs).toEqual([]);
+    expect(errors).toEqual([]);
 
     // Get text of `index-server-date-rendered`
     const dateRendered = await page
@@ -92,12 +129,12 @@ test.describe(inputDir, () => {
 
     // Ensure the server date didn't change...
     await expect(page.locator('[data-testid="index-server-date-rendered"]')).toHaveText(
-      dateRendered!
+      dateRendered
     );
   });
 
   test('calls a server action', async ({ page }) => {
-    await page.goto(expoServe.url.href);
+    await page.goto(serveCmd.url!);
     // Wait for the app to load
     await page.waitForSelector('[data-testid="index-text"]');
 
@@ -145,7 +182,7 @@ test.describe(inputDir, () => {
 
     // Ensure the server date didn't change...
     await expect(page.locator('[data-testid="index-server-date-rendered"]')).toHaveText(
-      dateRendered!
+      dateRendered
     );
 
     // Look for the new JSX...
@@ -161,7 +198,7 @@ test.describe(inputDir, () => {
   });
 
   test('renders server actions with headers', async ({ page }) => {
-    await page.goto(expoServe.url.href);
+    await page.goto(serveCmd.url!);
 
     // Ensure the server date didn't change...
     await expect(page.locator('[data-testid="server-action-headers"]')).toHaveText('headers:web');

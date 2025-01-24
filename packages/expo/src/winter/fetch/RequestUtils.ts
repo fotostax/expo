@@ -1,8 +1,6 @@
 import { ReadableStream } from 'web-streams-polyfill';
 
 import { type NativeHeadersType } from './NativeRequest';
-import { convertFormDataAsync } from './convertFormData';
-import { blobToArrayBufferAsync } from '../../utils/blobUtils';
 
 /**
  * convert a ReadableStream to a Uint8Array
@@ -34,6 +32,68 @@ export async function convertReadableStreamToUint8ArrayAsync(
 }
 
 /**
+ * Convert FormData to string
+ *
+ * `uri` is not supported for React Native's FormData.
+ * `blob` is not supported for standard FormData.
+ */
+export function convertFormData(
+  formData: FormData,
+  boundary: string = createBoundary()
+): { body: Uint8Array; boundary: string } {
+  // @ts-expect-error: React Native's FormData is not compatible with the web's FormData
+  if (typeof formData.getParts !== 'function') {
+    throw new Error('Unsupported FormData implementation');
+  }
+  // @ts-expect-error: React Native's FormData is not compatible with the web's FormData
+  const parts: FormDataPart[] = formData.getParts();
+
+  const results: (Uint8Array | string)[] = [];
+  for (const entry of parts) {
+    results.push(`--${boundary}\r\n`);
+    for (const [headerKey, headerValue] of Object.entries(entry.headers)) {
+      results.push(`${headerKey}: ${headerValue}\r\n`);
+    }
+    results.push(`\r\n`);
+    // @ts-expect-error: TypeScript doesn't know about the `string` property
+    if (entry.string != null) {
+      // @ts-expect-error: TypeScript doesn't know about the `string` property
+      results.push(entry.string);
+      // @ts-expect-error: TypeScript doesn't know about the `file` property
+    } else if (entry.file != null && entry.file.bytes != null) {
+      // @ts-expect-error: TypeScript doesn't know about the `file` property
+      results.push(entry.file.bytes());
+    } else {
+      throw new Error('Unsupported FormDataPart implementation');
+    }
+    results.push(`\r\n`);
+  }
+
+  results.push(`--${boundary}--\r\n`);
+  const arrays = results.map((result) => {
+    if (typeof result === 'string') {
+      return new TextEncoder().encode(result);
+    } else {
+      return result;
+    }
+  }) as Uint8Array[];
+
+  return { body: joinUint8Arrays(arrays), boundary };
+}
+
+/**
+ * Create mutipart boundary
+ */
+export function createBoundary(): string {
+  const boundaryChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let boundary = '----ExpoFetchFormBoundary';
+  for (let i = 0; i < 16; i++) {
+    boundary += boundaryChars.charAt(Math.floor(Math.random() * boundaryChars.length));
+  }
+  return boundary;
+}
+
+/**
  * Normalize a BodyInit object to a Uint8Array for NativeRequest
  */
 export async function normalizeBodyInitAsync(
@@ -58,7 +118,7 @@ export async function normalizeBodyInitAsync(
 
   if (body instanceof Blob) {
     return {
-      body: new Uint8Array(await blobToArrayBufferAsync(body)),
+      body: new Uint8Array(await body.arrayBuffer()),
       overriddenHeaders: [['Content-Type', body.type]],
     };
   }
@@ -74,7 +134,7 @@ export async function normalizeBodyInitAsync(
   }
 
   if (body instanceof FormData) {
-    const { body: result, boundary } = await convertFormDataAsync(body);
+    const { body: result, boundary } = convertFormData(body);
 
     return {
       body: result,
@@ -97,7 +157,7 @@ export function normalizeHeadersInit(headers: HeadersInit | null | undefined): N
   }
   if (headers instanceof Headers) {
     const results: [string, string][] = [];
-    headers.forEach((value: any, key: any) => {
+    headers.forEach((value, key) => {
       results.push([key, value]);
     });
     return results;
@@ -122,5 +182,18 @@ export function overrideHeaders(
   for (const [key, value] of newHeaders) {
     result.push([key, value]);
   }
+  return result;
+}
+
+export function joinUint8Arrays(arrays: Uint8Array[]): Uint8Array {
+  const totalLength: number = arrays.reduce((acc: number, arr: Uint8Array) => acc + arr.length, 0);
+  const result: Uint8Array = new Uint8Array(totalLength);
+
+  let offset: number = 0;
+  arrays.forEach((array: Uint8Array) => {
+    result.set(array, offset);
+    offset += array.length;
+  });
+
   return result;
 }

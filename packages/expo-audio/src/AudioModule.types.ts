@@ -1,4 +1,4 @@
-import { NativeModule, PermissionResponse, SharedObject } from 'expo-modules-core';
+import { PermissionResponse, SharedObject } from 'expo-modules-core';
 
 import {
   AudioMode,
@@ -14,7 +14,7 @@ import {
 /**
  * @hidden
  */
-export declare class NativeAudioModule extends NativeModule {
+export declare class NativeAudioModule {
   setIsAudioActiveAsync(active: boolean): Promise<void>;
   setAudioModeAsync(category: Partial<AudioMode>): Promise<void>;
   requestRecordingPermissionsAsync(): Promise<PermissionResponse>;
@@ -142,16 +142,13 @@ export declare class AudioPlayer extends SharedObject<AudioEvents> {
   remove(): void;
 }
 
-// @docsMissing
 export type AudioSample = {
   channels: AudioSampleChannel[];
   timestamp: number;
 };
 
-// @docsMissing
 export type AudioSampleChannel = { frames: number[] };
 
-// @docsMissing
 export type AudioEvents = {
   playbackStatusUpdate(status: AudioStatus): void;
   audioSampleUpdate(data: AudioSample): void;
@@ -241,7 +238,6 @@ export declare class AudioRecorder extends SharedObject<RecordingEvents> {
   recordForDuration(seconds: number): void;
 }
 
-// @docsMissing
 export type RecordingEvents = {
   recordingStatusUpdate: (status: RecordingStatus) => void;
 };

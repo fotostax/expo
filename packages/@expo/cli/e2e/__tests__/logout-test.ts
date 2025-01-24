@@ -1,8 +1,8 @@
 /* eslint-env jest */
+import { ExecaError } from 'execa';
 import fs from 'fs/promises';
 
-import { getLoadedModulesAsync, projectRoot } from './utils';
-import { executeExpoAsync } from '../utils/expo';
+import { execute, getLoadedModulesAsync, projectRoot } from './utils';
 
 const originalForceColor = process.env.FORCE_COLOR;
 
@@ -25,7 +25,7 @@ it('loads expected modules by default', async () => {
 });
 
 it('runs `npx expo logout --help`', async () => {
-  const results = await executeExpoAsync(projectRoot, ['logout', '--help']);
+  const results = await execute('logout', '--help');
   expect(results.stdout).toMatchInlineSnapshot(`
     "
       Info
@@ -41,7 +41,12 @@ it('runs `npx expo logout --help`', async () => {
 });
 
 it('throws on invalid project root', async () => {
-  await expect(
-    executeExpoAsync(projectRoot, ['very---invalid', 'logout'], { verbose: false })
-  ).rejects.toThrow(/^Invalid project root: .*very---invalid$/m);
+  expect.assertions(1);
+  try {
+    await execute('very---invalid', 'logout');
+  } catch (e) {
+    const error = e as ExecaError;
+    // Test on the invalid project prefix, and absolute path ending in the expected project folder
+    expect(error.stderr).toMatch(/^Invalid project root: .*very---invalid$/);
+  }
 });

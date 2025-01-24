@@ -23,7 +23,6 @@ class AutolinkigCommandBuilder {
   private var autolinkingCommand = emptyList<String>()
   private var useJson = emptyList<String>()
   private val optionsMap = mutableMapOf<String, String>()
-  private var searchPaths = emptyList<String>()
 
   /**
    * Set the autolinking command to run.
@@ -40,30 +39,10 @@ class AutolinkigCommandBuilder {
   }
 
   /**
-   * Add a list of values as an option to the command.
-   */
-  fun option(key: String, value: List<String>) = apply {
-    optionsMap[key] = value.joinToString(" ")
-  }
-
-  /**
    * Whether it should output json.
    */
   fun useJson() = apply {
     useJson = listOf("--json")
-  }
-
-  /**
-   * Set the search paths for the autolinking script.
-   */
-  fun searchPaths(paths: List<String>) = apply {
-    searchPaths = paths
-  }
-
-  fun useAutolinkingOptions(autolinkingOptions: AutolinkingOptions) = apply {
-    autolinkingOptions.ignorePaths?.let { option(IGNORE_PATHS_KEY, it) }
-    autolinkingOptions.exclude?.let { option(EXCLUDE_KEY, it) }
-    autolinkingOptions.searchPaths?.let { searchPaths(it) }
   }
 
   fun build(): List<String> {
@@ -71,13 +50,7 @@ class AutolinkigCommandBuilder {
       autolinkingCommand +
       platform +
       useJson +
-      optionsMap.map { (key, value) -> listOf("--$key", value) }.flatMap { it } +
-      searchPaths
+      optionsMap.map { (key, value) -> listOf("--$key", value) }.flatMap { it }
     return Os.windowsAwareCommandLine(command)
-  }
-
-  companion object {
-    const val IGNORE_PATHS_KEY = "ignore-paths"
-    const val EXCLUDE_KEY = "exclude"
   }
 }

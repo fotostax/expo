@@ -1,8 +1,8 @@
 import { mergeClasses } from '@expo/styleguide';
 
-import { H1, P } from '~/ui/components/Text';
-
 import { PageTitleButtons } from './PageTitleButtons';
+
+import { H1, P } from '~/ui/components/Text';
 
 type Props = {
   title?: string;

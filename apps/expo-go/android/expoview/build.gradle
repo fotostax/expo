@@ -124,7 +124,6 @@ dependencies {
   api fileTree(dir: 'libs', include: ['*.jar'])
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
   implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"
-  implementation "androidx.lifecycle:lifecycle-process:2.8.7"
 
   testImplementation 'junit:junit:4.13.2'
 
@@ -200,6 +199,9 @@ dependencies {
   api "androidx.legacy:legacy-support-v4:1.0.0"
   api "androidx.browser:browser:1.0.0"
   implementation "androidx.tracing:tracing-ktx:1.1.0"
+
+  // expo-face-detector
+  implementation 'com.google.mlkit:face-detection:16.1.5'
 
   api 'com.google.firebase:firebase-core:21.1.0'
   api 'com.google.firebase:firebase-messaging:22.0.0'

@@ -27,7 +27,7 @@ class RecreateReactContextProcedure(
     Handler(Looper.getMainLooper()).post {
       reactApplication.restart(weakActivity?.get(), "Restart from RecreateReactContextProcedure")
     }
-    procedureContext.resetStateAfterRestart()
+    procedureContext.resetState()
     procedureContext.onComplete()
   }
 }

@@ -1,8 +1,14 @@
-import { getPlatformName } from '~/ui/components/Tag/helpers';
+import type { HTMLAttributes } from 'react';
 
 import { PlatformTag } from './PlatformTag';
 import { StatusTag } from './StatusTag';
-import { TagProps } from './types';
+
+import { getPlatformName } from '~/ui/components/Tag/helpers';
+
+export type TagProps = {
+  name: string;
+  firstElement?: boolean;
+} & HTMLAttributes<HTMLDivElement>;
 
 export const Tag = ({ name, ...rest }: TagProps) => {
   if (getPlatformName(name).length) {

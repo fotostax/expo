@@ -60,7 +60,7 @@ export async function persistMetroFilesAsync(files: ExportAssetMap, outputDir: s
   if (!files.size) {
     return;
   }
-  await fs.promises.mkdir(path.join(outputDir), { recursive: true });
+  fs.mkdirSync(path.join(outputDir), { recursive: true });
 
   // Test fixtures:
   // Log.log(

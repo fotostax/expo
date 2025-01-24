@@ -448,7 +448,3 @@ export function useLinking(
     getInitialState,
   };
 }
-
-export function getInitialURLWithTimeout(): string | null | Promise<string | null> {
-  return typeof window === 'undefined' ? '' : window.location.href;
-}

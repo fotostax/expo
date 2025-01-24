@@ -13,22 +13,12 @@ import {
 } from './autolinking';
 import { type RNConfigCommandOptions, createReactNativeConfigAsync } from './reactNativeConfig';
 import type {
-  ModuleDescriptor,
-  CommonModuleDescriptor,
   GenerateModulesProviderOptions,
   GenerateOptions,
   ResolveOptions,
   SearchOptions,
   SearchResults,
-  ModuleDescriptorAndroid,
-  ModuleDescriptorIos,
 } from './types';
-
-function hasCoreFeatures(
-  module: ModuleDescriptor
-): module is ModuleDescriptorAndroid | ModuleDescriptorIos {
-  return (module as CommonModuleDescriptor).coreFeatures !== undefined;
-}
 
 /**
  * Registers a command that only searches for available expo modules.
@@ -165,25 +155,10 @@ module.exports = async function (args: string[]) {
     const modules = await resolveModulesAsync(results, options);
     const extraDependencies = await resolveExtraBuildDependenciesAsync(options);
 
-    const coreFeatures = [
-      ...modules.reduce<Set<string>>((acc, module) => {
-        if (hasCoreFeatures(module)) {
-          const features = module.coreFeatures ?? [];
-          for (const feature of features) {
-            acc.add(feature);
-          }
-          return acc;
-        }
-
-        return acc;
-      }, new Set()),
-    ];
     if (options.json) {
-      console.log(JSON.stringify({ extraDependencies, coreFeatures, modules }));
+      console.log(JSON.stringify({ extraDependencies, modules }));
     } else {
-      console.log(
-        require('util').inspect({ extraDependencies, coreFeatures, modules }, false, null, true)
-      );
+      console.log(require('util').inspect({ extraDependencies, modules }, false, null, true));
     }
   }).option<boolean>('-j, --json', 'Output results in the plain JSON format.', () => true, false);
 

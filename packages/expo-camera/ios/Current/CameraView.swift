@@ -39,8 +39,10 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
 
   var videoQuality: VideoQuality = .video1080p {
     didSet {
-      Task {
-        await updateSessionPreset(preset: videoQuality.toPreset())
+      if session.sessionPreset != videoQuality.toPreset() {
+        Task {
+          await updateSessionPreset(preset: videoQuality.toPreset())
+        }
       }
     }
   }
@@ -542,6 +544,11 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
   }
 
   func record(options: CameraRecordingOptions, promise: Promise) async {
+    let preset = options.quality?.toPreset()
+    if let preset {
+      await updateSessionPreset(preset: preset)
+    }
+
     if let videoFileOutput, !videoFileOutput.isRecording && videoRecordedPromise == nil {
       if let connection = videoFileOutput.connection(with: .video) {
         let orientation = responsiveWhenOrientationLocked ? physicalOrientation : UIDevice.current.orientation
@@ -562,18 +569,6 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
       videoRecordedPromise = promise
 
       videoFileOutput.startRecording(to: fileUrl, recordingDelegate: self)
-    }
-  }
-
-  @available(iOS 18.0, *)
-  func toggleRecording() {
-    guard let videoFileOutput else {
-      return
-    }
-    if videoFileOutput.isRecordingPaused {
-      videoFileOutput.resumeRecording()
-    } else {
-      videoFileOutput.pauseRecording()
     }
   }
 

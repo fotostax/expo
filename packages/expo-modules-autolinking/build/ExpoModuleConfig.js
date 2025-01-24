@@ -99,12 +99,6 @@ class ExpoModuleConfig {
         return arrayize(this.rawConfig.android?.gradleAarProjects ?? []);
     }
     /**
-     * Returns core features required by the module author.
-     */
-    coreFeatures() {
-        return arrayize(this.rawConfig.coreFeatures ?? []);
-    }
-    /**
      * Returns serializable raw config.
      */
     toJSON() {

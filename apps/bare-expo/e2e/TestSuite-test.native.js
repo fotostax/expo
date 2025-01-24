@@ -24,5 +24,4 @@ export const TESTS = [
   // 'Audio',
   'HTML',
   'FileSystem@next',
-  'Fetch',
 ];

@@ -1,5 +1,4 @@
 import { UrlObject } from '../LocationProvider';
-import { LinkToOptions } from '../global-state/routing';
 import { Href } from '../types';
 
 /** Resolve an href object into a fully qualified, relative href. */
@@ -21,7 +20,7 @@ export const resolveHref = (href: Href): string => {
 export function resolveHrefStringWithSegments(
   href: string,
   { segments = [], params = {} }: Partial<UrlObject> = {},
-  { relativeToDirectory }: LinkToOptions = {}
+  relativeToDirectory: boolean = false
 ) {
   if (href.startsWith('.')) {
     // Resolve base path by merging the current segments with the params

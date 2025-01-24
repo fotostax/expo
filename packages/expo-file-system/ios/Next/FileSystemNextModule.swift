@@ -2,7 +2,6 @@
 
 import ExpoModulesCore
 
-@available(iOS 14, macOS 11, tvOS 14, *)
 public final class FileSystemNextModule: Module {
   public func definition() -> ModuleDefinition {
     Name("FileSystemNext")

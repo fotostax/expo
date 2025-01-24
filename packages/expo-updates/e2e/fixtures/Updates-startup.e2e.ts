@@ -1,6 +1,5 @@
 import { by, device, element, waitFor } from 'detox';
 import jestExpect from 'expect';
-import { setTimeout } from 'timers/promises';
 
 import Server from './utils/server';
 import Update from './utils/update';
@@ -26,7 +25,7 @@ describe('Basic tests', () => {
     Server.stop();
   });
 
-  it('downloads and launches with new update when startup takes less time than fallbackToCacheTimeout', async () => {
+  it('downloads new update before launching', async () => {
     const bundleFilename = 'bundle1.js';
     const newNotifyString = 'test-update-1';
     const hash = await Update.copyBundleToStaticFolder(
@@ -57,7 +56,7 @@ describe('Basic tests', () => {
     await device.terminateApp();
   });
 
-  it('downloads but does not launch with new update when startup takes more time than fallbackToCacheTimeout', async () => {
+  it('does not download new update when it takes longer than timeout', async () => {
     const bundleFilename = 'bundle1.js';
     const newNotifyString = 'test-update-1';
     const hash = await Update.copyBundleToStaticFolder(
@@ -75,29 +74,15 @@ describe('Basic tests', () => {
       projectRoot
     );
 
-    Server.start(Update.serverPort, protocolVersion, 12000);
+    Server.start(Update.serverPort, protocolVersion, 7000);
     await Server.serveSignedManifest(manifest, projectRoot);
     await device.installApp();
     await device.launchApp({
       newInstance: true,
     });
     await waitForAppToBecomeVisible();
-
-    // this needs to be longer than the server artificial delay
-    await setTimeout(15000);
-
     const message = await testElementValueAsync('updateString');
     jestExpect(message).toBe('test');
-
-    const wasIsStartupProcedureRunningEverTrue = await testElementValueAsync(
-      'wasIsStartupProcedureRunningEverTrue'
-    );
-    jestExpect(wasIsStartupProcedureRunningEverTrue).toBe('true');
-
-    const isStartupProcedureRunning = await testElementValueAsync(
-      'state.isStartupProcedureRunning'
-    );
-    jestExpect(isStartupProcedureRunning).toBe('false');
 
     await device.terminateApp();
   });

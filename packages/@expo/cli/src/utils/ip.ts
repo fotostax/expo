@@ -63,14 +63,7 @@ function getRouteIPAddress(): string | null {
   if (!routeAddress) {
     return null;
   }
-  let ifaces: ReturnType<typeof networkInterfaces>;
-  try {
-    ifaces = networkInterfaces();
-  } catch {
-    // NOTE: This usually doesn't throw, but invalid builds or unknown targets in Node.js
-    // can cause this call to unexpectedly raise a system error
-    return null;
-  }
+  const ifaces = networkInterfaces();
   for (const iface in ifaces) {
     const assignments = ifaces[iface];
     for (let i = 0; assignments && i < assignments.length; i++) {

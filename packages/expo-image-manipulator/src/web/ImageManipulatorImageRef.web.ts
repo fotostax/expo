@@ -1,48 +1,30 @@
 import { SharedRef } from 'expo';
 
-import { ImageResult, SaveFormat, SaveOptions } from '../ImageManipulator.types';
+import { ImageResult, SaveOptions } from '../ImageManipulator.types';
 import { blobToBase64String } from './utils.web';
 
 export default class ImageManipulatorImageRef extends SharedRef<'image'> {
   readonly nativeRefType: string = 'image';
 
   readonly uri: string;
-  readonly canvas: HTMLCanvasElement;
+  readonly width: number;
+  readonly height: number;
 
-  constructor(uri: string, canvas: HTMLCanvasElement) {
+  constructor(uri: string, width: number, height: number) {
     super();
     this.uri = uri;
-    this.canvas = canvas;
-  }
-
-  get width() {
-    return this.canvas.width;
-  }
-
-  get height() {
-    return this.canvas.height;
+    this.width = width;
+    this.height = height;
   }
 
   async saveAsync(options: SaveOptions = { base64: false }): Promise<ImageResult> {
-    return new Promise((resolve, reject) => {
-      this.canvas.toBlob(
-        async (blob) => {
-          if (!blob) {
-            return reject(new Error(`Unable to save image: ${this.uri}`));
-          }
-          const base64 = options.base64 ? await blobToBase64String(blob) : undefined;
-          const uri = URL.createObjectURL(blob);
-
-          resolve({
-            uri,
-            width: this.width,
-            height: this.height,
-            base64,
-          });
-        },
-        `image/${options.format ?? SaveFormat.JPEG}`,
-        options.compress
-      );
-    });
+    return {
+      uri: this.uri,
+      width: this.width,
+      height: this.height,
+      base64: options.base64
+        ? await blobToBase64String(await fetch(this.uri).then((response) => response.blob()))
+        : undefined,
+    };
   }
 }

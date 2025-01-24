@@ -1,5 +1,6 @@
-import { MethodParamData, TypeDocKind } from './APIDataTypes';
+import { MethodParamData } from './APIDataTypes';
 import { renderMethod } from './APISectionMethods';
+import { TypeDocKind } from './APISectionUtils';
 
 type Props = {
   exposeInSidebar?: boolean;

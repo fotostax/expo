@@ -17,6 +17,7 @@ import * as PrivacyInfo from './PrivacyInfo';
 import * as ProvisioningProfile from './ProvisioningProfile';
 import * as RequiresFullScreen from './RequiresFullScreen';
 import * as Scheme from './Scheme';
+import * as Swift from './Swift';
 import * as Target from './Target';
 import * as Updates from './Updates';
 import * as UsesNonExemptEncryption from './UsesNonExemptEncryption';
@@ -44,6 +45,7 @@ export {
   ProvisioningProfile,
   RequiresFullScreen,
   Scheme,
+  Swift,
   Target,
   Updates,
   UsesNonExemptEncryption,

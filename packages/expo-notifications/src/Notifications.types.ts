@@ -351,11 +351,10 @@ export type YearlyTriggerInput = {
  * on the specified value of the `date` property. The value of `repeats` will be ignored
  * for this trigger type.
  */
-export type DateTriggerInput = {
-  type: SchedulableTriggerInputTypes.DATE;
-  date: Date | number;
-  channelId?: string;
-};
+export type DateTriggerInput =
+  | Date
+  | number
+  | { type: SchedulableTriggerInputTypes.DATE; channelId?: string; date: Date | number };
 
 /**
  * This trigger input will cause the notification to be delivered once or many times

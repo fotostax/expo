@@ -149,23 +149,10 @@ export async function logMetroErrorWithStack(
   }
 }
 
-export const IS_METRO_BUNDLE_ERROR_SYMBOL = Symbol('_isMetroBundleError');
-const HAS_LOGGED_SYMBOL = Symbol('_hasLoggedInCLI');
-
-export async function logMetroError(
-  projectRoot: string,
-  {
-    error,
-  }: {
-    error: Error & {
-      [HAS_LOGGED_SYMBOL]?: boolean;
-    };
-  }
-) {
-  if (error instanceof SilentError || error[HAS_LOGGED_SYMBOL]) {
+export async function logMetroError(projectRoot: string, { error }: { error: Error }) {
+  if (error instanceof SilentError) {
     return;
   }
-  error[HAS_LOGGED_SYMBOL] = true;
 
   const stack = parseErrorStack(projectRoot, error.stack);
 

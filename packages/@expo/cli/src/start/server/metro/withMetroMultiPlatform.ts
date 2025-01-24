@@ -709,13 +709,7 @@ export function withExtendedResolver(
 
         // Enable react-server import conditions.
         if (context.customResolverOptions?.environment === 'react-server') {
-          context.unstable_conditionNames = [
-            'node',
-            'import',
-            'require',
-            'react-server',
-            'workerd',
-          ];
+          context.unstable_conditionNames = ['node', 'require', 'react-server', 'workerd'];
         } else {
           context.unstable_conditionNames = ['node', 'require'];
         }

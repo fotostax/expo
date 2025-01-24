@@ -9,7 +9,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getExpoConfigLoaderPath = void 0;
 const promises_1 = __importDefault(require("fs/promises"));
 const module_1 = __importDefault(require("module"));
-const node_process_1 = __importDefault(require("node:process"));
 const path_1 = __importDefault(require("path"));
 const resolve_from_1 = __importDefault(require("resolve-from"));
 const Options_1 = require("../Options");
@@ -31,24 +30,18 @@ async function runAsync(programName, args = []) {
         .map((modulePath) => path_1.default.relative(projectRoot, modulePath));
     const ignoredPaths = await loadIgnoredPathsAsync(ignoredFile);
     const filteredLoadedModules = loadedModules.filter((modulePath) => !(0, Path_1.isIgnoredPath)(modulePath, ignoredPaths));
-    const result = JSON.stringify({ config, loadedModules: filteredLoadedModules });
-    if (node_process_1.default.send) {
-        node_process_1.default.send(result);
-    }
-    else {
-        console.log(result);
-    }
+    console.log(JSON.stringify({ config, loadedModules: filteredLoadedModules }));
 }
 // If running from the command line
 if (require.main?.filename === __filename) {
     (async () => {
-        const programIndex = node_process_1.default.argv.findIndex((arg) => arg === __filename);
+        const programIndex = process.argv.findIndex((arg) => arg === __filename);
         try {
-            await runAsync(node_process_1.default.argv[programIndex], node_process_1.default.argv.slice(programIndex + 1));
+            await runAsync(process.argv[programIndex], process.argv.slice(programIndex + 1));
         }
         catch (e) {
             console.error('Uncaught Error', e);
-            node_process_1.default.exit(1);
+            process.exit(1);
         }
     })();
 }

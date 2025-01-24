@@ -1,17 +1,9 @@
 {
-  "platforms": [
-    "apple",
-    "android"
-  ],
+  "platforms": ["ios", "android"],
   "ios": {
-    "modules": [
-      "ContactsModule",
-      "ContactAccessButtonModule"
-    ]
+    "modules": ["ContactsModule"]
   },
   "android": {
-    "modules": [
-      "expo.modules.contacts.ContactsModule"
-    ]
+    "modules": ["expo.modules.contacts.ContactsModule"]
   }
 }

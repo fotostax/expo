@@ -47,8 +47,7 @@ NS_ASSUME_NONNULL_BEGIN
   __block BOOL success = NO;
   __block NSError *dbError;
   dispatch_sync(self.database.databaseQueue, ^{
-    EXUpdatesLogger *logger = [[EXUpdatesLogger alloc] init];
-    success = [self.database openDatabaseInDirectory:self.updatesDirectory logger:logger error:&dbError];
+    success = [self.database openDatabaseInDirectory:self.updatesDirectory error:&dbError];
   });
 
   if (dbError) {

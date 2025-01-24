@@ -3,8 +3,8 @@ import fs from 'fs';
 import path from 'path';
 
 import { runExportSideEffects } from './export-side-effects';
-import { createExpoServe, executeExpoAsync } from '../../utils/expo';
-import { getRouterE2ERoot } from '../utils';
+import { createExpoServe } from '../../utils/expo';
+import { bin, execaLog, getRouterE2ERoot } from '../utils';
 
 runExportSideEffects();
 
@@ -15,7 +15,8 @@ describe('export server with magic import comments', () => {
   const outputDir = path.join(projectRoot, outputName);
 
   beforeAll(async () => {
-    await executeExpoAsync(projectRoot, ['export', '-p', 'web', '--output-dir', outputName], {
+    await execaLog(bin, ['export', '-p', 'web', '--output-dir', outputName], {
+      cwd: projectRoot,
       env: {
         NODE_ENV: 'production',
         EXPO_USE_STATIC: 'server',

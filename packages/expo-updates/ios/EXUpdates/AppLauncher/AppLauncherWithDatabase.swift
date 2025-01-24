@@ -43,14 +43,14 @@ public class AppLauncherWithDatabase: NSObject, AppLauncher {
 
   private var launchAssetError: UpdatesError?
 
-  public required init(config: UpdatesConfig, database: UpdatesDatabase, directory: URL, completionQueue: DispatchQueue, logger: UpdatesLogger) {
+  public required init(config: UpdatesConfig, database: UpdatesDatabase, directory: URL, completionQueue: DispatchQueue) {
     self.launcherQueue = DispatchQueue(label: "expo.launcher.LauncherQueue")
     self.completedAssets = 0
     self.config = config
     self.database = database
     self.directory = directory
     self.completionQueue = completionQueue
-    self.logger = logger
+    self.logger = UpdatesLogger()
   }
 
   public func isUsingEmbeddedAssets() -> Bool {
@@ -360,7 +360,7 @@ public class AppLauncherWithDatabase: NSObject, AppLauncher {
   }
 
   private lazy var downloader: FileDownloader = {
-    FileDownloader(config: config, logger: self.logger)
+    FileDownloader(config: config)
   }()
 }
 // swiftlint:enable closure_body_length

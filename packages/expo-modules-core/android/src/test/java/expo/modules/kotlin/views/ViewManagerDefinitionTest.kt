@@ -11,14 +11,12 @@ class ViewManagerDefinitionTest {
   @Test
   fun `definition should deduce type of view manager`() {
     val simpleViewManagerDefinition = ViewManagerDefinition(
-      null,
       { _, _ -> mockk<TextView>() },
       TextView::class.java,
       emptyMap()
     )
 
     val groupViewManagerDefinition = ViewManagerDefinition(
-      null,
       { _, _ -> mockk<ListView>() },
       ListView::class.java,
       emptyMap()

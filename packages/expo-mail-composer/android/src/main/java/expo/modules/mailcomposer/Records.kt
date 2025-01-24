@@ -3,16 +3,6 @@ package expo.modules.mailcomposer
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
 
-/**
- * Represents a mail client with a label and package name.
- */
-data class MailClient(
-  @Field
-  val label: String,
-  @Field
-  val packageName: String
-) : Record
-
 data class MailComposerOptions(
   @Field
   val recipients: List<String>?,

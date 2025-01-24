@@ -1,7 +1,3 @@
-// @docsMissing
-/**
- * @platform ios
- */
 export var IOSOutputFormat;
 (function (IOSOutputFormat) {
     IOSOutputFormat["LINEARPCM"] = "lpcm";
@@ -39,7 +35,6 @@ export var IOSOutputFormat;
     IOSOutputFormat["AES3"] = "aes3";
     IOSOutputFormat["ENHANCEDAC3"] = "ec-3";
 })(IOSOutputFormat || (IOSOutputFormat = {}));
-// @docsMissing
 export var AudioQuality;
 (function (AudioQuality) {
     AudioQuality[AudioQuality["MIN"] = 0] = "MIN";

@@ -51,13 +51,13 @@ Import the local module in your application, for example in **App.js** or **App.
 
 ```tsx App.tsx
 /* @hide ...*/ /* @end */
-import MyModule from './modules/my-module';
+import { hello } from './modules/my-module';
 
 export default function App() {
   return (
     <View style={styles.container}>
       /* @info In the component, return the result of the native method. */
-      <Text>{MyModule.hello()}</Text>
+      <Text>{hello()}</Text>
       /* @end */
     </View>
   );

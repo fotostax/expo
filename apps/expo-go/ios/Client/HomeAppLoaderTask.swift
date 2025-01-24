@@ -87,8 +87,7 @@ public final class HomeAppLoaderTask: NSObject {
         database: database,
         directory: directory,
         selectionPolicy: selectionPolicy,
-        launchedUpdate: launchedUpdate,
-        logger: self.logger
+        launchedUpdate: launchedUpdate
       )
     }
   }
@@ -119,8 +118,7 @@ public final class HomeAppLoaderTask: NSObject {
         config: self.config,
         database: self.database,
         directory: self.directory,
-        completionQueue: self.loaderTaskQueue,
-        logger: self.logger
+        completionQueue: self.loaderTaskQueue
       )
       launcher.launchUpdate(withSelectionPolicy: self.selectionPolicy) { error, success in
         if success {

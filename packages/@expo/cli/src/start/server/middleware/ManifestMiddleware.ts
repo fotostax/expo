@@ -339,19 +339,17 @@ export abstract class ManifestMiddleware<
    * to an `index.html`, this enables the web platform to load JavaScript from the server.
    */
   private async handleWebRequestAsync(req: ServerRequest, res: ServerResponse) {
-    res.setHeader('Content-Type', 'text/html');
-
-    res.end(await this.getSingleHtmlTemplateAsync());
-  }
-
-  getSingleHtmlTemplateAsync() {
     // Read from headers
     const bundleUrl = this.getWebBundleUrl();
 
-    return createTemplateHtmlFromExpoConfigAsync(this.projectRoot, {
-      exp: this.initialProjectConfig.exp,
-      scripts: [bundleUrl],
-    });
+    res.setHeader('Content-Type', 'text/html');
+
+    res.end(
+      await createTemplateHtmlFromExpoConfigAsync(this.projectRoot, {
+        exp: this.initialProjectConfig.exp,
+        scripts: [bundleUrl],
+      })
+    );
   }
 
   /** Exposed for testing. */

@@ -157,12 +157,6 @@ export interface PluginConfigTypeAndroid {
    *  @see [Android documentation](https://developer.android.com/guide/topics/manifest/queries-element)
    */
   manifestQueries?: PluginConfigTypeAndroidQueries;
-  /**
-   * Changes the apps theme to a DayNight variant to correctly support dark mode.
-   *
-   * @see [Android documentation](https://developer.android.com/develop/ui/views/theming/darktheme)
-   */
-  useDayNightTheme?: boolean;
 }
 
 // @docsMissing
@@ -570,8 +564,6 @@ const schema: JSONSchemaType<PluginConfigType> = {
         usesCleartextTraffic: { type: 'boolean', nullable: true },
 
         useLegacyPackaging: { type: 'boolean', nullable: true },
-
-        useDayNightTheme: { type: 'boolean', nullable: true },
 
         manifestQueries: {
           type: 'object',

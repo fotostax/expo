@@ -53,9 +53,3 @@ internal final class CameraInvalidPhotoData: Exception {
     "An error occured while generating photo data"
   }
 }
-
-internal final class CameraToggleRecordingException: Exception {
-  override var reason: String {
-    "`toggleRecording()` is only supported on iOS 18.0 or later"
-  }
-}

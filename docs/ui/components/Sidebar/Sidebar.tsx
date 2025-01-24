@@ -1,15 +1,18 @@
 import { mergeClasses } from '@expo/styleguide';
 import type { PropsWithChildren, ComponentType } from 'react';
 
-import { NavigationType, NavigationRoute } from '~/types/common';
+import { SidebarGroup, SidebarSection } from './index';
 
-import { SidebarGroup } from './SidebarGroup';
-import { SidebarSection } from './SidebarSection';
-import { SidebarNodeProps } from './types';
+import { NavigationType, NavigationRoute } from '~/types/common';
 
 type SidebarProps = PropsWithChildren<{
   routes?: NavigationRoute[];
 }>;
+
+export type SidebarNodeProps = {
+  route: NavigationRoute;
+  parentRoute?: NavigationRoute;
+};
 
 export const Sidebar = ({ routes = [] }: SidebarProps) => {
   const renderTypes: Record<NavigationType, ComponentType<SidebarNodeProps> | null> = {

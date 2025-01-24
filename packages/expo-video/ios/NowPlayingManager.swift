@@ -84,10 +84,6 @@ class NowPlayingManager: VideoPlayerObserverDelegate {
 
     removeExistingTargets(commandCenter: commandCenter)
 
-    guard self.mostRecentInteractionPlayer != nil else {
-      return
-    }
-
     playTarget = commandCenter.playCommand.addTarget { [weak self] _ in
       guard let self, let player = self.mostRecentInteractionPlayer else {
         return .commandFailed

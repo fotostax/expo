@@ -115,11 +115,7 @@
 - (void)_testIsManifestURLString:(NSString *)urlString expected:(BOOL)expectedIsManifestUrl description:(NSString *)description
 {
   NSURL *url = [NSURL URLWithString:urlString];
-  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc]
-                                         initWithURL:url
-                                         installationID:nil
-                                         session:NSURLSession.sharedSession
-                                         requestTimeout:NSURLSessionConfiguration.defaultSessionConfiguration.timeoutIntervalForRequest];
+  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc] initWithURL:url installationID:nil session:NSURLSession.sharedSession];
 
   XCTestExpectation *expectation = [self expectationWithDescription:description];
 
@@ -143,11 +139,7 @@
     return [HTTPStubsResponse responseWithData:[NSData new] statusCode:200 headers:nil];
   }];
 
-  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc]
-                                         initWithURL:[NSURL URLWithString:@"http://ohhttpstubs/platform"]
-                                         installationID:nil
-                                         session:NSURLSession.sharedSession
-                                         requestTimeout:NSURLSessionConfiguration.defaultSessionConfiguration.timeoutIntervalForRequest];
+  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc] initWithURL:[NSURL URLWithString:@"http://ohhttpstubs/platform"] installationID:nil session:NSURLSession.sharedSession];
 
   XCTestExpectation *expectation = [self expectationWithDescription:@"request should include expo-platform header"];
 
@@ -172,11 +164,7 @@
     return [HTTPStubsResponse responseWithData:[NSData new] statusCode:200 headers:nil];
   }];
 
-  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc]
-                                         initWithURL:[NSURL URLWithString:@"http://ohhttpstubs/installation-id"]
-                                         installationID:installationID
-                                         session:NSURLSession.sharedSession
-                                         requestTimeout:NSURLSessionConfiguration.defaultSessionConfiguration.timeoutIntervalForRequest];
+  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc] initWithURL:[NSURL URLWithString:@"http://ohhttpstubs/installation-id"] installationID:installationID session:NSURLSession.sharedSession];
 
   XCTestExpectation *expectation = [self expectationWithDescription:@"request should include expo-dev-client-id header"];
 
@@ -201,11 +189,7 @@
   }];
 
   NSURL *url = [NSURL URLWithString:@"http://ohhttpstubs"];
-  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc]
-                                         initWithURL:url
-                                         installationID:nil
-                                         session:NSURLSession.sharedSession
-                                         requestTimeout:NSURLSessionConfiguration.defaultSessionConfiguration.timeoutIntervalForRequest];
+  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc] initWithURL:url installationID:nil session:NSURLSession.sharedSession];
 
   XCTestExpectation *expectation = [self expectationWithDescription:@"should parse manifest successfully"];
 
@@ -238,11 +222,7 @@
   }];
 
   NSURL *url = [NSURL URLWithString:@"http://ohhttpstubs"];
-  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc]
-                                         initWithURL:url
-                                         installationID:nil
-                                         session:NSURLSession.sharedSession
-                                         requestTimeout:NSURLSessionConfiguration.defaultSessionConfiguration.timeoutIntervalForRequest];
+  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc] initWithURL:url installationID:nil session:NSURLSession.sharedSession];
 
   XCTestExpectation *expectation = [self expectationWithDescription:@"should parse manifest successfully"];
 
@@ -269,11 +249,7 @@
   }];
 
   NSURL *url = [NSURL URLWithString:@"http://ohhttpstubs"];
-  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc]
-                                         initWithURL:url
-                                         installationID:nil
-                                         session:NSURLSession.sharedSession
-                                         requestTimeout:NSURLSessionConfiguration.defaultSessionConfiguration.timeoutIntervalForRequest];
+  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc] initWithURL:url installationID:nil session:NSURLSession.sharedSession];
 
   XCTestExpectation *expectation = [self expectationWithDescription:@"should parse manifest successfully"];
 
@@ -299,11 +275,7 @@
   }];
 
   NSURL *url = [NSURL URLWithString:@"http://ohhttpstubs"];
-  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc]
-                                         initWithURL:url
-                                         installationID:nil
-                                         session:NSURLSession.sharedSession
-                                         requestTimeout:NSURLSessionConfiguration.defaultSessionConfiguration.timeoutIntervalForRequest];
+  EXDevLauncherManifestParser *parser = [[EXDevLauncherManifestParser alloc] initWithURL:url installationID:nil session:NSURLSession.sharedSession];
 
   XCTestExpectation *expectation = [self expectationWithDescription:@"should fail to parse manifest"];
 

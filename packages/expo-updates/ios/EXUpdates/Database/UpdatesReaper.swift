@@ -1,7 +1,6 @@
 // Copyright 2015-present 650 Industries. All rights reserved.
 
 // swiftlint:disable closure_body_length
-// swiftlint:disable function_parameter_count
 
 import Foundation
 
@@ -18,9 +17,10 @@ public final class UpdatesReaper: NSObject {
     database: UpdatesDatabase,
     directory: URL,
     selectionPolicy: SelectionPolicy,
-    launchedUpdate: Update,
-    logger: UpdatesLogger
+    launchedUpdate: Update
   ) {
+    let logger = UpdatesLogger()
+
     database.databaseQueue.async {
       let beginDeleteFromDatabase = Date()
 
@@ -105,5 +105,4 @@ public final class UpdatesReaper: NSObject {
   }
 }
 
-// swiftlint:enable function_parameter_count
 // swiftlint:enable closure_body_length
