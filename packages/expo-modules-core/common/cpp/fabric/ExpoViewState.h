@@ -14,20 +14,7 @@ namespace expo {
 
 class ExpoViewState final {
 public:
-  ExpoViewState() {}
-  
-  ExpoViewState(float width, float height) {
-    if (width >= 0) {
-      _width = width;
-    } else {
-      _width = std::numeric_limits<float>::quiet_NaN();
-    }
-    if (height >= 0) {
-      _height = height;
-    } else {
-      _height = std::numeric_limits<float>::quiet_NaN();
-    }
-  };
+  ExpoViewState() {};
 
 #ifdef ANDROID
   ExpoViewState(ExpoViewState const &previousState, folly::dynamic data)
@@ -41,9 +28,6 @@ public:
     return facebook::react::MapBufferBuilder::EMPTY();
   };
 #endif
-  
-  float _width = std::numeric_limits<float>::quiet_NaN();
-  float _height = std::numeric_limits<float>::quiet_NaN();
 
 };
 

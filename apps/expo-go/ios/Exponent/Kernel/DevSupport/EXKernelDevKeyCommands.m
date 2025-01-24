@@ -89,6 +89,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)init)
 {
   BOOL interactionEnabled = !UIApplication.sharedApplication.isIgnoringInteractionEvents;
   BOOL hasFirstResponder = NO;
+  [EXKernelDevKeyCommands handleKeyboardEvent:event];
   
   if (interactionEnabled) {
     UIResponder *firstResponder = nil;
@@ -224,7 +225,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)init)
                                [weakSelf _handleMenuCommand];
                              }];
   [self registerKeyCommandWithInput:@"r"
-                      modifierFlags:0
+                      modifierFlags:UIKeyModifierCommand
                              action:^(__unused UIKeyCommand *_) {
                                [weakSelf _handleRefreshCommand];
                              }];

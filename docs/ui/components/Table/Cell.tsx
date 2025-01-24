@@ -8,23 +8,16 @@ type CellProps = PropsWithChildren<{
   fitContent?: boolean;
   align?: TextAlign | 'char';
   colSpan?: number;
-  className?: string;
 }>;
 
-export const Cell = ({
-  children,
-  colSpan,
-  className,
-  fitContent = false,
-  align = 'left',
-}: CellProps) => (
+export const Cell = ({ children, colSpan, fitContent = false, align = 'left' }: CellProps) => (
   <td
     className={mergeClasses(
       'border-r border-secondary p-4',
       convertAlignToClass(align),
       fitContent && 'w-fit',
       'last:border-r-0',
-      className
+      '[&>*:last-child]:!mb-0'
     )}
     colSpan={colSpan}>
     {children}

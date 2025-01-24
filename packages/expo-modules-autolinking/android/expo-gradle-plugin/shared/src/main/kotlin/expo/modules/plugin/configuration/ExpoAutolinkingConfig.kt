@@ -1,14 +1,14 @@
 package expo.modules.plugin.configuration
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 
 @Serializable
 data class ExpoAutolinkingConfig(
   val modules: List<ExpoModule> = emptyList(),
-  val extraDependencies: List<MavenRepo> = emptyList(),
-  val coreFeatures: List<String> = emptyList()
+  val extraDependencies: List<MavenRepo> = emptyList()
 ) {
   /**
    * Returns all gradle projects from all modules.
@@ -29,7 +29,7 @@ data class ExpoAutolinkingConfig(
     get() = modules.flatMap { it.aarProjects }
 
   fun toJson(): String {
-    return Json.encodeToString(serializer(), this)
+    return Json.encodeToString(this)
   }
 
   companion object {

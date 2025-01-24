@@ -1,4 +1,3 @@
-import { MapsModule } from './shared.types';
-declare const _default: MapsModule;
-export default _default;
+export declare const NativeExpoAppleMapsModule: any;
+export declare const NativeExpoGoogleMapsModule: any;
 //# sourceMappingURL=ExpoMaps.d.ts.map

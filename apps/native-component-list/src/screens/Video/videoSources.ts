@@ -75,7 +75,6 @@ export {
   bigBuckBunnySource,
   forBiggerBlazesSource,
   elephantsDreamSource,
-  localVideoSource,
   androidDrmSource,
   videoLabels,
   videoSources,

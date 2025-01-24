@@ -91,34 +91,6 @@ export const TALKS = [
 
 export const PODCASTS = [
   {
-    title: 'Expo Router, RSC & DOM Components',
-    event: 'Rocket Ship #059',
-    description: 'Evan Bacon',
-    videoId: 'y8qaHct3TWE',
-    link: 'https://podcast.galaxies.dev/episodes/059-expo-router-rsc-dom-components-with-evan-bacon',
-  },
-  {
-    title: 'Universal React Native Apps with DOM & RSC',
-    event: 'React Universe On Air #45',
-    description: 'Evan Bacon',
-    videoId: 'rA7E3rGKSZw',
-    link: 'https://www.callstack.com/podcasts/universal-react-native-apps-with-dom-react-server-components',
-  },
-  {
-    title: 'Streamlined React Native Development',
-    event: 'Software Engineering Daily',
-    description: 'Charlie Cheever, James Ide',
-    thumbnail: 'sedaily-01.webp',
-    link: 'https://softwareengineeringdaily.com/2025/01/01/streamlined-react-native-development-with-charlie-cheever-and-james-ide/',
-  },
-  {
-    title: 'Debugging the Debugger',
-    event: 'React Native Radio #316',
-    description: 'Cedric van Putten',
-    thumbnail: 'rnr-316.jpg',
-    link: 'https://reactnativeradio.com/episodes/rnr-316-debugging-the-debugger-with-cedric-van-putten-and-alex-hunt',
-  },
-  {
     title: 'What to do without App Center',
     event: 'React Native Radio #315',
     description: 'Quinlan Jung',
@@ -211,28 +183,6 @@ export const PODCASTS = [
 ] as Talk[];
 
 export const LIVE_STREAMS = [
-  {
-    title: 'How to add Apple home screen widgets to React apps',
-    thumbnail: 'widgets.jpg',
-    event: 'Expo Live Stream',
-    videoId: 'hgmAMrVRzRM',
-  },
-  {
-    title: 'Your 2025 React Native Tech Stack',
-    event: 'Expo Live Stream',
-    thumbnail: 'rn-techstack.jpg',
-    videoId: 'kqdrn-jEaXY',
-  },
-  {
-    title: 'Radon IDE: the VS Code extension for React Native',
-    event: 'Expo Live Stream',
-    videoId: 'UeYmRKWhwFI',
-  },
-  {
-    title: 'Building 4 apps in 4 weeks with Expo',
-    event: 'Expo Live Stream',
-    videoId: 'YOfLHtK8B04',
-  },
   {
     title: 'Launch Week 2024 AMA',
     event: 'Expo Live Stream',

@@ -9,7 +9,7 @@ import path from 'path';
 
 import { Log } from '../../log';
 
-export function isPossiblyUnableToResolveError(
+function isPossiblyUnableToResolveError(
   error: any
 ): error is { message: string; originModulePath: string; targetModuleName: string } {
   return (

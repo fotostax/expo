@@ -23,15 +23,11 @@ exports.MetroServerError = MetroServerError;
 class ReactServerError extends Error {
     url;
     statusCode;
-    headers;
     code = 'REACT_SERVER_ERROR';
-    constructor(message, url, statusCode, 
-    /** Response headers from the server. */
-    headers) {
+    constructor(message, url, statusCode) {
         super(message);
         this.url = url;
         this.statusCode = statusCode;
-        this.headers = headers;
         this.name = 'ReactServerError';
     }
 }

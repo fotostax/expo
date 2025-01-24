@@ -67,38 +67,35 @@ export type Platform = 'android' | 'ios';
 
 export interface Options {
   /**
-   * Limit native files to those for specified platforms.
-   * @default ['android', 'ios']
+   * Only get native files from the given platforms. Default is `['android', 'ios']`.
    */
   platforms?: Platform[];
 
   /**
-   * I/O concurrency limit.
-   * @default The number of CPU cores.
+   * I/O concurrent limit. Default is the number of CPU core.
    */
   concurrentIoLimit?: number;
 
   /**
-   * The algorithm to use for `crypto.createHash()`.
-   * @default 'sha1'
+   * The algorithm passing to `crypto.createHash()`. Default is `'sha1'`.
    */
   hashAlgorithm?: string;
 
   /**
-   * Exclude specified directories from hashing. The supported pattern is the same as `glob()`.
+   * Excludes directories from hashing. This supported pattern is as `glob()`.
    * Default is `['android/build', 'android/app/build', 'android/app/.cxx', 'ios/Pods']`.
    * @deprecated Use `ignorePaths` instead.
    */
   dirExcludes?: string[];
 
   /**
-   * Ignore files and directories from hashing. The supported pattern is the same as `glob()`.
+   * Ignore files and directories from hashing. This supported pattern is as `glob()`.
    *
-   * Please note that the pattern matching is slightly different from gitignore. Partial matching is unsupported. For example, `build` does not match `android/build`; instead, use `'**' + '/build'`.
-   * @see [minimatch implementations](https://github.com/isaacs/minimatch#comparisons-to-other-fnmatchglob-implementations) for further reference.
+   * Please note that the pattern matching is slightly different from gitignore. For example, we don't support partial matching where `build` does not match `android/build`. You should use `'**' + '/build'` instead.
+   * @see [minimatch implementations](https://github.com/isaacs/minimatch#comparisons-to-other-fnmatchglob-implementations) for more reference.
    *
-   * Fingerprint comes with implicit default ignorePaths defined in `Options.DEFAULT_IGNORE_PATHS`.
-   * If you want to override the default ignorePaths, use `!` prefix in `ignorePaths`.
+   * Besides this `ignorePaths`, fingerprint comes with implicit default ignorePaths defined in `Options.DEFAULT_IGNORE_PATHS`.
+   * If you want to override the default ignorePaths, use `!` prefix.
    */
   ignorePaths?: string[];
 
@@ -108,7 +105,7 @@ export interface Options {
   extraSources?: HashSource[];
 
   /**
-   * Skips some sources from fingerprint. Value is the result of bitwise-OR'ing desired values of SourceSkips.
+   * Skips some sources from fingerprint.
    * @default DEFAULT_SOURCE_SKIPS
    */
   sourceSkips?: SourceSkips;
@@ -137,11 +134,6 @@ export interface Options {
    * Whether to include verbose debug info in source output. Useful for debugging.
    */
   debug?: boolean;
-
-  /**
-   * A custom hook function to transform file content sources before hashing.
-   */
-  fileHookTransform?: FileHookTransformFunction;
 }
 
 type SourceSkipsKeys = keyof typeof SourceSkips;
@@ -158,49 +150,26 @@ export type Config = Pick<
   | 'enableReactImportsPatcher'
   | 'useRNCoreAutolinkingFromExpo'
   | 'debug'
-  | 'fileHookTransform'
 > & {
   sourceSkips?: SourceSkips | SourceSkipsKeys[];
 };
 
-/**
- * Hook function to transform file content sources before hashing.
- */
-export type FileHookTransformFunction = (
-  /**
-   * Source from HashSourceFile or HashSourceContents.
-   */
-  source: FileHookTransformSource,
+//#region internal types
+
+export type NormalizedOptions = Omit<Options, 'ignorePaths'> & {
+  platforms: NonNullable<Options['platforms']>;
+  concurrentIoLimit: NonNullable<Options['concurrentIoLimit']>;
+  hashAlgorithm: NonNullable<Options['hashAlgorithm']>;
+  sourceSkips: NonNullable<Options['sourceSkips']>;
+  enableReactImportsPatcher: NonNullable<Options['enableReactImportsPatcher']>;
+
+  ignorePathMatchObjects: IMinimatch[];
 
   /**
-   * The chunk of file content.
-   * When the stream reaches the end, the chunk will be null.
+   * A ignore pattern list specific for dir matching. It is built by `ignorePathMatchObjects` in runtime.
    */
-  chunk: Buffer | string | null,
-
-  /**
-   * Indicates the end of the file.
-   */
-  isEndOfFile: boolean,
-
-  /**
-   * The encoding of the chunk.
-   */
-  encoding: BufferEncoding
-) => Buffer | string | null;
-
-/**
- * The `source` parameter for `FileHookTransformFunction`.
- */
-export type FileHookTransformSource =
-  | {
-      type: 'file';
-      filePath: string;
-    }
-  | {
-      type: 'contents';
-      id: string;
-    };
+  ignoreDirMatchObjects: IMinimatch[];
+};
 
 export interface HashSourceFile {
   type: 'file';
@@ -238,8 +207,6 @@ export type HashSource = HashSourceFile | HashSourceDir | HashSourceContents;
 export interface DebugInfoFile {
   path: string;
   hash: string;
-  /** Indicates whether the source is transformed by `fileHookTransform`. */
-  isTransformed?: boolean;
 }
 
 export interface DebugInfoDir {
@@ -250,8 +217,6 @@ export interface DebugInfoDir {
 
 export interface DebugInfoContents {
   hash: string;
-  /** Indicates whether the source is transformed by `fileHookTransform`. */
-  isTransformed?: boolean;
 }
 
 export type DebugInfo = DebugInfoFile | DebugInfoDir | DebugInfoContents;

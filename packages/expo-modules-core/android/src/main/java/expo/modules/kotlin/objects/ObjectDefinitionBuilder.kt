@@ -20,9 +20,7 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinitionBuilder
 import expo.modules.kotlin.modules.convertEnumToString
 import expo.modules.kotlin.types.Enumerable
-import expo.modules.kotlin.types.TypeConverterProvider
 import expo.modules.kotlin.types.enforceType
-import expo.modules.kotlin.types.mergeWithDefault
 import expo.modules.kotlin.types.toArgsArray
 import expo.modules.kotlin.types.toReturnType
 import kotlin.reflect.full.declaredMemberProperties
@@ -31,10 +29,7 @@ import kotlin.reflect.full.primaryConstructor
 /**
  * Base class for other definitions representing an object, such as `ModuleDefinition`.
  */
-open class ObjectDefinitionBuilder(customConverter: TypeConverterProvider? = null) {
-  @PublishedApi
-  internal val converterProvider = customConverter.mergeWithDefault()
-
+open class ObjectDefinitionBuilder {
   private var constantsProvider = { emptyMap<String, Any?>() }
 
   @PublishedApi
@@ -122,7 +117,7 @@ open class ObjectDefinitionBuilder(customConverter: TypeConverterProvider? = nul
     name: String,
     crossinline body: (p0: P0) -> R
   ): SyncFunctionComponent {
-    return SyncFunctionComponent(name, toArgsArray<P0>(converterProvider = converterProvider), toReturnType<R>()) { (p0) ->
+    return SyncFunctionComponent(name, toArgsArray<P0>(), toReturnType<R>()) { (p0) ->
       enforceType<P0>(p0)
       body(p0)
     }.also {

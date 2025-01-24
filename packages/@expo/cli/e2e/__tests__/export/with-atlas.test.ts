@@ -1,11 +1,11 @@
 /* eslint-env jest */
+import execa from 'execa';
 import { AtlasFileSource } from 'expo-atlas';
 import fs from 'fs';
 import path from 'path';
 
 import { runExportSideEffects } from './export-side-effects';
-import { executeExpoAsync } from '../../utils/expo';
-import { getRouterE2ERoot } from '../utils';
+import { bin, getRouterE2ERoot } from '../utils';
 
 runExportSideEffects();
 
@@ -14,7 +14,8 @@ describe('exports all platforms with static export', () => {
   const outputName = 'dist-static-atlas-file';
 
   beforeAll(async () => {
-    await executeExpoAsync(projectRoot, ['export', '-p', 'all', '--output-dir', outputName], {
+    await execa('node', [bin, 'export', '-p', 'all', '--output-dir', outputName], {
+      cwd: projectRoot,
       env: {
         NODE_ENV: 'production',
         EXPO_USE_STATIC: 'static',

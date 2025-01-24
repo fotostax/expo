@@ -50,9 +50,6 @@ class AudioRecorder: SharedRef<AVAudioRecorder>, RecordingResultHandler {
       ref = AudioUtils.createRecorder(directory: recordingDirectory, with: options)
       ref.delegate = recordingDelegate
     }
-    if let isMeteringEnabled = options?.isMeteringEnabled {
-      ref.isMeteringEnabled = isMeteringEnabled
-    }
     ref.prepareToRecord()
     isPrepared = true
   }

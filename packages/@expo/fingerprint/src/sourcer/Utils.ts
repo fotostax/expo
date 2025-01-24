@@ -2,7 +2,6 @@ import fs from 'fs/promises';
 import path from 'path';
 
 import type { HashSource } from '../Fingerprint.types';
-import { toPosixPath } from '../utils/Path';
 
 export async function getFileBasedHashSourceAsync(
   projectRoot: string,
@@ -14,7 +13,7 @@ export async function getFileBasedHashSourceAsync(
     const stat = await fs.stat(path.join(projectRoot, filePath));
     result = {
       type: stat.isDirectory() ? 'dir' : 'file',
-      filePath: toPosixPath(filePath),
+      filePath,
       reasons: [reason],
     };
   } catch {

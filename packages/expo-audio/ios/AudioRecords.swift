@@ -42,7 +42,6 @@ struct RecordingOptions: Record {
   @Field var linearPCMBitDepth: Double?
   @Field var linearPCMIsBigEndian: Bool?
   @Field var linearPCMIsFloat: Bool?
-  @Field var isMeteringEnabled: Bool = false
 }
 
 enum BitRateStrategy: String, Enumerable {

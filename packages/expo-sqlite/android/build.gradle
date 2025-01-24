@@ -1,9 +1,16 @@
 import org.apache.tools.ant.taskdefs.condition.Os
 
-plugins {
-  id 'com.android.library'
-  id 'expo-module-gradle-plugin'
-}
+apply plugin: 'com.android.library'
+
+group = 'host.exp.exponent'
+version = '15.0.3'
+
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+useDefaultAndroidSdkVersions()
+useExpoPublishing()
 
 String toPlatformIndependentPath(File path) {
   def result = path.toString()
@@ -42,9 +49,6 @@ def reactNativeArchitectures() {
   def value = project.getProperties().get("reactNativeArchitectures")
   return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
 }
-
-group = 'host.exp.exponent'
-version = '15.0.3'
 
 android {
   namespace "expo.modules.sqlite"

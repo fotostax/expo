@@ -64,7 +64,7 @@ class ExpoFetchModule : Module() {
       }
 
       AsyncFunction("startStreaming") { response: NativeResponse ->
-        return@AsyncFunction response.startStreaming()
+        response.startStreaming()
       }
 
       AsyncFunction("cancelStreaming") { response: NativeResponse, _: String ->

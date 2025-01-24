@@ -8,33 +8,6 @@ export async function loadStaticParamsAsync(route: RouteNode): Promise<RouteNode
   return route;
 }
 
-export async function evalStaticParamsAsync(
-  route: RouteNode,
-  props: { parentParams: any },
-  generateStaticParams?: (props: {
-    params?: Record<string, string | string[]>;
-  }) => Record<string, string | string[]>[]
-): Promise<Record<string, string | string[]>[] | null> {
-  if (!route.dynamic && generateStaticParams) {
-    throw new Error(
-      'Cannot use generateStaticParams in a route without dynamic segments: ' + route.contextKey
-    );
-  }
-
-  if (generateStaticParams) {
-    const staticParams = await generateStaticParams({
-      params: props.parentParams || {},
-    });
-
-    assertStaticParamsType(staticParams);
-    // Assert that at least one param from each matches the dynamic route.
-    staticParams.forEach((params) => assertStaticParams(route, params));
-
-    return staticParams;
-  }
-  return null;
-}
-
 async function loadStaticParamsRecursive(
   route: RouteNode,
   props: { parentParams: any }
@@ -45,8 +18,17 @@ async function loadStaticParamsRecursive(
 
   const loaded = await route.loadRoute();
 
-  const staticParams =
-    (await evalStaticParamsAsync(route, props, loaded.generateStaticParams)) ?? [];
+  let staticParams: Record<string, string | string[]>[] = [];
+
+  if (loaded.generateStaticParams) {
+    staticParams = await loaded.generateStaticParams({
+      params: props.parentParams || {},
+    });
+
+    assertStaticParamsType(staticParams);
+    // Assert that at least one param from each matches the dynamic route.
+    staticParams.forEach((params) => assertStaticParams(route, params));
+  }
 
   const traverseForNode = async (nextParams: Record<string, string | string[]>) => {
     const nextChildren: RouteNode[] = [];

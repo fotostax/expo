@@ -5,7 +5,6 @@ import pLimit from 'p-limit';
 import path from 'path';
 import { pipeline, type Readable } from 'stream';
 
-import { FileHookTransform } from './FileHookTransform';
 import { ReactImportsPatchTransform } from './ReactImportsPatcher';
 import type {
   DebugInfoDir,
@@ -20,7 +19,7 @@ import type {
   HashSourceContents,
   NormalizedOptions,
 } from '../Fingerprint.types';
-import { isIgnoredPathWithMatchObjects, toPosixPath } from '../utils/Path';
+import { isIgnoredPathWithMatchObjects } from '../utils/Path';
 import { nonNullish } from '../utils/Predicates';
 import { profile } from '../utils/Profile';
 
@@ -127,13 +126,6 @@ export async function createFileHashResultsAsync(
 
       let resolved = false;
       const hasher = createHash(options.hashAlgorithm);
-      const fileHookTransform: FileHookTransform | null = options.fileHookTransform
-        ? new FileHookTransform(
-            { type: 'file', filePath },
-            options.fileHookTransform,
-            options.debug
-          )
-        : null;
       let stream: Readable = createReadStream(path.join(projectRoot, filePath), {
         highWaterMark: 1024,
       });
@@ -148,29 +140,14 @@ export async function createFileHashResultsAsync(
           }
         });
       }
-      if (fileHookTransform) {
-        stream = pipeline(stream, fileHookTransform, (err) => {
-          if (err) {
-            reject(err);
-          }
-        });
-      }
       stream.on('close', () => {
         if (!resolved) {
           const hex = hasher.digest('hex');
-          const isTransformed = fileHookTransform?.isTransformed;
-          const debugInfo = options.debug
-            ? {
-                path: filePath,
-                hash: hex,
-                ...(isTransformed ? { isTransformed } : undefined),
-              }
-            : undefined;
           resolve({
             type: 'file',
             id: filePath,
             hex,
-            ...(debugInfo ? { debugInfo } : undefined),
+            ...(options.debug ? { debugInfo: { path: filePath, hash: hex } } : undefined),
           });
           resolved = true;
         }
@@ -208,7 +185,7 @@ export async function createDirHashResultsAsync(
     await Promise.all(
       dirents.map(async (dirent) => {
         if (dirent.isDirectory()) {
-          const filePath = toPosixPath(path.join(dirPath, dirent.name));
+          const filePath = path.join(dirPath, dirent.name);
           return await createDirHashResultsAsync(
             filePath,
             limiter,
@@ -217,7 +194,7 @@ export async function createDirHashResultsAsync(
             depth + 1
           );
         } else if (dirent.isFile()) {
-          const filePath = toPosixPath(path.join(dirPath, dirent.name));
+          const filePath = path.join(dirPath, dirent.name);
           return await createFileHashResultsAsync(filePath, limiter, projectRoot, options);
         }
 
@@ -254,36 +231,12 @@ export async function createContentsHashResultsAsync(
   source: HashSourceContents,
   options: NormalizedOptions
 ): Promise<HashResultContents> {
-  let isTransformed = undefined;
-  if (options.fileHookTransform) {
-    const transformedContents =
-      options.fileHookTransform(
-        {
-          type: 'contents',
-          id: source.id,
-        },
-        source.contents,
-        true /* isEndOfFile */,
-        'utf8'
-      ) ?? '';
-    if (options.debug) {
-      isTransformed = transformedContents !== source.contents;
-    }
-    source.contents = transformedContents;
-  }
-
   const hex = createHash(options.hashAlgorithm).update(source.contents).digest('hex');
-  const debugInfo = options.debug
-    ? {
-        hash: hex,
-        ...(isTransformed ? { isTransformed } : undefined),
-      }
-    : undefined;
   return {
     type: 'contents',
     id: source.id,
     hex,
-    ...(debugInfo ? { debugInfo } : undefined),
+    ...(options.debug ? { debugInfo: { hash: hex } } : undefined),
   };
 }
 

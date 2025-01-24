@@ -12,8 +12,7 @@ typedef void (^OnManifestError)(NSError *error);
 
 - (instancetype)initWithURL:(NSURL *)url
              installationID:(NSString *)installationID
-                    session:(NSURLSession *)session
-             requestTimeout:(NSTimeInterval)requestTimeout;
+                    session:(NSURLSession *)session;
 
 - (void)isManifestURLWithCompletion:(IsManifestURL)completion
                             onError:(OnManifestError)onError;

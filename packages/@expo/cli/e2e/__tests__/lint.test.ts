@@ -1,16 +1,17 @@
 /* eslint-env jest */
 import JsonFile from '@expo/json-file';
+import execa from 'execa';
 import fs from 'fs/promises';
 import path from 'path';
 
 import {
+  execute,
   projectRoot,
   getLoadedModulesAsync,
+  bin,
   setupTestProjectWithOptionsAsync,
   findProjectFiles,
 } from './utils';
-import { executeExpoAsync } from '../utils/expo';
-import { executeAsync } from '../utils/process';
 
 const originalForceColor = process.env.FORCE_COLOR;
 const originalCI = process.env.CI;
@@ -35,28 +36,16 @@ it('loads expected modules by default', async () => {
 });
 
 it('runs `npx expo lint --help`', async () => {
-  const results = await executeExpoAsync(projectRoot, ['lint', '--help']);
-  expect(results.stdout).toMatchInlineSnapshot(`
-    "
-      Info
-        Utility to run ESLint. Prompts to install and configure if not yet set up.
-
-      Usage
-        $ npx expo lint
-
-      Options
-        -h, --help    Usage info
-    "
-  `);
+  const results = await execute('lint', '--help');
+  expect(results.stdout).toMatchSnapshot();
 });
 
 it('runs `npx expo lint` to install lint in a project', async () => {
   const projectRoot = await setupTestProjectWithOptionsAsync('basic-lint', 'with-blank', {
     reuseExisting: false,
   });
-
   // `npx expo install expo-sms`
-  await executeExpoAsync(projectRoot, ['lint']);
+  await execa('node', [bin, 'lint'], { cwd: projectRoot });
 
   const pkg = await JsonFile.readAsync(path.resolve(projectRoot, 'package.json'));
 
@@ -75,22 +64,20 @@ it('runs `npx expo lint` to install lint in a project', async () => {
     '.eslintrc.js',
     'App.js',
     'app.json',
-    'bun.lock',
+    'bun.lockb',
     'metro.config.js',
     'package.json',
   ]);
 
-  // Ensure there are no linting errors
-  await executeAsync(projectRoot, ['bun', 'run', 'lint', '--max-warnings', '0']);
+  await execa('bun', ['run', 'lint', '--max-warnings', '0'], { cwd: projectRoot });
 });
 
 it('runs `npx expo customize .eslintrc.js` to install lint in a project', async () => {
   const projectRoot = await setupTestProjectWithOptionsAsync('customize-lint', 'with-blank', {
     reuseExisting: false,
   });
-
-  // `npx expo customize .eslintrc.js`
-  await executeExpoAsync(projectRoot, ['customize', '.eslintrc.js']);
+  // `npx expo install expo-sms`
+  await execa('node', [bin, 'customize', '.eslintrc.js'], { cwd: projectRoot });
 
   const pkg = await JsonFile.readAsync(path.resolve(projectRoot, 'package.json'));
 
@@ -109,11 +96,10 @@ it('runs `npx expo customize .eslintrc.js` to install lint in a project', async 
     '.eslintrc.js',
     'App.js',
     'app.json',
-    'bun.lock',
+    'bun.lockb',
     'metro.config.js',
     'package.json',
   ]);
 
-  // Ensure there are no linting errors
-  await executeAsync(projectRoot, ['bun', 'run', 'lint', '--max-warnings', '0']);
+  await execa('bun', ['run', 'lint', '--max-warnings', '0'], { cwd: projectRoot });
 });

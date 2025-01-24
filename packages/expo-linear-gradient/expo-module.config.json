@@ -1,9 +1,10 @@
 {
-  "platforms": ["apple", "android"],
-  "apple": {
-    "modules": ["LinearGradientModule"]
+  "name": "expo-linear-gradient",
+  "platforms": ["ios", "tvos", "android"],
+  "ios": {
+    "modulesClassNames": ["LinearGradientModule"]
   },
   "android": {
-    "modules": ["expo.modules.lineargradient.LinearGradientModule"]
+    "modulesClassNames": ["expo.modules.lineargradient.LinearGradientModule"]
   }
 }

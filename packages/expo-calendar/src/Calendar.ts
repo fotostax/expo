@@ -30,15 +30,6 @@ export type RecurringEventOptions = {
   instanceStartDate?: string | Date;
 };
 
-type Organizer = {
-  isCurrentUser: boolean;
-  name?: string;
-  role: string;
-  status: string;
-  type: string;
-  url?: string;
-};
-
 // @needsAudit
 /**
  * A calendar record upon which events (or, on iOS, reminders) can be stored. Settings here apply to
@@ -181,7 +172,7 @@ export type Event = {
   /**
    * Location field of the event.
    */
-  location: string | null;
+  location: string;
   /**
    * Date when the event record was created.
    * @platform ios
@@ -250,12 +241,9 @@ export type Event = {
   status: EventStatus;
   /**
    * Organizer of the event.
-   * This property is only available on events associated with calendars that are managed by a service ie. Google Calendar or iCloud.
-   * The organizer is read-only and cannot be set.
-   *
    * @platform ios
    */
-  organizer?: Organizer;
+  organizer?: string;
   /**
    * Email address of the organizer of the event.
    * @platform android
@@ -931,7 +919,7 @@ export async function getEventAsync(
  */
 export async function createEventAsync(
   calendarId: string,
-  eventData: Omit<Partial<Event>, 'id' | 'organizer'> = {}
+  eventData: Omit<Partial<Event>, 'id'> = {}
 ): Promise<string> {
   if (!ExpoCalendar.saveEventAsync) {
     throw new UnavailabilityError('Calendar', 'createEventAsync');
@@ -1152,8 +1140,8 @@ export async function deleteAttendeeAsync(id: string): Promise<void> {
 export async function getRemindersAsync(
   calendarIds: (string | null)[],
   status: ReminderStatus | null,
-  startDate: Date | null,
-  endDate: Date | null
+  startDate: Date,
+  endDate: Date
 ): Promise<Reminder[]> {
   if (!ExpoCalendar.getRemindersAsync) {
     throw new UnavailabilityError('Calendar', 'getRemindersAsync');
@@ -1173,13 +1161,9 @@ export async function getRemindersAsync(
       'getRemindersAsync must be called with a non-empty array of calendarIds to search'
     );
   }
-
-  const formattedStartDate = startDate ? stringifyIfDate(startDate) : null;
-  const formattedEndDate = endDate ? stringifyIfDate(endDate) : null;
-
   return ExpoCalendar.getRemindersAsync(
-    formattedStartDate,
-    formattedEndDate,
+    stringifyIfDate(startDate) || null,
+    stringifyIfDate(endDate) || null,
     calendarIds,
     status || null
   );

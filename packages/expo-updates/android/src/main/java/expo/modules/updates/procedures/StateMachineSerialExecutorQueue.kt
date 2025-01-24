@@ -43,11 +43,11 @@ class StateMachineSerialExecutorQueue(
           return procedureContext.getCurrentState()
         }
 
-        override fun resetStateAfterRestart() {
+        override fun resetState() {
           if (isCompleted) {
             throw Exception("Cannot reset state after procedure completion")
           }
-          procedureContext.resetStateAfterRestart()
+          procedureContext.resetState()
         }
       })
     }

@@ -70,14 +70,14 @@ describe('HeadingManager.addHeading()', () => {
 
   test('additional params override anything', () => {
     const result = headingManager.addHeading('unused', 5, {
-      sidebarType: HeadingType.INLINE_CODE,
+      sidebarType: HeadingType.InlineCode,
       sidebarTitle: 'The Override',
       sidebarDepth: 2, // level = 4
     });
 
     expect(result.title).toBe('The Override');
     expect(result.level).toBe(4);
-    expect(result.type).toBe(HeadingType.INLINE_CODE);
+    expect(result.type).toBe(HeadingType.InlineCode);
   });
 
   test('level out of range unlisted', () => {

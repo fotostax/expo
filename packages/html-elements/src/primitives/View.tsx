@@ -5,7 +5,6 @@ import {
   ViewStyle as NativeViewStyle,
   BoxShadowValue,
   FilterFunction,
-  type ColorValue,
 } from 'react-native';
 
 import { createDevView } from './createDevView';
@@ -90,7 +89,7 @@ export interface WebViewStyle {
   /** @platform web */
   outline?: string;
   /** @platform web */
-  outlineColor?: ColorValue;
+  outlineColor?: string;
   /** @platform web */
   overflowX?: string;
   /** @platform web */

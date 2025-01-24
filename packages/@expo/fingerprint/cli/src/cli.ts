@@ -54,7 +54,7 @@ if ((args['--help'] && !command) || !command) {
   Log.exit(
     chalk`
 {bold Usage}
-  {dim $} npx @expo/fingerprint <command>
+  {dim $} npx @expo/fingeprint <command>
 
 {bold Commands}
   ${Object.keys(commands).sort().join(', ')}

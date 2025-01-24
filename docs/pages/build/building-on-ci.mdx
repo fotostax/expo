@@ -147,7 +147,7 @@ cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
     - .npm
-    # or with Yarn:
+    # or with yarn:
     #- .yarn
 
 stages:
@@ -155,7 +155,7 @@ stages:
 
 before_script:
   - npm ci --cache .npm
-  # or with Yarn:
+  # or with yarn:
   #- yarn install --cache-folder .yarn
 
 eas-build:

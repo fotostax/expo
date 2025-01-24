@@ -71,7 +71,6 @@ These metadata items include:
 - `hideTOC`: Whether to hide the table of contents (appears on the right sidebar). Defaults to `false`.
 - `sidebar_title`: The title of the page to display in the sidebar. Defaults to the page title.
 - `maxHeadingDepth`: The max level of headings shown in Table of Content on the right side. Defaults to `3`.
-- `isNew`: Whether to display the new label for a page. Commonly used with API pages under Reference. Defaults to `false`.
 
 ### Edit Code
 
@@ -91,47 +90,26 @@ yarn lint
 
 ### Prose linter
 
-When you are done writing or editing docs, run the following script to lint your docs for style and grammar based on [Expo's writing style guide](/guides/Expo%20Documentation%20Writing%20Style%20Guide.md):
+We use [Vale](https://vale.sh/) to lint our docs for style and grammar based on [Expo's writing style guide](https://github.com/expo/expo/blob/main/guides/Expo%20Documentation%20Writing%20Style%20Guide.md).
 
-```sh
-yarn run lint-prose
-```
+There are two ways you can use it:
 
-We use [Vale](https://vale.sh/) to lint our docs.
-
-#### Switch off Prose linter
-
-For exceptional cases, you can switch off the prose linter for a specific line or block of text by adding by using a [comment delimiter](https://vale.sh/docs/keys/commentdelimiters):
-
-```mdx
-{/* vale off */}
-
-This is some text that will be ignored by Vale.
-
-{/* vale on */}
-```
-
-> [!NOTE]
-> Ideally, to add new services or features, the Vale lint rules should upgrade accordingly when there's a pattern. If you want to update a rule, see the [**.vale**](/docs/.vale/writing-styles/expo-docs) directory for already established rules.
-
-<details>
-
-<summary>Alternative: Use Vale with VS Code</summary>
-
-Alternatively, you can use Vale with VS Code. You need to:
+#### Use Vale in VS Code (Recommended)
 
 - [Install Vale on your system](https://vale.sh/docs/vale-cli/installation/)
 - [Install Vale's VS Code extension](https://marketplace.visualstudio.com/items?itemName=ChrisChinchilla.vale-vscode)
 
 Open the doc file (`*.mdx`) that you are working on and you'll may see suggested lines (yellow squiggly) in VS Code editor.
 
-</details>
+#### Run the `lint-prose` script
+
+In a terminal window, run the `yarn run lint-prose` script from **package.json**. This will run Vale for all markdown files in the **pages** directory.
 
 ## Redirects
 
 ### Server-side redirects
 
-These redirects are limited in their expressiveness &mdash; you can map a path to another path, but no regular expressions are supported. See [client-side redirects](#client-side-redirects) for more information on that. Server-side redirects are re-created on each run of **deploy.sh**.
+These redirects are limited in their expressiveness - you can map a path to another path, but no regular expressions are supported. See client-side redirects for more of that. Server-side redirects are re-created on each run of **deploy.sh**.
 
 We currently do two client-side redirects, using meta tags with `http-equiv="refresh"`:
 
@@ -232,7 +210,7 @@ cd expo/packages/expo-constants
 
   ```ts
   /**
-   * The standard Expo config object defined in `app.json` and `app.config.js` files. For both
+   * The standard Expo confg object defined in `app.json` and `app.config.js` files. For both
    * classic and modern manifests, whether they are embedded or remote.
    */
   expoConfig: ExpoConfig | null;

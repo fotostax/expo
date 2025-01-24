@@ -13,11 +13,10 @@ async function createFixtureAsync(targetDir: string, outputFile: string) {
     cwd: targetDir,
     ignore: [
       // binary files
-      '**/*.{jpg,png,ttf}',
+      '**/*.{jpg,png}',
 
       // lock files
       '**/*.lock',
-      '**/bun.lockb',
 
       // node files
       '**/node_modules/**',

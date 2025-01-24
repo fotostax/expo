@@ -57,9 +57,9 @@ function generateStructure(files: FileTreeProps['files'] = []): FileObject[] {
 
   files.forEach(path => {
     if (Array.isArray(path)) {
-      modifyPath(path[0], path[1]);
+      return modifyPath(path[0], path[1]);
     } else {
-      modifyPath(path);
+      return modifyPath(path);
     }
   });
 

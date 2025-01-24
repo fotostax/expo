@@ -1,5 +1,6 @@
 package expo.modules.camera
 
+import expo.modules.camera.records.VideoQuality
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
 
@@ -25,5 +26,6 @@ data class SavePictureOptions(
 
 data class RecordingOptions(
   @Field val maxDuration: Int = 0,
-  @Field val maxFileSize: Int = 0
+  @Field val maxFileSize: Int = 0,
+  @Field val quality: VideoQuality?
 ) : Record

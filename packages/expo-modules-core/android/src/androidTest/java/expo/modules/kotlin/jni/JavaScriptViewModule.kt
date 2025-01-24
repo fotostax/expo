@@ -11,7 +11,7 @@ class JavaScriptViewModule {
       AsyncFunction("anotherViewFunction") { 20 }
     }
   }) {
-    val viewFunctions = evaluateScript("Object.getOwnPropertyNames($moduleRef.ViewPrototypes.TestModule_View)")
+    val viewFunctions = evaluateScript("Object.getOwnPropertyNames($moduleRef.ViewPrototype)")
       .getArray()
       .map { it.getString() }
 
@@ -24,7 +24,7 @@ class JavaScriptViewModule {
       AsyncFunction("viewFunction") { 123 }
     }
   }) {
-    val result = callViewAsync("ViewPrototypes.TestModule_View", "viewFunction").getInt()
+    val result = callViewAsync("ViewPrototype", "viewFunction").getInt()
     Truth.assertThat(result).isEqualTo(123)
   }
 
@@ -40,7 +40,7 @@ class JavaScriptViewModule {
     val result = waitForAsyncFunction(
       """
       const nativeView = { nativeTag: 1 };
-      Object.assign(nativeView.__proto__, $moduleRef.ViewPrototypes.TestModule_View);
+      Object.assign(nativeView.__proto__, $moduleRef.ViewPrototype);
       nativeView.viewFunction()
       """.trimIndent()
     ).getInt()

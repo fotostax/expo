@@ -67,7 +67,7 @@ const commandArgs = args._.slice(1);
 if ((args['--help'] && !command) || !command) {
     Log.exit((0, chalk_1.default) `
 {bold Usage}
-  {dim $} npx @expo/fingerprint <command>
+  {dim $} npx @expo/fingeprint <command>
 
 {bold Commands}
   ${Object.keys(commands).sort().join(', ')}

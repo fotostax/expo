@@ -2,7 +2,9 @@ package expo.modules.plugin
 
 import org.gradle.api.initialization.Settings
 
-open class ExpoAutolinkingSettingsExtension(val settings: Settings) {
+open class ExpoAutolinkingSettingsExtension(settings: Settings) {
+  private val settingsManager = SettingsManager(settings)
+
   /**
    * Command that should be provided to `react-native` to resolve the configuration.
    */
@@ -12,30 +14,9 @@ open class ExpoAutolinkingSettingsExtension(val settings: Settings) {
     .build()
 
   /**
-   * A list of paths relative to the app's root directory where
-   * the autolinking script should search for Expo modules.
-   */
-  var searchPaths: List<String>? = null
-
-  /**
-   * Paths to ignore when looking up for modules.
-   */
-  var ignorePaths: List<String>? = null
-
-  /**
-   * Package names to exclude when looking up for modules.
-   */
-  var exclude: List<String>? = null
-
-  /**
    * Uses Expo modules autolinking.
    */
   fun useExpoModules() {
-    SettingsManager(
-      settings,
-      searchPaths,
-      ignorePaths,
-      exclude
-    ).useExpoModules()
+    settingsManager.useExpoModules()
   }
 }

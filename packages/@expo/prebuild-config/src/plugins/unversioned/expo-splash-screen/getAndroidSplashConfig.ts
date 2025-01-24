@@ -9,10 +9,6 @@ export type SplashScreenConfig = {
   image?: string;
   backgroundColor?: string;
   resizeMode: 'contain' | 'cover' | 'native';
-  drawable?: {
-    icon: string;
-    darkIcon?: string;
-  };
   dark?: {
     backgroundColor?: string;
     xxxhdpi?: string;
@@ -50,7 +46,6 @@ export function getAndroidSplashConfig(
       image: splash.image,
       imageWidth: splash.imageWidth ?? 100,
       dark: splash.dark,
-      drawable: splash.drawable,
     };
   }
 
@@ -105,7 +100,6 @@ export function getAndroidDarkSplashConfig(
       image: splash.image,
       backgroundColor: splash.backgroundColor,
       resizeMode: lightTheme?.resizeMode ?? defaultResizeMode,
-      drawable: props.drawable,
     };
   }
 

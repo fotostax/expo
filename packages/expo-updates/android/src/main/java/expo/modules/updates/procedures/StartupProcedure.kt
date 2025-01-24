@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Handler
 import android.os.HandlerThread
 import com.facebook.react.devsupport.interfaces.DevSupportManager
-import expo.modules.rncompatibility.ReactNativeFeatureFlags
 import expo.modules.updates.UpdatesConfiguration
 import expo.modules.updates.db.DatabaseHolder
 import expo.modules.updates.db.entity.AssetEntity
@@ -65,7 +64,7 @@ class StartupProcedure(
 
   var emergencyLaunchException: Exception? = null
     private set
-  private val errorRecovery = ErrorRecovery(logger, ReactNativeFeatureFlags)
+  private val errorRecovery = ErrorRecovery(logger)
   private var remoteLoadStatus = ErrorRecoveryDelegate.RemoteLoadStatus.IDLE
 
   // TODO: move away from DatabaseHolder pattern to Handler thread
@@ -103,7 +102,6 @@ class StartupProcedure(
       }
 
       override fun onFinishedAllLoading() {
-        procedureContext.processStateEvent(UpdatesStateEvent.EndStartup())
         procedureContext.onComplete()
       }
 
@@ -210,7 +208,6 @@ class StartupProcedure(
 
   override fun run(procedureContext: ProcedureContext) {
     this.procedureContext = procedureContext
-    procedureContext.processStateEvent(UpdatesStateEvent.StartStartup())
     initializeDatabaseHandler()
     initializeErrorRecovery()
     loaderTask.start()

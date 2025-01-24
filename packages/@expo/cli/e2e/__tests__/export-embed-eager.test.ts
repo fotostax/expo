@@ -1,9 +1,9 @@
 /* eslint-env jest */
+import execa from 'execa';
 import fs from 'fs';
 import path from 'path';
 
-import { projectRoot, findProjectFiles } from './utils';
-import { executeExpoAsync } from '../utils/expo';
+import { projectRoot, bin, findProjectFiles } from './utils';
 
 const originalForceColor = process.env.FORCE_COLOR;
 const originalCI = process.env.CI;
@@ -38,10 +38,10 @@ it('runs `npx expo export:embed --platform ios --eager`', async () => {
   await fs.promises.rm(path.join(projectRoot, output), { force: true, recursive: true });
   await fs.promises.mkdir(path.join(projectRoot, output));
 
-  // `npx expo export:embed`
-  await executeExpoAsync(
-    projectRoot,
+  await execa(
+    'node',
     [
+      bin,
       'export:embed',
       '--eager',
       '--bundle-output',
@@ -52,6 +52,8 @@ it('runs `npx expo export:embed --platform ios --eager`', async () => {
       'ios',
     ],
     {
+      cwd: projectRoot,
+      stdio: 'inherit',
       env: {
         NODE_ENV: 'production',
         EXPO_USE_STATIC: 'static',

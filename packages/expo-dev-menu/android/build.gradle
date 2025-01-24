@@ -1,10 +1,20 @@
-plugins {
-  id 'com.android.library'
-  id 'expo-module-gradle-plugin'
-}
+apply plugin: 'com.android.library'
 
 group = 'host.exp.exponent'
 version = '6.0.12'
+
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+useDefaultAndroidSdkVersions()
+
+buildscript {
+  // Simple helper that allows the root project to override versions declared by this library.
+  ext.safeExtGet = { prop, fallback ->
+    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+  }
+}
 
 android {
   namespace "expo.modules.devmenu"
@@ -93,4 +103,29 @@ dependencies {
   testImplementation "org.robolectric:robolectric:4.10"
   testImplementation 'com.squareup.okhttp3:mockwebserver:4.3.1'
   testImplementation 'androidx.test:core:1.4.0'
+}
+
+def versionToNumber(major, minor, patch) {
+  return patch * 100 + minor * 10000 + major * 1000000
+}
+
+def getNodeModulesPackageVersion(packageName, overridePropName) {
+  def nodeModulesVersion = providers.exec {
+    workingDir(projectDir)
+    commandLine("node", "-e", "console.log(require('$packageName/package.json').version);")
+  }.standardOutput.asText.get().trim()
+  def version = safeExtGet(overridePropName, nodeModulesVersion)
+
+  def coreVersion = version.split("-")[0]
+  def (major, minor, patch) = coreVersion.tokenize('.').collect { it.toInteger() }
+
+  return versionToNumber(
+      major,
+      minor,
+      patch
+  )
+}
+
+def getRNVersion() {
+  return getNodeModulesPackageVersion("react-native", "reactNativeVersion")
 }

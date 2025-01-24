@@ -62,7 +62,6 @@ describe('Error recovery tests', () => {
       [],
       projectRoot
     );
-    const failingId = manifest.id;
 
     await Server.serveSignedManifest(manifest, projectRoot);
 
@@ -78,6 +77,7 @@ describe('Error recovery tests', () => {
     // (we don't guarantee current update to be set during a crash or the launch failure to have been registered yet)
     const request2 = await Server.waitForUpdateRequest(10000);
     const request2EmbeddedUpdateId = request2.headers['expo-embedded-update-id'];
+    const request2CurrentUpdateId = request2.headers['expo-current-update-id'];
     jestExpect(embeddedUpdateId).toEqual(request2EmbeddedUpdateId);
 
     await device.terminateApp();
@@ -92,7 +92,7 @@ describe('Error recovery tests', () => {
     const request3RecentFailedUpdateIds = request3.headers['expo-recent-failed-update-ids'];
     jestExpect(embeddedUpdateId).toEqual(request3EmbeddedUpdateId);
     jestExpect(embeddedUpdateId).toEqual(request3CurrentUpdateId);
-    jestExpect(request3RecentFailedUpdateIds).toEqual(`"${failingId}"`);
+    jestExpect(request3RecentFailedUpdateIds).toEqual(`"${request2CurrentUpdateId}"`);
 
     await waitForAppToBecomeVisible();
     const message = await testElementValueAsync('updateString');

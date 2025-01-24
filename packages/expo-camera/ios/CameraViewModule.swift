@@ -37,13 +37,6 @@ public final class CameraViewModule: Module, ScannerResultHandler {
       return false
     }
 
-    Property("toggleRecordingAsyncAvailable") { () -> Bool in
-      if #available(iOS 18.0, *) {
-        return true
-      }
-      return false
-    }
-
     AsyncFunction("scanFromURLAsync") { (url: URL, _: [BarcodeType], promise: Promise) in
       guard let imageLoader = appContext?.imageLoader else {
         throw ImageLoaderNotFound()
@@ -172,10 +165,6 @@ public final class CameraViewModule: Module, ScannerResultHandler {
       Prop("videoQuality") { (view, quality: VideoQuality?) in
         if let quality, view.videoQuality != quality {
           view.videoQuality = quality
-          return
-        }
-        if quality == nil && view.videoQuality != .video1080p {
-          view.videoQuality = .video1080p
         }
       }
 
@@ -253,14 +242,6 @@ public final class CameraViewModule: Module, ScannerResultHandler {
           await view.record(options: options, promise: promise)
         }
         #endif
-      }
-
-      AsyncFunction("toggleRecording") { view in
-        if #available(iOS 18.0, *) {
-          view.toggleRecording()
-        } else {
-          throw CameraToggleRecordingException()
-        }
       }
 
       AsyncFunction("stopRecording") { view in

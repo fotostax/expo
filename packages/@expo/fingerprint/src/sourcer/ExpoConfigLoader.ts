@@ -4,8 +4,6 @@
 
 import fs from 'fs/promises';
 import module from 'module';
-import assert from 'node:assert';
-import process from 'node:process';
 import path from 'path';
 import resolveFrom from 'resolve-from';
 
@@ -43,12 +41,7 @@ async function runAsync(programName: string, args: string[] = []) {
   const filteredLoadedModules = loadedModules.filter(
     (modulePath) => !isIgnoredPath(modulePath, ignoredPaths)
   );
-  const result = JSON.stringify({ config, loadedModules: filteredLoadedModules });
-  if (process.send) {
-    process.send(result);
-  } else {
-    console.log(result);
-  }
+  console.log(JSON.stringify({ config, loadedModules: filteredLoadedModules }));
 }
 
 // If running from the command line

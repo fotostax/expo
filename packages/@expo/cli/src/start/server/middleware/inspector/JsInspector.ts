@@ -89,27 +89,17 @@ export async function queryAllInspectorAppsAsync(
   metroServerOrigin: string
 ): Promise<MetroInspectorProxyApp[]> {
   const resp = await fetch(`${metroServerOrigin}/json/list`);
-  // The newest runtime will be at the end of the list,
-  // reversing the result would save time from try-error.
-  const apps: MetroInspectorProxyApp[] = transformApps(await resp.json()).reverse();
+  const apps: MetroInspectorProxyApp[] = transformApps(await resp.json());
   const results: MetroInspectorProxyApp[] = [];
   for (const app of apps) {
     // Only use targets with better reloading support
     if (!pageIsSupported(app)) {
       continue;
     }
-
-    try {
-      // Hide targets that are marked as hidden from the inspector, e.g. instances from expo-dev-menu and expo-dev-launcher.
-      if (await appShouldBeIgnoredAsync(app)) {
-        continue;
-      }
-    } catch (e: unknown) {
-      // If we can't evaluate the JS, we just ignore the error and skips the target.
-      debug(`Can't evaluate the JS on the app:`, JSON.stringify(e, null, 2));
+    // Hide targets that are marked as hidden from the inspector, e.g. instances from expo-dev-menu and expo-dev-launcher.
+    if (await appShouldBeIgnoredAsync(app)) {
       continue;
     }
-
     results.push(app);
   }
   return results;

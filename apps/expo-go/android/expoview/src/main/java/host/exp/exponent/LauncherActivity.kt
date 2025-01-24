@@ -7,20 +7,14 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
-import android.os.Looper
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ProcessLifecycleOwner
-import androidx.lifecycle.get
 import host.exp.exponent.di.NativeModuleDepsProvider
 import host.exp.exponent.kernel.Kernel
 import host.exp.expoview.BuildConfig
 import javax.inject.Inject
 
-private const val KEEP_ALIVE_MS = (1000 * 60).toLong()
-
-// This activity is transparent. It uses our custom theme @style/Theme.Exponent.Translucent.
+// This activity is transparent. It uses android:style/Theme.Translucent.NoTitleBar.
 // Calls finish() once it is done processing Intent.
 class LauncherActivity : AppCompatActivity() {
   @Inject
@@ -71,12 +65,16 @@ class LauncherActivity : AppCompatActivity() {
     )
   }
 
-  override fun onStop() {
-    // Replaces the stay awake service
-    super.onStop()
-    if (ProcessLifecycleOwner.get().lifecycle.currentState == Lifecycle.State.CREATED) {
-      Handler(Looper.getMainLooper()).postDelayed({ finish() }, KEEP_ALIVE_MS)
-    }
+  override fun onResume() {
+    super.onResume()
+    startStayAwakeServiceIfNeeded()
+  }
+
+  private fun startStayAwakeServiceIfNeeded() {
+    // Start a service to keep our process awake. This isn't necessary most of the time, but
+    // if the user has "Don't keep activities" on it's possible for the process to exit in between
+    // finishing this activity and starting the BaseExperienceActivity.
+    startService(ExponentIntentService.getActionStayAwake(applicationContext))
   }
 
   public override fun onNewIntent(intent: Intent) {

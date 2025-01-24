@@ -62,9 +62,7 @@ export const TableOfContents = forwardRef<
 
   function handleContentScroll(contentScrollPosition: number) {
     for (const { ref, slug } of headings) {
-      if (!ref?.current) {
-        continue;
-      }
+      if (!ref || !ref.current) continue;
 
       setShowScrollTop(contentScrollPosition > 120);
 
@@ -115,7 +113,7 @@ export const TableOfContents = forwardRef<
 
     slugScrollingTo.current = slug;
 
-    const scrollOffset = type === 'inlineCode' ? 35 : 21;
+    const scrollOffset = type === 'inlineCode' ? 50 : 26;
 
     contentRef?.current?.getScrollRef().current?.scrollTo({
       behavior: reducedMotion ? 'instant' : 'smooth',
@@ -171,9 +169,7 @@ export const TableOfContents = forwardRef<
           <TableOfContentsLink
             key={heading.slug}
             heading={heading}
-            onClick={event => {
-              handleLinkClick(event, heading);
-            }}
+            onClick={event => handleLinkClick(event, heading)}
             isActive={isActive}
             ref={isActive ? activeItemRef : undefined}
             shortenCode

@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.ImageFormat
 import android.graphics.SurfaceTexture
+import android.graphics.drawable.ColorDrawable
 import android.hardware.camera2.CameraCharacteristics
 import android.media.AudioManager
 import android.media.MediaActionSound
@@ -49,7 +50,6 @@ import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.toDrawable
 import expo.modules.camera.analyzers.BarcodeAnalyzer
 import expo.modules.camera.analyzers.toByteArray
 import expo.modules.camera.common.BarcodeScannedEvent
@@ -120,7 +120,7 @@ class ExpoCameraView(
   }
 
   var camera: Camera? = null
-  private var activeRecording: Recording? = null
+  var activeRecording: Recording? = null
 
   private var cameraProvider: ProcessCameraProvider? = null
   private val providerFuture = ProcessCameraProvider.getInstance(context)
@@ -128,8 +128,7 @@ class ExpoCameraView(
   private var imageAnalysisUseCase: ImageAnalysis? = null
   private var recorder: Recorder? = null
   private var barcodeFormats: List<BarcodeType> = emptyList()
-  private var glSurfaceTexture: SurfaceTexture? = null
-  private var isRecording = false
+  private var glSurface: SurfaceTexture? = null
 
   private var previewView = PreviewView(context).apply {
     elevation = 0f
@@ -246,14 +245,12 @@ class ExpoCameraView(
   }
 
   override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+    if (!changed) {
+      return
+    }
     val width = right - left
     val height = bottom - top
-    if (width != lastWidth || height != lastHeight) {
-      previewView.layout(0, 0, width, height)
-      glSurfaceTexture?.setDefaultBufferSize(width, height)
-      lastWidth = width
-      lastHeight = height
-    }
+    previewView.layout(0, 0, width, height)
   }
 
   override fun onViewAdded(child: View?) {
@@ -282,7 +279,7 @@ class ExpoCameraView(
             return
           }
           rootView.postDelayed({
-            rootView.foreground = Color.WHITE.toDrawable()
+            rootView.foreground = ColorDrawable(Color.WHITE)
             rootView.postDelayed(
               { rootView.foreground = null },
               ANIMATION_FAST_MILLIS
@@ -335,11 +332,7 @@ class ExpoCameraView(
       .build()
 
     recorder?.let {
-      if (!mute && ActivityCompat.checkSelfPermission(
-          context,
-          Manifest.permission.RECORD_AUDIO
-        ) != PackageManager.PERMISSION_GRANTED
-      ) {
+      if (!mute && ActivityCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
         promise.reject(Exceptions.MissingPermissions(Manifest.permission.RECORD_AUDIO))
         return
       }
@@ -351,15 +344,6 @@ class ExpoCameraView(
         }
         .start(ContextCompat.getMainExecutor(context)) { event ->
           when (event) {
-            is VideoRecordEvent.Pause -> {
-              isRecording = false
-            }
-            is VideoRecordEvent.Resume -> {
-              isRecording = true
-            }
-            is VideoRecordEvent.Start -> {
-              isRecording = true
-            }
             is VideoRecordEvent.Finalize -> {
               when (event.error) {
                 VideoRecordEvent.Finalize.ERROR_FILE_SIZE_LIMIT_REACHED,
@@ -383,26 +367,7 @@ class ExpoCameraView(
           }
         }
     }
-      ?: promise.reject(
-        "E_RECORDING_FAILED",
-        "Starting video recording failed - could not create video file.",
-        null
-      )
-  }
-
-  fun stopRecording() {
-    isRecording = false
-    activeRecording?.close()
-  }
-
-  fun toggleRecording() {
-    activeRecording?.let {
-      if (isRecording) {
-        it.pause()
-      } else {
-        it.resume()
-      }
-    }
+      ?: promise.reject("E_RECORDING_FAILED", "Starting video recording failed - could not create video file.", null)
   }
 
   @SuppressLint("UnsafeOptInUsageError")
@@ -415,13 +380,10 @@ class ExpoCameraView(
       {
         val cameraProvider: ProcessCameraProvider = providerFuture.get()
 
-        ratio?.let {
-          previewView.scaleType =
-            if (ratio == CameraRatio.FOUR_THREE || ratio == CameraRatio.SIXTEEN_NINE) {
-              PreviewView.ScaleType.FIT_CENTER
-            } else {
-              PreviewView.ScaleType.FILL_CENTER
-            }
+        previewView.scaleType = if (ratio == CameraRatio.FOUR_THREE || ratio == CameraRatio.SIXTEEN_NINE) {
+          PreviewView.ScaleType.FIT_CENTER
+        } else {
+          PreviewView.ScaleType.FILL_CENTER
         }
 
         val resolutionSelector = buildResolutionSelector()
@@ -432,8 +394,7 @@ class ExpoCameraView(
             it.surfaceProvider = previewView.surfaceProvider
           }
 
-        glSurfaceTexture?.let {
-          it.setDefaultBufferSize(previewView.width, previewView.height)
+        glSurface?.let {
           preview.setSurfaceProvider { request ->
             val surface = Surface(it)
             request.provideSurface(surface, ContextCompat.getMainExecutor(context)) {
@@ -509,10 +470,8 @@ class ExpoCameraView(
 
   private fun buildResolutionSelector(): ResolutionSelector {
     val strategy = if (pictureSize.isNotEmpty()) {
-      val size = parseSizeSafely(pictureSize)
-      size?.let {
-        ResolutionStrategy(size, ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER)
-      } ?: ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY
+      val size = Size.parseSize(pictureSize)
+      ResolutionStrategy(size, ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER)
     } else {
       ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY
     }
@@ -530,19 +489,6 @@ class ExpoCameraView(
         }
         setResolutionStrategy(strategy)
       }.build()
-    }
-  }
-
-  private fun parseSizeSafely(size: String): Size? {
-    val pattern = Regex("\\d+x\\d+")
-    if (!pattern.matches(size)) {
-      return null
-    }
-
-    return try {
-      Size.parseSize(size)
-    } catch (e: Throwable) {
-      null
     }
   }
 
@@ -579,10 +525,7 @@ class ExpoCameraView(
         previewView.width.toFloat(),
         previewView.height.toFloat()
       )
-      val action = FocusMeteringAction.Builder(
-        meteringPointFactory.createPoint(1f, 1f),
-        FocusMeteringAction.FLAG_AF
-      )
+      val action = FocusMeteringAction.Builder(meteringPointFactory.createPoint(1f, 1f), FocusMeteringAction.FLAG_AF)
         .build()
       it.cameraControl.startFocusAndMetering(action)
     }
@@ -610,8 +553,7 @@ class ExpoCameraView(
   @OptIn(ExperimentalCamera2Interop::class)
   fun getAvailablePictureSizes(): List<String> {
     return camera?.cameraInfo?.let { cameraInfo ->
-      val info = Camera2CameraInfo.from(cameraInfo)
-        .getCameraCharacteristic(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+      val info = Camera2CameraInfo.from(cameraInfo).getCameraCharacteristic(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
       info?.getOutputSizes(ImageFormat.JPEG)?.map { it.toString() }
     } ?: emptyList()
   }
@@ -672,10 +614,7 @@ class ExpoCameraView(
     barcode.width = width
   }
 
-  private fun getCornerPointsAndBoundingBox(
-    cornerPoints: List<Int>,
-    boundingBox: BoundingBox
-  ): Pair<ArrayList<Bundle>, Bundle> {
+  private fun getCornerPointsAndBoundingBox(cornerPoints: List<Int>, boundingBox: BoundingBox): Pair<ArrayList<Bundle>, Bundle> {
     val density = previewView.resources.displayMetrics.density
     val convertedCornerPoints = ArrayList<Bundle>()
     for (i in cornerPoints.indices step 2) {
@@ -710,10 +649,7 @@ class ExpoCameraView(
   private fun onBarcodeScanned(barcode: BarCodeScannerResult) {
     if (shouldScanBarcodes) {
       transformBarcodeScannerResultToViewCoordinates(barcode)
-      val (cornerPoints, boundingBox) = getCornerPointsAndBoundingBox(
-        barcode.cornerPoints,
-        barcode.boundingBox
-      )
+      val (cornerPoints, boundingBox) = getCornerPointsAndBoundingBox(barcode.cornerPoints, barcode.boundingBox)
       onBarcodeScanned(
         BarcodeScannedEvent(
           target = id,
@@ -729,7 +665,7 @@ class ExpoCameraView(
   }
 
   override fun setPreviewTexture(surfaceTexture: SurfaceTexture?) {
-    glSurfaceTexture = surfaceTexture
+    glSurface = surfaceTexture
     shouldCreateCamera = true
     createCamera()
   }

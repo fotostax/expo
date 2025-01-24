@@ -1,9 +1,6 @@
 // Copyright 2015-present 650 Industries. All rights reserved.
 
 import React
-#if canImport(ReactAppDependencyProvider)
-import ReactAppDependencyProvider
-#endif
 
 @objc
 class DevMenuAppInstance: DevMenuRCTAppDelegate {
@@ -16,9 +13,6 @@ class DevMenuAppInstance: DevMenuRCTAppDelegate {
     self.manager = manager
 
     super.init()
-#if canImport(ReactAppDependencyProvider)
-	self.dependencyProvider = RCTAppDependencyProvider()
-#endif
     super.initRootViewFactory()
   }
 

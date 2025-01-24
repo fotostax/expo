@@ -54,7 +54,7 @@ class AppLauncherWithDatabaseSpec : ExpoSpec {
 
       db = UpdatesDatabase()
       db.databaseQueue.sync {
-        try! db.openDatabase(inDirectory: testDatabaseDir, logger: UpdatesLogger())
+        try! db.openDatabase(inDirectory: testDatabaseDir)
       }
     }
 
@@ -92,8 +92,7 @@ class AppLauncherWithDatabaseSpec : ExpoSpec {
           config: config,
           database: db,
           directory: testDatabaseDir,
-          completionQueue: DispatchQueue.global(qos: .default),
-          logger: UpdatesLogger()
+          completionQueue: DispatchQueue.global(qos: .default)
         )
         let successValue = Synchronized<Bool?>(nil)
         launcher.launchUpdate(withSelectionPolicy: SelectionPolicyFactory.filterAwarePolicy(withRuntimeVersion: "1")) { error, success in

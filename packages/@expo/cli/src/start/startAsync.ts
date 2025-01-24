@@ -14,6 +14,7 @@ import { openPlatformsAsync } from './server/openPlatforms';
 import { getPlatformBundlers, PlatformBundlers } from './server/platformBundlers';
 import { env } from '../utils/env';
 import { isInteractive } from '../utils/interactive';
+import { setNodeEnv } from '../utils/nodeEnv';
 import { profile } from '../utils/profile';
 
 async function getMultiBundlerStartOptions(
@@ -67,6 +68,8 @@ export async function startAsync(
 ) {
   Log.log(chalk.gray(`Starting project at ${projectRoot}`));
 
+  setNodeEnv(options.dev ? 'development' : 'production');
+  require('@expo/env').load(projectRoot);
   const { exp, pkg } = profile(getConfig)(projectRoot);
 
   if (exp.platforms?.includes('ios') && process.platform !== 'win32') {
@@ -105,7 +108,7 @@ export async function startAsync(
     await devServerManager.bootstrapTypeScriptAsync();
   }
 
-  if (!env.EXPO_NO_DEPENDENCY_VALIDATION && !settings.webOnly && !options.devClient) {
+  if (!settings.webOnly && !options.devClient) {
     await profile(validateDependenciesVersionsAsync)(projectRoot, exp, pkg);
   }
 

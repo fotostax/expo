@@ -1,9 +1,9 @@
 import { useTheme } from '@expo/styleguide';
 import { useEffect, useState } from 'react';
 
-import { prefersDarkTheme } from '~/common/window';
-
 import { DotGrid } from './DotGrid';
+
+import { prefersDarkTheme } from '~/common/window';
 
 type Props = {
   source: string;
@@ -24,7 +24,7 @@ export const Diagram = ({ source, darkSource, disableSrcSet, alt }: Props) => {
     }
   }, [themeName]);
 
-  if (!source.endsWith('.png')) {
+  if (!source.match(/\.png$/)) {
     return (
       <div className="relative m-auto my-6 max-w-[750px] overflow-hidden rounded-md border border-default bg-default">
         <DotGrid />

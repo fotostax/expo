@@ -11,5 +11,8 @@
 
 // AppDelegate handlers
 - (void)applicationDidFinishLaunchingWithOptions:(nullable NSDictionary *)launchOptions;
+- (void)runTasksWithReason:(EXTaskLaunchReason)launchReason
+                  userInfo:(nullable NSDictionary *)userInfo
+         completionHandler:(nullable void (^)(UIBackgroundFetchResult))completionHandler;
 
 @end

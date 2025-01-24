@@ -26,7 +26,7 @@ export function DevelopmentModeForm() {
   function onRadioChange(mode: DevelopmentMode) {
     setMode(mode);
 
-    void router.push(
+    router.push(
       {
         query: {
           ...query,
@@ -47,9 +47,7 @@ export function DevelopmentModeForm() {
         alt="Expo Go"
         description="Try out app development in a limited sandbox without custom native modules. Great for testing out Expo quickly. Not intended for long-term projects."
         isSelected={mode === 'expo-go'}
-        onClick={() => {
-          onRadioChange('expo-go');
-        }}
+        onClick={() => onRadioChange('expo-go')}
       />
       <SelectCard
         imgSrc="/static/images/get-started/development-build.png"
@@ -58,9 +56,7 @@ export function DevelopmentModeForm() {
         alt="Development build"
         description="Make a build of your own app with developer tools. Supports custom native modules. Intended for production projects."
         isSelected={mode === 'development-build'}
-        onClick={() => {
-          onRadioChange('development-build');
-        }}
+        onClick={() => onRadioChange('development-build')}
       />
     </div>
   );

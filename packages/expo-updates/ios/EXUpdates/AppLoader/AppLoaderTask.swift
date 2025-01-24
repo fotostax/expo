@@ -132,8 +132,7 @@ public final class AppLoaderTask: NSObject {
     database: UpdatesDatabase,
     directory: URL,
     selectionPolicy: SelectionPolicy,
-    delegateQueue: DispatchQueue,
-    logger: UpdatesLogger
+    delegateQueue: DispatchQueue
   ) {
     self.config = config
     self.database = database
@@ -146,7 +145,7 @@ public final class AppLoaderTask: NSObject {
     self.isUpToDate = false
     self.delegateQueue = delegateQueue
     self.loaderTaskQueue = DispatchQueue(label: "expo.loader.LoaderTaskQueue")
-    self.logger = logger
+    self.logger = UpdatesLogger()
   }
 
   public func start() {
@@ -261,8 +260,7 @@ public final class AppLoaderTask: NSObject {
         database: database,
         directory: directory,
         selectionPolicy: selectionPolicy,
-        launchedUpdate: launchedUpdate,
-        logger: self.logger
+        launchedUpdate: launchedUpdate
       )
     }
   }
@@ -325,7 +323,7 @@ public final class AppLoaderTask: NSObject {
   }
 
   private func launch(withCompletion completion: @escaping (_ error: UpdatesError?, _ success: Bool) -> Void) {
-    let launcher = AppLauncherWithDatabase(config: config, database: database, directory: directory, completionQueue: loaderTaskQueue, logger: self.logger)
+    let launcher = AppLauncherWithDatabase(config: config, database: database, directory: directory, completionQueue: loaderTaskQueue)
     candidateLauncher = launcher
     launcher.launchUpdate(withSelectionPolicy: selectionPolicy, completion: completion)
   }
@@ -478,8 +476,7 @@ public final class AppLoaderTask: NSObject {
           config: self.config,
           database: self.database,
           directory: self.directory,
-          completionQueue: self.loaderTaskQueue,
-          logger: self.logger
+          completionQueue: self.loaderTaskQueue
         )
         newLauncher.launchUpdate(withSelectionPolicy: self.selectionPolicy) { error, success in
           if success {
@@ -493,9 +490,14 @@ public final class AppLoaderTask: NSObject {
             self.finish(withError: error)
             self.logger.warn(message: "Downloaded update but failed to relaunch: \(error?.localizedDescription ?? "")")
           }
-          self.didFinishBackgroundUpdate(withStatus: .updateAvailable, update: updateBeingLaunched, error: error)
           self.isRunning = false
           self.runReaper()
+
+          self.delegate.let { it in
+            self.delegateQueue.async {
+              it.appLoaderTaskDidFinishAllLoading(self)
+            }
+          }
         }
       } else {
         self.didFinishBackgroundUpdate(withStatus: .updateAvailable, update: updateBeingLaunched, error: nil)

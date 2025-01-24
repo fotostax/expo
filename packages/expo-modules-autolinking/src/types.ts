@@ -75,15 +75,11 @@ export interface ModuleAndroidAarProjectInfo extends AndroidGradleAarProjectDesc
   projectDir: string;
 }
 
-export interface CommonModuleDescriptor {
+export interface ModuleDescriptorAndroid {
   packageName: string;
-  modules: string[];
-  coreFeatures?: string[];
-}
-
-export interface ModuleDescriptorAndroid extends CommonModuleDescriptor {
   projects: ModuleAndroidProjectInfo[];
   plugins?: ModuleAndroidPluginInfo[];
+  modules: string[];
   aarProjects?: ModuleAndroidAarProjectInfo[];
 }
 
@@ -91,10 +87,12 @@ export interface ModuleIosPodspecInfo {
   podName: string;
   podspecDir: string;
 }
-export interface ModuleDescriptorIos extends CommonModuleDescriptor {
+export interface ModuleDescriptorIos {
+  packageName: string;
   pods: ModuleIosPodspecInfo[];
   flags: Record<string, any> | undefined;
   swiftModuleNames: string[];
+  modules: string[];
   appDelegateSubscribers: string[];
   reactDelegateHandlers: string[];
   debugOnly: boolean;
@@ -242,11 +240,6 @@ export interface RawExpoModuleConfig {
      */
     gradleAarProjects?: AndroidGradleAarProjectDescriptor[];
   };
-
-  /**
-   * List of core features that this module requires.
-   */
-  coreFeatures?: string[];
 
   /**
    * DevTools-specific config.

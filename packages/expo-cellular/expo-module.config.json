@@ -1,9 +1,10 @@
 {
-  "platforms": ["apple", "android", "web"],
-  "apple": {
-    "modules": ["CellularModule"]
+  "name": "expo-cellular",
+  "platforms": ["ios", "android", "web"],
+  "ios": {
+    "modulesClassNames": ["CellularModule"]
   },
   "android": {
-    "modules": ["expo.modules.cellular.CellularModule"]
+    "modulesClassNames": ["expo.modules.cellular.CellularModule"]
   }
 }

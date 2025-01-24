@@ -31,28 +31,6 @@ public final class DeviceMotionModule: Module {
       motionManager.deviceMotionUpdateInterval = intervalMs / 1000.0
     }
 
-    AsyncFunction("getPermissionsAsync") { (promise: Promise) in
-      guard let permissionsManager = appContext?.permissions else {
-        return
-      }
-      permissionsManager.getPermissionUsingRequesterClass(
-        EXMotionPermissionRequester.self,
-        resolve: promise.resolver,
-        reject: promise.legacyRejecter
-      )
-    }
-
-    AsyncFunction("requestPermissionsAsync") { (promise: Promise) in
-      guard let permissionsManager = appContext?.permissions else {
-        return
-      }
-      permissionsManager.askForPermission(
-        usingRequesterClass: EXMotionPermissionRequester.self,
-        resolve: promise.resolver,
-        reject: promise.legacyRejecter
-      )
-    }
-
     OnStartObserving {
       startDeviceMotionUpdates()
     }
@@ -63,13 +41,6 @@ public final class DeviceMotionModule: Module {
 
     OnDestroy {
       motionManager.stopDeviceMotionUpdates()
-    }
-
-    OnCreate {
-      guard let permissionsManager = appContext?.permissions else {
-        return
-      }
-      permissionsManager.register([EXMotionPermissionRequester()])
     }
   }
 

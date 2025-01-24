@@ -25,8 +25,11 @@ if (KOTLIN_MAJOR_VERSION >= 2) {
 group = 'host.exp.exponent'
 version = '2.0.6'
 
-// List of features that are required by linked modules
-def coreFeatures = project.findProperty("coreFeatures") ?: []
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useDefaultAndroidSdkVersions()
+useExpoPublishing()
 
 def isExpoModulesCoreTests = {
   Gradle gradle = getGradle()
@@ -189,8 +192,6 @@ dependencies {
   api "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3"
   api "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
   api "androidx.core:core-ktx:1.13.1"
-
-  implementation 'androidx.compose.foundation:foundation-android:1.7.6'
 
   implementation("androidx.tracing:tracing-ktx:1.2.0")
 

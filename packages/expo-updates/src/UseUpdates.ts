@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { addUpdatesStateChangeListener, latestContext } from './UpdatesEmitter';
 import type { UseUpdatesReturnType } from './UseUpdates.types';
 import { currentlyRunning, updatesStateFromContext } from './UseUpdatesUtils';
+import type { UseUpdatesStateType } from './UseUpdatesUtils';
 
 /**
  * Hook that obtains information on available updates and on the currently running update.
@@ -53,7 +54,7 @@ import { currentlyRunning, updatesStateFromContext } from './UseUpdatesUtils';
  * ```
  */
 export const useUpdates: () => UseUpdatesReturnType = () => {
-  const [updatesState, setUpdatesState] = useState(updatesStateFromContext(latestContext));
+  const [updatesState, setUpdatesState] = useState<UseUpdatesStateType>(latestContext);
 
   // Change the state based on native state machine context changes
   useEffect(() => {

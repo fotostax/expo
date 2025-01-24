@@ -12,9 +12,17 @@ class AudioSource(
 ) : Record
 
 class AudioMode(
-  @Field val shouldPlayInBackground: Boolean = false,
+  @Field val playsInSilentMode: Boolean = false,
+  @Field val interruptionMode: InterruptionMode = InterruptionMode.DO_NOT_MIX,
+  @Field val allowsRecording: Boolean = true,
+  @Field val shouldPlayInBackground: Boolean = true,
   @Field val shouldRouteThroughEarpiece: Boolean?
 ) : Record
+
+enum class InterruptionMode(val value: String) : Enumerable {
+  DO_NOT_MIX("doNotMix"),
+  DUCK_OTHERS("duckOthers")
+}
 
 // Data class because we want `equals`
 data class RecordingOptions(
@@ -24,8 +32,7 @@ data class RecordingOptions(
   @Field val bitRate: Double?,
   @Field val outputFormat: AndroidOutputFormat?,
   @Field val audioEncoder: AndroidAudioEncoder?,
-  @Field val maxFileSize: Int?,
-  @Field val isMeteringEnabled: Boolean = false
+  @Field val maxFileSize: Int?
 ) : Record
 
 enum class AndroidOutputFormat(val value: String) : Enumerable {

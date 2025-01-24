@@ -1,24 +1,21 @@
 pluginManagement {
   includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')"].execute(null, rootDir).text.trim()).getParentFile().toString())
-
-  def expoPluginsPath = new File(
-    providers.exec {
-      workingDir(rootDir)
-      commandLine("node", "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
-    }.standardOutput.asText.get().trim(),
-    "../android/expo-gradle-plugin"
-  ).absolutePath
-  includeBuild(expoPluginsPath)
 }
-plugins {
-  id("com.facebook.react.settings")
-  id("expo-autolinking-settings")
-}
+plugins { id("com.facebook.react.settings") }
 
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
-  ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+    def command = [
+      'node',
+      '--no-warnings',
+      '--eval',
+      'require(require.resolve(\'expo-modules-autolinking\', { paths: [require.resolve(\'expo/package.json\')] }))(process.argv.slice(1))',
+      'react-native-config',
+      '--json',
+      '--platform',
+      'android'
+    ].toList()
+    ex.autolinkLibrariesFromCommand(command)
 }
-expoAutolinking.useExpoModules()
 
 rootProject.name = 'BareExpo'
 
@@ -53,12 +50,22 @@ dependencyResolutionManagement {
 include(":expo-modules-test-core")
 project(":expo-modules-test-core").projectDir = new File("../../../packages/expo-modules-test-core/android")
 
-include ':app'
-includeBuild(
-  file(
+// Include Expo modules
+apply from: new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')")
-    }.standardOutput.asText.get().trim()
-  ).getParentFile()
+      commandLine("node", "--print", "require.resolve('expo/package.json')")
+    }.standardOutput.asText.get().trim(),
+    "../scripts/autolinking.gradle"
+)
+useExpoModules()
+
+include ':app'
+includeBuild(
+    file(
+        providers.exec {
+          workingDir(rootDir)
+          commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')")
+        }.standardOutput.asText.get().trim()
+    ).getParentFile()
 )

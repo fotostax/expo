@@ -138,6 +138,28 @@ If your app does not use [Expo Prebuild](/workflow/prebuild) (formerly the _mana
 
 </Collapsible>
 
+<Collapsible summary="Splash screen API limitations on Android">
+
+On Android, the splash screen behaves in most cases the same as on iOS. However, there is a slight difference. In this scenario, extra attention should be paid to [`android.splash`](/versions/latest/config/app/#splash-2) section configuration inside **app.json**.
+
+Depending on the `resizeMode` you will get the following behavior on Android:
+
+- **contain**: The splash screen API is unable to stretch or scale the splash image. As a result, the `contain` mode will initially display only the background color, and when the initial view hierarchy is mounted then `splash.image` will be displayed.
+- **cover**: This mode has the same limitations as **contain**.
+- **native**: In this mode, your app will be leveraging Android's ability to present a static bitmap while the app is starting up. Android (unlike iOS) does not support stretching the provided image, so the app will present the given image centered on the screen. By default `splash.image` will be used as the `xxxdpi` resource. It's up to you to provide graphics that meet your expectations and fit the screen dimension. To achieve this, use different resolutions for [different device DPIs](/versions/latest/config/app/#mdpi) such as from `mdpi` to `xxxhdpi`.
+
+</Collapsible>
+
+<Collapsible summary="Troubleshooting: New splash screen not appearing on iOS">
+
+In iOS development builds, launch screens can sometimes remain cached between builds, making it harder to test new images. Apple recommends clearing the _derived data_ folder before rebuilding, this can be done with Expo CLI by running:
+
+<Terminal cmd={['$ npx expo run:ios --no-build-cache']} />
+
+See [Apple's guide on testing launch screens](https://developer.apple.com/documentation/technotes/tn3118-debugging-your-apps-launch-screen) for more information.
+
+</Collapsible>
+
 ## App icon
 
 An app's icon is what your app users see on their device's home screen and app stores. Android and iOS have different and strict requirements.

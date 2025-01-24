@@ -20,8 +20,6 @@ type THEME = 'light' | 'dark';
 
 const IMAGE_CACHE_NAME = 'splash-android';
 const SPLASH_SCREEN_FILENAME = 'splashscreen_logo.png';
-const SPLASH_SCREEN_DRAWABLE_NAME = 'splashscreen_logo.xml';
-
 const DRAWABLES_CONFIGS: {
   [key in DRAWABLE_SIZE]: {
     modes: {
@@ -35,10 +33,10 @@ const DRAWABLES_CONFIGS: {
   default: {
     modes: {
       light: {
-        path: `./res/drawable/${SPLASH_SCREEN_DRAWABLE_NAME}`,
+        path: `./res/drawable/${SPLASH_SCREEN_FILENAME}`,
       },
       dark: {
-        path: `./res/drawable-night/${SPLASH_SCREEN_DRAWABLE_NAME}`,
+        path: `./res/drawable-night/${SPLASH_SCREEN_FILENAME}`,
       },
     },
     dimensionsMultiplier: 1,
@@ -169,11 +167,6 @@ export async function setSplashImageDrawablesForThemeAsync(
   if (!config) return;
   const androidMainPath = path.join(projectRoot, 'android/app/src/main');
 
-  if (config.drawable) {
-    await writeSplashScreenDrawablesAsync(androidMainPath, projectRoot, config.drawable);
-    return;
-  }
-
   const sizes: DRAWABLE_SIZE[] = ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'];
 
   await Promise.all(
@@ -227,27 +220,4 @@ export async function setSplashImageDrawablesForThemeAsync(
       return null;
     })
   );
-}
-
-async function writeSplashScreenDrawablesAsync(
-  drawablePath: string,
-  projectRoot: string,
-  drawable: SplashScreenConfig['drawable']
-) {
-  if (!drawable) {
-    return;
-  }
-
-  const lightDrawablePath = path.join(drawablePath, DRAWABLES_CONFIGS.default.modes.light.path);
-  const darkDrawablePath = path.join(drawablePath, DRAWABLES_CONFIGS.default.modes.dark.path);
-
-  const lightFolder = path.dirname(lightDrawablePath);
-  await fs.ensureDir(lightFolder);
-  await fs.copyFile(path.join(projectRoot, drawable.icon), lightDrawablePath);
-
-  if (drawable.darkIcon) {
-    const darkFolder = path.dirname(darkDrawablePath);
-    await fs.ensureDir(darkFolder);
-    await fs.copyFile(path.join(projectRoot, drawable.darkIcon), darkDrawablePath);
-  }
 }

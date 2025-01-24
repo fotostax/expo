@@ -10,7 +10,6 @@ export const Row = ({ children, subtle }: RowProps) => (
     className={mergeClasses(
       'even:bg-subtle',
       'even:[&_summary]:bg-element',
-      'even:[&_blockquote]:bg-default',
       subtle && 'opacity-50'
     )}>
     {children}

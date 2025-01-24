@@ -1,15 +1,19 @@
-plugins {
-  id 'com.android.library'
-  id 'expo-module-gradle-plugin'
-}
+apply plugin: 'com.android.library'
+
+group = 'host.exp.exponent'
+version = '15.0.2'
 
 def reactNativeArchitectures() {
     def value = project.getProperties().get("reactNativeArchitectures")
     return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
 }
 
-group = 'host.exp.exponent'
-version = '15.0.2'
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+useDefaultAndroidSdkVersions()
+useExpoPublishing()
 
 android {
   if (rootProject.hasProperty("ndkPath")) {
