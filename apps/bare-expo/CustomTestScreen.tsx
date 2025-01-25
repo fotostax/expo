@@ -65,7 +65,7 @@ const CustomTestScreen = () => {
           console.log('removing camera...');
           setIsCameraActive(false); // Render an empty view
         }, 2000);
-      }, 5000);
+      }, 2500);
     }
   }, [isProcessing, gl]);
 
