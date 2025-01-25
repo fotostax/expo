@@ -1,6 +1,7 @@
 import BufferViewer from 'components/BufferViewer';
 import { useGLBufferFrameManager } from 'components/GLBufferFrameManager';
 import { renderYUVToRGB, checkGLError } from 'components/GLContextManager';
+import { requireNativeModule } from 'expo';
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
@@ -12,6 +13,7 @@ import {
 } from 'react-native-vision-camera-face-detector';
 import { Worklets } from 'react-native-worklets-core';
 import { CameraPage } from 'screens/CameraView';
+const ExponentGLObjectManager = requireNativeModule('ExponentGLObjectManager');
 
 const CustomTestScreen = () => {
   const { initializeContext, addFrame, frames } = useGLBufferFrameManager();
@@ -58,63 +60,61 @@ const CustomTestScreen = () => {
   const handleScreenTap = useCallback(() => {
     if (!isProcessing && gl != null) {
       setIsProcessing(true);
-      // Stop frame processing and remove the camera afrter 3 seconds
+      // Stop frame processing and remove the camera after 3 seconds
       setTimeout(() => {
         setIsProcessing(false);
         setTimeout(() => {
           console.log('removing camera...');
           setIsCameraActive(false); // Render an empty view
         }, 2000);
-      }, 5000);
+      }, 2500);
     }
   }, [isProcessing, gl]);
 
-  const yuvToRGBCallback = Worklets.createRunOnJS(async (frame: Frame) => {
-    const internal = frame as FrameInternal;
-    internal.incrementRefCount();
+  const yuvToRGBCallback = Worklets.createRunOnJS(
+    async (pointer: bigint, textureWidth: number, textureHeight: number) => {
+      'worklet'
+      console.log('Calling yuv');
+      /*
+      const pointerBigInt = BigInt(pointer) & BigInt('0xFFFFFFFFFFFFFFFF'); // Mask lower 64 bits
+      const pointerString = pointerBigInt.toString(16); // Convert to hex string
 
-    const nativeBuffer = frame.getNativeBuffer();
-    const pointer = nativeBuffer.pointer;
+      try {
+        const textureId = await ExponentGLObjectManager.uploadAHardwareBufferAsync(
+          gl.contextId,
+          pointerString
+        );
 
-    // Hardware Buffer width/height are inverted
-    const textureWidth = frame.height;
-    const textureHeight = frame.width;
+        checkGLError(gl, 'Creating Texture from Pointer');
+        const rgbTexture = renderYUVToRGB(
+          gl,
+          progYUV,
+          vtxBuffer,
+          frameBuffer,
+          textureId,
+          textureWidth,
+          textureHeight
+        );
+        checkGLError(gl, 'Rendering Yuv to RGB');
 
-    try {
-      const textureId = await GLView.createTextureFromTexturePointer(gl.contextId, pointer);
-      internal.decrementRefCount();
-      nativeBuffer.delete();
-
-      checkGLError(gl, 'Creating Texture from Pointer');
-      const rgbTexture = renderYUVToRGB(
-        gl,
-        progYUV,
-        vtxBuffer,
-        frameBuffer,
-        textureId,
-        textureWidth,
-        textureHeight
-      );
-      checkGLError(gl, 'Rendering Yuv to RGB');
-
-      addFrame(rgbTexture, { textureWidth, textureHeight });
-    } catch (error) {
-      console.error('Error in HB upload:', error);
-      throw error;
+        addFrame(rgbTexture, { textureWidth, textureHeight });
+      } catch (error) {
+        console.error('Error in HB upload:', error);
+        throw error;
+      }
+        */
     }
-  });
-
-  const renderCallback = async (frame: Frame) => {
-    'worklet';
-    if (isProcessing) {
-      await yuvToRGBCallback(frame);
-    }
-  };
+      
+  );
 
   return (
     <TouchableOpacity style={styles.container} onPress={handleScreenTap}>
       {isCameraActive ? (
-        <CameraPage style={styles.cameraView} renderCallback={yuvToRGBCallback} isProcessing={isProcessing}/>
+        <CameraPage
+          style={styles.cameraView}
+          yuvToRGBCallback={yuvToRGBCallback}
+          isProcessing={isProcessing}
+        />
       ) : (
         <View style={styles.emptyView}>
           <BufferViewer

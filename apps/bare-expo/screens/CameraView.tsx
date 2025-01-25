@@ -1,15 +1,37 @@
 import * as React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useCameraDevice, useFrameProcessor, Camera, Frame } from 'react-native-vision-camera';
+import {
+  useCameraDevice,
+  useFrameProcessor,
+  Camera,
+  Frame,
+  FrameInternal,
+} from 'react-native-vision-camera';
 
-export function CameraPage({ renderCallback, isProcessing }: any): React.ReactElement {
+export function CameraPage({ yuvToRGBCallback, isProcessing }: any): React.ReactElement {
   const device = useCameraDevice('front');
 
   const frameProcessor = useFrameProcessor(
-    async (frame: Frame) => {
+     (frame: Frame) => {
       'worklet';
+      //console.log("Frame Processor Invoked.");
       if (isProcessing) {
-        await renderCallback(frame);
+        //const startTime = performance.now(); // Start timing
+        //const internal = frame as FrameInternal;
+        //internal.incrementRefCount();
+        const nativeBuffer = frame.getNativeBuffer();
+        const pointer = nativeBuffer.pointer;
+        console.log(pointer);
+        // Hardware Buffer width/height are inverted
+        //const textureWidth = frame.height;
+        //const textureHeight = frame.width;
+        //console.log(pointer, textureWidth, textureHeight);
+        //yuvToRGBCallback(pointer, textureWidth, textureHeight);
+        //internal.decrementRefCount();
+        //nativeBuffer.delete();
+        //const endTime = performance.now(); // End timing
+        //console.log(`Processing time: ${(endTime - startTime).toFixed(2)} ms`);
+        //console.log('Frame Processor Processing Done.');
       }
     },
     [isProcessing]
