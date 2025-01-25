@@ -2,7 +2,7 @@ import BufferViewer from 'components/BufferViewer';
 import { useGLBufferFrameManager } from 'components/GLBufferFrameManager';
 import { renderYUVToRGB, checkGLError } from 'components/GLContextManager';
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import {
   Frame,
@@ -11,6 +11,11 @@ import {
   useFrameProcessor,
   Camera,
 } from 'react-native-vision-camera';
+import {
+  Face,
+  useFaceDetector,
+  FaceDetectionOptions,
+} from 'react-native-vision-camera-face-detector';
 import { Worklets } from 'react-native-worklets-core';
 
 const CustomTestScreen = () => {
@@ -24,6 +29,10 @@ const CustomTestScreen = () => {
   const [frameBuffer, setFrameBuffer] = useState(null);
 
   const device = useCameraDevice('front');
+  const faceDetectionOptions = useRef<FaceDetectionOptions>({
+    // detection options
+  }).current;
+  const { detectFaces } = useFaceDetector(faceDetectionOptions);
 
   // Initialize GL context when the component mounts
   useEffect(() => {
@@ -55,7 +64,7 @@ const CustomTestScreen = () => {
     }
   };
 
-  const yuvToRGBCallback = Worklets.createRunOnJS(async (frame: Frame) => {
+  const yuvToRGBCallback = Worklets.createRunOnJS(async (frame: Frame, faces: Face[]) => {
     const internal = frame as FrameInternal;
     internal.incrementRefCount();
 
@@ -82,7 +91,6 @@ const CustomTestScreen = () => {
         textureHeight
       );
       checkGLError(gl, 'Rendering Yuv to RGB');
-
       addFrame(rgbTexture, { textureWidth, textureHeight });
     } catch (error) {
       console.error('Error in HB upload:', error);
@@ -94,7 +102,8 @@ const CustomTestScreen = () => {
     async (frame: Frame) => {
       'worklet';
       if (isProcessing) {
-        await yuvToRGBCallback(frame);
+        const faces = detectFaces(frame);
+        await yuvToRGBCallback(frame, faces);
       }
     },
     [isProcessing]
@@ -108,7 +117,7 @@ const CustomTestScreen = () => {
         setTimeout(() => {
           console.log('removing camera...');
           setIsCameraActive(false); // Render an empty view
-        }, 2000);
+        }, 500);
       }, 2500);
     }
   }, [isProcessing, gl]);
