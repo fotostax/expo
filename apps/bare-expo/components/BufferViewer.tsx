@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import * as GL from 'expo-gl';
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Image, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ProcessedFrame } from './GLBufferFrameManager';
 import {
@@ -40,8 +40,11 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
   useEffect(() => {
     const renderFrame = async () => {
       if (glContext && frames[id] && vertexBuffer && frameBuffer) {
-        console.log(frames.length);
         const frame = frames[id];
+        if (frame.metadata.faces) {
+          console.log(frame.metadata.faces[0].bounds);
+        }
+
         // Render the RGB texture to screen
         renderRGBToFramebuffer(
           glContext,
@@ -50,7 +53,8 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
           frame.texture,
           frame.metadata['textureWidth'], // Read width from metadata
           frame.metadata['textureHeight'], // Read height from metadata
-          frameBuffer
+          frameBuffer,
+          frame.metadata.faces
         );
         glContext.endFrameEXP();
 

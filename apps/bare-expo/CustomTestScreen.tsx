@@ -10,6 +10,7 @@ import {
   useCameraDevice,
   useFrameProcessor,
   Camera,
+  useCameraFormat,
 } from 'react-native-vision-camera';
 import {
   Face,
@@ -29,6 +30,13 @@ const CustomTestScreen = () => {
   const [frameBuffer, setFrameBuffer] = useState(null);
 
   const device = useCameraDevice('front');
+
+  const format4k30fps = useCameraFormat(device, [
+    { videoAspectRatio: 16 / 9 },
+    { videoResolution: { width: 3048, height: 2160 } },
+    { fps: 30 },
+  ]);
+
   const faceDetectionOptions = useRef<FaceDetectionOptions>({
     // detection options
   }).current;
@@ -91,7 +99,7 @@ const CustomTestScreen = () => {
         textureHeight
       );
       checkGLError(gl, 'Rendering Yuv to RGB');
-      addFrame(rgbTexture, { textureWidth, textureHeight });
+      addFrame(rgbTexture, { textureWidth, textureHeight, faces:faces });
     } catch (error) {
       console.error('Error in HB upload:', error);
       throw error;
@@ -117,7 +125,7 @@ const CustomTestScreen = () => {
         setTimeout(() => {
           console.log('removing camera...');
           setIsCameraActive(false); // Render an empty view
-        }, 500);
+        }, 1200);
       }, 2500);
     }
   }, [isProcessing, gl]);
@@ -131,7 +139,8 @@ const CustomTestScreen = () => {
             device={device}
             isActive
             frameProcessor={frameProcessor}
-            resizeMode="contain"
+            resizeMode="cover"
+            //format={format}
           />
         ) : (
           <View style={styles.emptyContainer}>

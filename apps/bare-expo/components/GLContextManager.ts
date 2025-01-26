@@ -1,4 +1,6 @@
+
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
+import { Face } from 'react-native-vision-camera-face-detector';
 
 let glContext: ExpoWebGLRenderingContext | null = null;
 const debugMode: boolean = false;
@@ -85,7 +87,8 @@ export const renderRGBToFramebuffer = (
   rgbTexture: WebGLTexture,
   textureWidth: number,
   textureHeight: number,
-  framebuffer: WebGLFramebuffer
+  framebuffer: WebGLFramebuffer,
+  faces: Array<Face>  
 ) => {
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
   checkGLError(gl, 'Binding Framebuffer');
