@@ -140,7 +140,7 @@ const CustomTestScreen = () => {
             isActive
             frameProcessor={frameProcessor}
             resizeMode="cover"
-            //format={format}
+            format={format4k30fps}
           />
         ) : (
           <View style={styles.emptyContainer}>
