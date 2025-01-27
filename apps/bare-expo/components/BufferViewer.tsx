@@ -62,7 +62,6 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
         if (snapshot && snapshot.uri) {
           await FileSystem.deleteAsync(snapshot.uri as string, { idempotent: true });
         }
-
         // Take a snapshot of the current GL context
         const snap = await GL.GLView.takeSnapshotAsync(glContext, {
           flip: false,
@@ -82,7 +81,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
             style={styles.flex}
             fadeDuration={0}
             source={{ uri: snapshot.uri as string }}
-            resizeMode="contain"
+            resizeMode="cover"
           />
         )}
       </View>

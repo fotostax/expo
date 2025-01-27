@@ -103,6 +103,10 @@ int EXGLContext::uploadTextureToOpenGL(jsi::Runtime &runtime, AHardwareBuffer *h
     // Done reading from CPU memory
     AHardwareBuffer_unlock(hardwareBuffer, nullptr);
     AHardwareBuffer_release(hardwareBuffer);
+       // Flip U and V
+    gl_cpp::flipPixels(yVec.data(), width, height);
+    gl_cpp::flipPixels(uVec.data(), width / 2, height / 2);
+    gl_cpp::flipPixels(vVec.data(), width / 2, height / 2);
 
     // 3. Queue the OpenGL upload
     addToNextBatch([=, yVec{std::move(yVec)}, uVec{std::move(uVec)}, vVec{std::move(vVec)}] {

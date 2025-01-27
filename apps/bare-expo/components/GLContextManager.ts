@@ -1,8 +1,9 @@
-
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import { Face } from 'react-native-vision-camera-face-detector';
 
 let glContext: ExpoWebGLRenderingContext | null = null;
+let rectangleProgram: WebGLProgram | null = null;
+let isLineWidthSupported: boolean = false;
 const debugMode: boolean = false;
 
 const vertexShaderSourceBlit = `
@@ -35,6 +36,22 @@ void main() {
   }
 }
 `;
+
+const vertexShaderSourceRectangle = `
+precision mediump float;
+attribute vec3 position;
+void main() {
+  gl_Position = vec4(position, 1.0);
+}
+`;
+const fragmentShaderSourceRectangle = `
+precision mediump float;
+uniform vec4 color;
+void main() {
+  gl_FragColor = color;
+}
+`;
+
 export const checkGLError = (gl: ExpoWebGLRenderingContext, message: string) => {
   if (!debugMode) {
     return;
@@ -49,6 +66,11 @@ export const getGLContext = async (): Promise<ExpoWebGLRenderingContext> => {
   if (!glContext) {
     console.log('Creating a new GL context...');
     glContext = await GLView.createContextAsync();
+    const lineArr = glContext.getParameter(glContext.ALIASED_LINE_WIDTH_RANGE);
+    if (lineArr[1] > 1) {
+      isLineWidthSupported = true;
+      console.log('supported max lines = ' + lineArr[1]);
+    }
   } else {
     console.log('Reusing existing GL context...');
   }
@@ -80,6 +102,70 @@ export const prepareForRgbToScreen = (glCtx: ExpoWebGLRenderingContext) => {
   return progBlit;
 };
 
+export const prepareRectangleShader = (glCtx: ExpoWebGLRenderingContext) => {
+  const vertRectangle = glCtx.createShader(glCtx.VERTEX_SHADER);
+  glCtx.shaderSource(vertRectangle, vertexShaderSourceRectangle);
+  glCtx.compileShader(vertRectangle);
+  checkGLError(glCtx, 'Compiling Rectangle Vertex Shader');
+
+  const fragRectangle = glCtx.createShader(glCtx.FRAGMENT_SHADER);
+  glCtx.shaderSource(fragRectangle, fragmentShaderSourceRectangle);
+  glCtx.compileShader(fragRectangle);
+  checkGLError(glCtx, 'Compiling Rectangle Fragment Shader');
+
+  const progRectangle = glCtx.createProgram();
+  glCtx.attachShader(progRectangle, vertRectangle);
+  glCtx.attachShader(progRectangle, fragRectangle);
+  glCtx.linkProgram(progRectangle);
+  checkGLError(glCtx, 'Linking Rectangle Program');
+
+  return progRectangle;
+};
+
+export const drawRectangle = (
+  gl: ExpoWebGLRenderingContext,
+  programRectangle: WebGLProgram,
+  bounds: { x: number; y: number; width: number; height: number },
+  textureWidth: number,
+  textureHeight: number,
+  strokeWidth: number = 1
+) => {
+  gl.useProgram(programRectangle);
+
+  const rectVertices = new Float32Array([
+    (bounds.x / textureWidth) * 2 - 1,
+    (bounds.y / textureHeight) * -2 + 1,
+    0.0,
+    ((bounds.x + bounds.width) / textureWidth) * 2 - 1,
+    (bounds.y / textureHeight) * -2 + 1,
+    0.0,
+    ((bounds.x + bounds.width) / textureWidth) * 2 - 1,
+    ((bounds.y + bounds.height) / textureHeight) * -2 + 1,
+    0.0,
+    (bounds.x / textureWidth) * 2 - 1,
+    ((bounds.y + bounds.height) / textureHeight) * -2 + 1,
+    0.0,
+  ]);
+
+  const rectBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, rectBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, rectVertices, gl.STATIC_DRAW);
+
+  const posLoc = gl.getAttribLocation(programRectangle, 'position');
+  gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(posLoc);
+
+  const colorLoc = gl.getUniformLocation(programRectangle, 'color');
+  gl.uniform4f(colorLoc, 1.0, 0.0, 0.0, 1.0); // Red color
+
+  if (isLineWidthSupported) {
+    gl.lineWidth(strokeWidth);
+  }
+
+  gl.drawArrays(gl.LINE_LOOP, 0, 4);
+  gl.disableVertexAttribArray(posLoc);
+};
+
 export const renderRGBToFramebuffer = (
   gl: ExpoWebGLRenderingContext,
   programBlit: WebGLProgram,
@@ -88,7 +174,7 @@ export const renderRGBToFramebuffer = (
   textureWidth: number,
   textureHeight: number,
   framebuffer: WebGLFramebuffer,
-  faces: Array<Face>  
+  faces: Face[]
 ) => {
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
   checkGLError(gl, 'Binding Framebuffer');
@@ -97,58 +183,38 @@ export const renderRGBToFramebuffer = (
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rgbTexture, 0);
   checkGLError(gl, 'Attaching Texture to Framebuffer');
 
-  // Check framebuffer status
   if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
     console.error('Framebuffer is incomplete!');
-  }
-
-  gl.viewport(0, 0, textureWidth, textureHeight);
-  checkGLError(gl, 'Setting Viewport');
-
-  gl.useProgram(programBlit);
-  checkGLError(gl, 'Using Program');
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-  checkGLError(gl, 'Binding Vertex Buffer');
-
-  const posLoc = gl.getAttribLocation(programBlit, 'position');
-  if (posLoc >= 0) {
-    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 5 * 4, 0);
-    gl.enableVertexAttribArray(posLoc);
-  } else {
-    console.error('Invalid position attribute location:', posLoc);
-  }
-  checkGLError(gl, 'Setting Vertex Attribute');
-
-  const tcLoc = gl.getAttribLocation(programBlit, 'texcoord');
-  if (tcLoc >= 0) {
-    gl.vertexAttribPointer(tcLoc, 2, gl.FLOAT, false, 5 * 4, 3 * 4);
-    gl.enableVertexAttribArray(tcLoc);
-  } else {
-    console.error('Invalid texture coordinate attribute location:', tcLoc);
-  }
-  checkGLError(gl, 'Setting Texture Coordinates Attribute');
-
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, rgbTexture);
-  checkGLError(gl, 'Binding Texture');
-
-  const scaleLoc = gl.getUniformLocation(programBlit, 'scale');
-  if (scaleLoc !== null) {
-    gl.uniform2f(scaleLoc, 1.0, 1.0); // Example value
-  } else {
-    console.error('Scale uniform location is null.');
-  }
-  checkGLError(gl, 'Setting Uniform - scale');
-
-  const fbStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-  if (fbStatus !== gl.FRAMEBUFFER_COMPLETE) {
-    console.error('Framebuffer is incomplete:', fbStatus);
     return;
   }
 
+  gl.viewport(0, 0, textureWidth, textureHeight);
+  gl.useProgram(programBlit);
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+
+  const posLoc = gl.getAttribLocation(programBlit, 'position');
+  gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 5 * 4, 0);
+  gl.enableVertexAttribArray(posLoc);
+
+  const tcLoc = gl.getAttribLocation(programBlit, 'texcoord');
+  gl.vertexAttribPointer(tcLoc, 2, gl.FLOAT, false, 5 * 4, 3 * 4);
+  gl.enableVertexAttribArray(tcLoc);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, rgbTexture);
+  const scaleLoc = gl.getUniformLocation(programBlit, 'scale');
+  gl.uniform2f(scaleLoc, 1.0, 1.0);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  checkGLError(gl, 'Drawing Arrays');
+  if (rectangleProgram == null) {
+    rectangleProgram = prepareRectangleShader(gl);
+  }
+
+  // Draw rectangles around faces
+  if (faces && faces.length > 0) {
+    faces.forEach((face) => {
+      drawRectangle(gl, rectangleProgram, face.bounds, textureWidth, textureHeight, 3);
+    });
+  }
 };
 
 export const renderYUVToRGB = (
