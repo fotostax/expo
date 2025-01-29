@@ -13505,6 +13505,11 @@ react-native-fade-in-image@^1.6.1:
     react-mixin "^3.0.5"
     react-timer-mixin "^0.13.3"
 
+react-native-fast-tflite@^1.5.1:
+  version "1.5.1"
+  resolved "https://registry.yarnpkg.com/react-native-fast-tflite/-/react-native-fast-tflite-1.5.1.tgz#0d71356c3732369d07abc7c19384e55d3fe6728f"
+  integrity sha512-O5wc+jrrH71uOEXRwtKGH/GRZc4t3vHgsKFiYGJ0fCSrjs9jmRtcadIBCjz6hKU7fc6DJ2OXgYmBUYvzkUfkFA==
+
 react-native-gesture-handler@~2.20.2:
   version "2.20.2"
   resolved "https://registry.yarnpkg.com/react-native-gesture-handler/-/react-native-gesture-handler-2.20.2.tgz#73844c8e9c417459c2f2981bc4d8f66ba8a5ee66"
@@ -16596,6 +16601,11 @@ victory@^37.0.2:
     victory-voronoi "^37.0.2"
     victory-voronoi-container "^37.0.2"
     victory-zoom-container "^37.0.2"
+
+vision-camera-resize-plugin@^3.2.0:
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/vision-camera-resize-plugin/-/vision-camera-resize-plugin-3.2.0.tgz#57942b5603bffc613938fc8648fd94bba7acdaac"
+  integrity sha512-OR/rU6cwnSoFs3zN8EtAiomwtoXBzQsGnQxfUY5wfQ9WcssLY+Hrcdp/pr2qY3fsHokKtYZHeF43eXNaMyBi6g==
 
 vlq@^1.0.0:
   version "1.0.1"

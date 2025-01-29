@@ -4,6 +4,7 @@ import { renderYUVToRGB, checkGLError } from 'components/GLContextManager';
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { useTensorflowModel } from 'react-native-fast-tflite';
 import {
   Frame,
   FrameInternal,
@@ -18,6 +19,7 @@ import {
   FaceDetectionOptions,
 } from 'react-native-vision-camera-face-detector';
 import { Worklets } from 'react-native-worklets-core';
+import { useResizePlugin } from 'vision-camera-resize-plugin';
 
 const CustomTestScreen = () => {
   const { initializeContext, addFrame, frames } = useGLBufferFrameManager();
@@ -28,12 +30,23 @@ const CustomTestScreen = () => {
   const [progYUV, setProgYuv] = useState(null);
   const [vtxBuffer, setvtxBuffer] = useState(null);
   const [frameBuffer, setFrameBuffer] = useState(null);
+  const objectDetection = useTensorflowModel(require('assets/efficientdet.tflite'));
+
+  const model = objectDetection.state === 'loaded' ? objectDetection.model : undefined;
+  
+  const { resize } = useResizePlugin();
 
   const device = useCameraDevice('front');
 
   const format4k30fps = useCameraFormat(device, [
     { videoAspectRatio: 16 / 9 },
     { videoResolution: { width: 3048, height: 2160 } },
+    { fps: 30 },
+  ]);
+
+  const format108030fps = useCameraFormat(device, [
+    { videoAspectRatio: 16 / 9 },
+    { videoResolution: { width: 1929, height: 1080 } },
     { fps: 30 },
   ]);
 
@@ -49,6 +62,7 @@ const CustomTestScreen = () => {
       if (glCtx) {
         setGL(glCtx);
         await onContextCreate(glCtx);
+        console.log(model)
       }
     };
     setupGL();
@@ -72,53 +86,75 @@ const CustomTestScreen = () => {
     }
   };
 
-  const yuvToRGBCallback = Worklets.createRunOnJS(async (frame: Frame, faces: Face[]) => {
-    const internal = frame as FrameInternal;
-    internal.incrementRefCount();
+  const yuvToRGBCallback = Worklets.createRunOnJS(
+    async (frame: Frame, faces: Face[], objectsModelOutput: any) => {
+      const internal = frame as FrameInternal;
+      internal.incrementRefCount();
 
-    const nativeBuffer = frame.getNativeBuffer();
-    const pointer = nativeBuffer.pointer;
+      const nativeBuffer = frame.getNativeBuffer();
+      const pointer = nativeBuffer.pointer;
 
-    // Hardware Buffer width/height are inverted
-    const textureWidth = frame.height;
-    const textureHeight = frame.width;
+      // Hardware Buffer width/height are inverted
+      const textureWidth = frame.height;
+      const textureHeight = frame.width;
 
-    try {
-      const textureId = await GLView.createTextureFromTexturePointer(gl.contextId, pointer);
-      internal.decrementRefCount();
-      nativeBuffer.delete();
+      try {
+        const textureId = await GLView.createTextureFromTexturePointer(gl.contextId, pointer);
+        internal.decrementRefCount();
+        nativeBuffer.delete();
 
-      checkGLError(gl, 'Creating Texture from Pointer');
-      const rgbTexture = renderYUVToRGB(
-        gl,
-        progYUV,
-        vtxBuffer,
-        frameBuffer,
-        textureId,
-        textureWidth,
-        textureHeight
-      );
-      checkGLError(gl, 'Rendering Yuv to RGB');
-      addFrame(rgbTexture, { textureWidth, textureHeight, faces:faces });
-    } catch (error) {
-      console.error('Error in HB upload:', error);
-      throw error;
+        checkGLError(gl, 'Creating Texture from Pointer');
+        const rgbTexture = renderYUVToRGB(
+          gl,
+          progYUV,
+          vtxBuffer,
+          frameBuffer,
+          textureId,
+          textureWidth,
+          textureHeight
+        );
+        checkGLError(gl, 'Rendering Yuv to RGB');
+        addFrame(rgbTexture, { textureWidth, textureHeight, faces, objectsModelOutput });
+      } catch (error) {
+        console.error('Error in HB upload:', error);
+        throw error;
+      }
     }
-  });
+  );
 
   const frameProcessor = useFrameProcessor(
     async (frame: Frame) => {
       'worklet';
       if (isProcessing) {
+        // 1. Resize 4k Frame to 192x192x3 using vision-camera-resize-plugin
+        const resized = resize(frame, {
+          scale: {
+            width: 192,
+            height: 192,
+          },
+          pixelFormat: 'rgb',
+          dataType: 'uint8',
+        });
+        console.log(resized.length)
+        const objectsModelOutput = model.runSync([resized]);
+        /*
+        // 3. Interpret outputs accordingly
+        const detection_boxes = outputs[0]
+        const detection_classes = outputs[1]
+        const detection_scores = outputs[2]
+        const num_detections = outputs[3]
+        console.log(`Detected ${num_detections[0]} objects!`);
+*/
+
         const faces = detectFaces(frame);
-        await yuvToRGBCallback(frame, faces);
+        await yuvToRGBCallback(frame, faces, objectsModelOutput);
       }
     },
     [isProcessing]
   );
 
   const handleScreenTap = useCallback(() => {
-    if (!isProcessing && gl != null) {
+    if (!isProcessing && gl != null && model != null) {
       setIsProcessing(true);
       setTimeout(() => {
         setIsProcessing(false);
@@ -128,7 +164,7 @@ const CustomTestScreen = () => {
         }, 1200);
       }, 2500);
     }
-  }, [isProcessing, gl]);
+  }, [isProcessing, gl, model]);
 
   return (
     <TouchableOpacity style={styles.container} onPress={handleScreenTap}>
@@ -139,8 +175,8 @@ const CustomTestScreen = () => {
             device={device}
             isActive
             frameProcessor={frameProcessor}
-            resizeMode="cover"
-            format={format4k30fps}
+            resizeMode="contain"
+            format={format108030fps}
           />
         ) : (
           <View style={styles.emptyContainer}>
