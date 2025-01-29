@@ -44,6 +44,15 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
         if (frame.metadata.faces) {
           console.log(frame.metadata.faces[0].bounds);
         }
+        if (frame.metadata.objectsModelOutput) {
+          const outputs = frame.metadata.objectsModelOutput;
+          const detection_boxes = outputs[0];
+          const detection_classes = outputs[1];
+          const detection_scores = outputs[2];
+          const num_detections = outputs[3];
+          console.log(`Detected ${num_detections[0]} objects!`);
+          console.log(`Detected Classes: ${detection_classes[1]} `);
+        }
 
         // Render the RGB texture to screen
         renderRGBToFramebuffer(
