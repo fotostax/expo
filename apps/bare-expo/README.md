@@ -11,3 +11,7 @@ Learn more about this project in [CONTRIBUTING.md](https://github.com/expo/expo/
   - ex: `yarn open ios Constants Crypto`
   - ex: `yarn open android Random`
 - Nuke `yarn nuke` (deletes all generated files for testing the setup scripts)
+
+## Considerations
+
+- `adb -s R5CW60ETW1B tcpip 5555`

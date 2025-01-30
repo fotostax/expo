@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 
-import { getGLContext } from './GLContextManager';
+import { getGLContext, resizeRGBTexture } from './GLContextManager';
 
 export interface ProcessedFrame {
   texture: WebGLTexture;
@@ -39,11 +39,41 @@ export const useGLBufferFrameManager = () => {
     return gl;
   }, []);
 
+  const processAllFramesAsync = useCallback(async () => {
+    // We should process the frames from the middle to the sides
+    if (frames) {
+      console.log(frames.length);
+      const mid = frames.length / 2.0;
+      console.log('mid = ' + mid);
+      let left = mid - 1;
+      let right = mid;
+      const targetWidth = 192;
+      const targetHeight = 192;
+      while (left >= 0 && right < frames.length) {
+        if (left >= 0) {
+          const resized = await resizeRGBTexture(frames[left].texture, targetWidth, targetHeight);
+          console.log(resized);
+          left -= 1;
+        }
+        if (right < frames.length) {
+          const resized = await resizeRGBTexture(frames[right].texture, targetWidth, targetHeight);
+          console.log(resized);
+          right += 1;
+        }
+        break;
+      }
+      console.log('Done Processing Frames.');
+    } else {
+      console.log('No frames have been stored in the buffer.');
+    }
+  }, [frames.length]);
+
   return {
     initializeContext,
     addFrame,
     deleteFrame,
     getFrameCount,
+    processAllFramesAsync,
     frames,
   };
 };

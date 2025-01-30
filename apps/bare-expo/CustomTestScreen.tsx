@@ -1,10 +1,10 @@
 import BufferViewer from 'components/BufferViewer';
-import { useGLBufferFrameManager } from 'components/GLBufferFrameManager';
+import { useGLBufferFrameManager, } from 'components/GLBufferFrameManager';
 import { renderYUVToRGB, checkGLError } from 'components/GLContextManager';
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { useTensorflowModel } from 'react-native-fast-tflite';
+//import { useTensorflowModel } from 'react-native-fast-tflite';
 import {
   Frame,
   FrameInternal,
@@ -19,10 +19,9 @@ import {
   FaceDetectionOptions,
 } from 'react-native-vision-camera-face-detector';
 import { Worklets } from 'react-native-worklets-core';
-import { useResizePlugin } from 'vision-camera-resize-plugin';
 
 const CustomTestScreen = () => {
-  const { initializeContext, addFrame, frames } = useGLBufferFrameManager();
+  const { initializeContext, addFrame, frames ,processAllFramesAsync} = useGLBufferFrameManager();
   const [gl, setGL] = useState(null);
   const [currentFrameId, setCurrentFrameId] = useState(0);
   const [isCameraActive, setIsCameraActive] = useState(true);
@@ -30,11 +29,11 @@ const CustomTestScreen = () => {
   const [progYUV, setProgYuv] = useState(null);
   const [vtxBuffer, setvtxBuffer] = useState(null);
   const [frameBuffer, setFrameBuffer] = useState(null);
+  /*
   const objectDetection = useTensorflowModel(require('assets/efficientdet.tflite'));
 
   const model = objectDetection.state === 'loaded' ? objectDetection.model : undefined;
-  
-  const { resize } = useResizePlugin();
+  */
 
   const device = useCameraDevice('front');
 
@@ -62,12 +61,16 @@ const CustomTestScreen = () => {
       if (glCtx) {
         setGL(glCtx);
         await onContextCreate(glCtx);
-        console.log(model)
       }
     };
     setupGL();
   }, [initializeContext]);
+/*
+  useEffect(() => {
+    setCurrentFrameId(frames.length / 2);
 
+  });
+*/
   // Function to prepare the GL context
   const onContextCreate = async (gl: ExpoWebGLRenderingContext) => {
     console.log('Preparing GL Context.');
@@ -86,57 +89,46 @@ const CustomTestScreen = () => {
     }
   };
 
-  const yuvToRGBCallback = Worklets.createRunOnJS(
-    async (frame: Frame, faces: Face[], objectsModelOutput: any) => {
-      const internal = frame as FrameInternal;
-      internal.incrementRefCount();
+  const yuvToRGBCallback = Worklets.createRunOnJS(async (frame: Frame, faces: Face[]) => {
+    const internal = frame as FrameInternal;
+    internal.incrementRefCount();
 
-      const nativeBuffer = frame.getNativeBuffer();
-      const pointer = nativeBuffer.pointer;
+    const nativeBuffer = frame.getNativeBuffer();
+    const pointer = nativeBuffer.pointer;
 
-      // Hardware Buffer width/height are inverted
-      const textureWidth = frame.height;
-      const textureHeight = frame.width;
+    // Hardware Buffer width/height are inverted
+    const textureWidth = frame.height;
+    const textureHeight = frame.width;
 
-      try {
-        const textureId = await GLView.createTextureFromTexturePointer(gl.contextId, pointer);
-        internal.decrementRefCount();
-        nativeBuffer.delete();
+    try {
+      const textureId = await GLView.createTextureFromTexturePointer(gl.contextId, pointer);
+      internal.decrementRefCount();
+      nativeBuffer.delete();
 
-        checkGLError(gl, 'Creating Texture from Pointer');
-        const rgbTexture = renderYUVToRGB(
-          gl,
-          progYUV,
-          vtxBuffer,
-          frameBuffer,
-          textureId,
-          textureWidth,
-          textureHeight
-        );
-        checkGLError(gl, 'Rendering Yuv to RGB');
-        addFrame(rgbTexture, { textureWidth, textureHeight, faces, objectsModelOutput });
-      } catch (error) {
-        console.error('Error in HB upload:', error);
-        throw error;
-      }
+      checkGLError(gl, 'Creating Texture from Pointer');
+      const rgbTexture = renderYUVToRGB(
+        gl,
+        progYUV,
+        vtxBuffer,
+        frameBuffer,
+        textureId,
+        textureWidth,
+        textureHeight
+      );
+      checkGLError(gl, 'Rendering Yuv to RGB');
+      addFrame(rgbTexture, { textureWidth, textureHeight, faces });
+    } catch (error) {
+      console.error('Error in HB upload:', error);
+      throw error;
     }
-  );
+  });
 
   const frameProcessor = useFrameProcessor(
     async (frame: Frame) => {
       'worklet';
       if (isProcessing) {
-        // 1. Resize 4k Frame to 192x192x3 using vision-camera-resize-plugin
-        const resized = resize(frame, {
-          scale: {
-            width: 192,
-            height: 192,
-          },
-          pixelFormat: 'rgb',
-          dataType: 'uint8',
-        });
-        console.log(resized.length)
-        const objectsModelOutput = model.runSync([resized]);
+        //console.log(resized.length)
+        //const objectsModelOutput = model.runSync([resized]);
         /*
         // 3. Interpret outputs accordingly
         const detection_boxes = outputs[0]
@@ -144,27 +136,28 @@ const CustomTestScreen = () => {
         const detection_scores = outputs[2]
         const num_detections = outputs[3]
         console.log(`Detected ${num_detections[0]} objects!`);
-*/
-
+        */
         const faces = detectFaces(frame);
-        await yuvToRGBCallback(frame, faces, objectsModelOutput);
+        await yuvToRGBCallback(frame, faces);
       }
     },
     [isProcessing]
   );
 
   const handleScreenTap = useCallback(() => {
-    if (!isProcessing && gl != null && model != null) {
+    if (!isProcessing && gl != null) {
       setIsProcessing(true);
       setTimeout(() => {
         setIsProcessing(false);
-        setTimeout(() => {
+        setTimeout(async () => {
           console.log('removing camera...');
           setIsCameraActive(false); // Render an empty view
         }, 1200);
       }, 2500);
     }
-  }, [isProcessing, gl, model]);
+  }, [isProcessing, gl]);
+
+
 
   return (
     <TouchableOpacity style={styles.container} onPress={handleScreenTap}>
@@ -173,7 +166,7 @@ const CustomTestScreen = () => {
           <Camera
             style={styles.camera}
             device={device}
-            isActive
+            isActive={isCameraActive}
             frameProcessor={frameProcessor}
             resizeMode="contain"
             format={format108030fps}
@@ -187,6 +180,7 @@ const CustomTestScreen = () => {
         <View style={styles.emptyView}>
           <BufferViewer
             frames={frames}
+            processAllFramesAsync={processAllFramesAsync}
             glContext={gl} // Pass the actual GL context if available
             id={currentFrameId}
             onChangeFrame={setCurrentFrameId}

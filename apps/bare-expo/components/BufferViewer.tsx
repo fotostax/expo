@@ -15,9 +15,16 @@ interface BufferViewerProps {
   glContext: GL.ExpoWebGLRenderingContext | null;
   id: number;
   onChangeFrame: (newId: number) => void;
+  processAllFramesAsync: () => void;
 }
 
-const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onChangeFrame }) => {
+const BufferViewer: React.FC<BufferViewerProps> = ({
+  frames,
+  glContext,
+  id,
+  onChangeFrame,
+  processAllFramesAsync,
+}) => {
   const [snapshot, setSnapshot] = useState<GL.GLSnapshot | null>(null);
   const [rgbToScreenProgram, setRgbToScreenProgram] = useState<WebGLProgram | null>(null);
   const [vertexBuffer, setVertexBuffer] = useState<WebGLBuffer | null>(null);
@@ -79,8 +86,9 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
       }
     };
     // Call the async function
+    processAllFramesAsync();
     renderFrame();
-  }, [glContext, frames, id, vertexBuffer, rgbToScreenProgram, frameBuffer]);
+  }, [glContext, frames, id, vertexBuffer, rgbToScreenProgram, frameBuffer, processAllFramesAsync]);
 
   return (
     <View style={styles.container}>

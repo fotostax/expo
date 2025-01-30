@@ -1,56 +1,12 @@
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import { Face } from 'react-native-vision-camera-face-detector';
+import * as FileSystem from 'expo-file-system';
 
 let glContext: ExpoWebGLRenderingContext | null = null;
 let rectangleProgram: WebGLProgram | null = null;
 let isLineWidthSupported: boolean = false;
-const debugMode: boolean = false;
-
-const vertexShaderSourceBlit = `
-precision mediump float;
-attribute vec3 position;
-attribute vec2 texcoord;
-varying vec2 vTexCoord;
-
-uniform vec2 scale;
-
-void main() {
-  gl_Position = vec4(position.xy * scale, position.z, 1.0);
-  vTexCoord = texcoord;
-}
-`;
-
-const fragmentShaderSourceBlit = `
-precision mediump float;
-varying vec2 vTexCoord;
-uniform sampler2D rgbTex;
-uniform vec4 borderColor; // Define the border color
-
-void main() {
-  if (vTexCoord.x < 0.0 || vTexCoord.x > 1.0 || vTexCoord.y < 0.0 || vTexCoord.y > 1.0) {
-    // Use border color for out-of-bounds texture coordinates
-    gl_FragColor = borderColor;
-  } else {
-    // Sample the texture for in-bounds coordinates
-    gl_FragColor = texture2D(rgbTex, vTexCoord);
-  }
-}
-`;
-
-const vertexShaderSourceRectangle = `
-precision mediump float;
-attribute vec3 position;
-void main() {
-  gl_Position = vec4(position, 1.0);
-}
-`;
-const fragmentShaderSourceRectangle = `
-precision mediump float;
-uniform vec4 color;
-void main() {
-  gl_FragColor = color;
-}
-`;
+let resizeShader: WebGLShader | null = null;
+const debugMode: boolean = true;
 
 export const checkGLError = (gl: ExpoWebGLRenderingContext, message: string) => {
   if (!debugMode) {
@@ -83,6 +39,37 @@ export const clearGLContext = () => {
 };
 
 export const prepareForRgbToScreen = (glCtx: ExpoWebGLRenderingContext) => {
+  const vertexShaderSourceBlit = `
+  precision mediump float;
+  attribute vec3 position;
+  attribute vec2 texcoord;
+  varying vec2 vTexCoord;
+
+  uniform vec2 scale;
+
+  void main() {
+    gl_Position = vec4(position.xy * scale, position.z, 1.0);
+    vTexCoord = texcoord;
+  }
+  `;
+
+  const fragmentShaderSourceBlit = `
+  precision mediump float;
+  varying vec2 vTexCoord;
+  uniform sampler2D rgbTex;
+  uniform vec4 borderColor; // Define the border color
+
+  void main() {
+    if (vTexCoord.x < 0.0 || vTexCoord.x > 1.0 || vTexCoord.y < 0.0 || vTexCoord.y > 1.0) {
+      // Use border color for out-of-bounds texture coordinates
+      gl_FragColor = borderColor;
+    } else {
+      // Sample the texture for in-bounds coordinates
+      gl_FragColor = texture2D(rgbTex, vTexCoord);
+    }
+  }
+  `;
+
   const vertBlit = glCtx.createShader(glCtx.VERTEX_SHADER);
   glCtx.shaderSource(vertBlit, vertexShaderSourceBlit);
   glCtx.compileShader(vertBlit);
@@ -101,8 +88,61 @@ export const prepareForRgbToScreen = (glCtx: ExpoWebGLRenderingContext) => {
 
   return progBlit;
 };
+// Helper function to create a resize shader
+export const createResizeShader = (gl: ExpoWebGLRenderingContext): WebGLProgram => {
+  const vertexShaderSource = `
+    attribute vec4 position;
+    varying vec2 texCoord;
+    void main() {
+      gl_Position = position;
+      texCoord = (position.xy + 1.0) / 2.0;
+    }
+  `;
+
+  const fragmentShaderSource = `
+    precision mediump float;
+    uniform sampler2D texture;
+    varying vec2 texCoord;
+    void main() {
+      gl_FragColor = texture2D(texture, texCoord);
+    }
+  `;
+
+  const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vertexShader, vertexShaderSource);
+  gl.compileShader(vertexShader);
+
+  const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fragmentShader, fragmentShaderSource);
+  gl.compileShader(fragmentShader);
+
+  const shaderProgram = gl.createProgram();
+  gl.attachShader(shaderProgram, vertexShader);
+  gl.attachShader(shaderProgram, fragmentShader);
+  gl.linkProgram(shaderProgram);
+
+  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+    console.error('Could not initialize shaders');
+  }
+
+  return shaderProgram;
+};
 
 export const prepareRectangleShader = (glCtx: ExpoWebGLRenderingContext) => {
+  const vertexShaderSourceRectangle = `
+    precision mediump float;
+    attribute vec3 position;
+    void main() {
+      gl_Position = vec4(position, 1.0);
+    }
+    `;
+  const fragmentShaderSourceRectangle = `
+    precision mediump float;
+    uniform vec4 color;
+    void main() {
+      gl_FragColor = color;
+    }
+    `;
   const vertRectangle = glCtx.createShader(glCtx.VERTEX_SHADER);
   glCtx.shaderSource(vertRectangle, vertexShaderSourceRectangle);
   glCtx.compileShader(vertRectangle);
@@ -314,4 +354,76 @@ export const createVertexBuffer = (gl: ExpoWebGLRenderingContext) => {
   gl.bindBuffer(gl.ARRAY_BUFFER, vtxBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
   return vtxBuffer;
+};
+
+export const resizeRGBTexture = async (texture: WebGLTexture, width: number, height: number) => {
+  if (!glContext) {
+    console.log('No context has been created. Please create one');
+    return new Uint8Array([]);
+  }
+
+  // Create a framebuffer and bind the texture
+  const framebuffer = glContext.createFramebuffer();
+  glContext.bindFramebuffer(glContext.FRAMEBUFFER, framebuffer);
+  glContext.viewport(0, 0, width, height);
+
+  glContext.framebufferTexture2D(
+    glContext.FRAMEBUFFER,
+    glContext.COLOR_ATTACHMENT0,
+    glContext.TEXTURE_2D,
+    texture,
+    0
+  );
+  if (!resizeShader) {
+    resizeShader = createResizeShader(glContext);
+  }
+
+  glContext.useProgram(resizeShader);
+
+  drawFullScreenQuad(glContext);
+
+  try {
+    const snap = await GLView.takeSnapshotAsync(glContext, { flip: false });
+
+    if (debugMode) {
+      console.log('Snapshot URI:', snap.uri);
+    }
+
+    const fileData = await FileSystem.readAsStringAsync(snap.uri as string, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    const binaryData = Uint8Array.from(atob(fileData), (c) => c.charCodeAt(0));
+
+    glContext.deleteFramebuffer(framebuffer);
+
+    return binaryData;
+  } catch (error) {
+    console.error('Error capturing snapshot:', error);
+    return new Uint8Array([]);
+  }
+};
+
+// Helper function to draw a full-screen quad
+const drawFullScreenQuad = (gl: ExpoWebGLRenderingContext) => {
+  const vertices = new Float32Array([
+    -1,
+    -1, // Bottom-left
+    1,
+    -1, // Bottom-right
+    -1,
+    1, // Top-left
+    1,
+    1, // Top-right
+  ]);
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+  const positionLocation = gl.getAttribLocation(gl.getParameter(gl.CURRENT_PROGRAM), 'position');
+  gl.enableVertexAttribArray(positionLocation);
+  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 };
