@@ -361,7 +361,6 @@ export const resizeRGBTexture = async (texture: WebGLTexture, width: number, hei
     return new Uint8Array([]);
   }
 
-  // Create a framebuffer and bind the texture
   const framebuffer = glContext.createFramebuffer();
   glContext.bindFramebuffer(glContext.FRAMEBUFFER, framebuffer);
   glContext.viewport(0, 0, width, height);
@@ -373,37 +372,23 @@ export const resizeRGBTexture = async (texture: WebGLTexture, width: number, hei
     texture,
     0
   );
+
   if (!resizeShader) {
     resizeShader = createResizeShader(glContext);
   }
-
   glContext.useProgram(resizeShader);
-
   drawFullScreenQuad(glContext);
 
-  try {
-    const snap = await GLView.takeSnapshotAsync(glContext, { flip: false });
+  // Read raw pixel data (not compressed)
+  const pixels = new Uint8Array(width * height * 4); // RGBA
+  glContext.readPixels(0, 0, width, height, glContext.RGBA, glContext.UNSIGNED_BYTE, pixels);
 
-    const fileData = await FileSystem.readAsStringAsync(snap.uri as string, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+  // Cleanup
+  glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);
+  glContext.deleteFramebuffer(framebuffer);
 
-    const binaryData = Uint8Array.from(atob(fileData), (c) => c.charCodeAt(0));
-    if (debugMode) {
-      console.log('Snapshot URI:', snap.uri);
-      console.log('Lenght of the array: ' + binaryData.length);
-    }
-
-    glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);
-    glContext.deleteFramebuffer(framebuffer);
-
-    return binaryData;
-  } catch (error) {
-    console.error('Error capturing snapshot:', error);
-    return new Uint8Array([]);
-  }
+  return pixels;
 };
-
 export const clearFramebuffer = (
   gl: ExpoWebGLRenderingContext,
   framebuffer: WebGLFramebuffer | null

@@ -67,7 +67,7 @@ const CustomTestScreen = () => {
   }, [initializeContext]);
 
   useEffect(() => {
-    setCurrentFrameId(frames.length / 2);
+    setCurrentFrameId(Math.floor(frames.length / 2) as number);
   }, [frames.length]);
 
   // Function to prepare the GL context
