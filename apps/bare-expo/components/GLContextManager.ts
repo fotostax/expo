@@ -1,6 +1,6 @@
+import * as FileSystem from 'expo-file-system';
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import { Face } from 'react-native-vision-camera-face-detector';
-import * as FileSystem from 'expo-file-system';
 
 let glContext: ExpoWebGLRenderingContext | null = null;
 let rectangleProgram: WebGLProgram | null = null;
@@ -124,7 +124,6 @@ export const createResizeShader = (gl: ExpoWebGLRenderingContext): WebGLProgram 
   if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
     console.error('Could not initialize shaders');
   }
-
   return shaderProgram;
 };
 
@@ -385,16 +384,17 @@ export const resizeRGBTexture = async (texture: WebGLTexture, width: number, hei
   try {
     const snap = await GLView.takeSnapshotAsync(glContext, { flip: false });
 
-    if (debugMode) {
-      console.log('Snapshot URI:', snap.uri);
-    }
-
     const fileData = await FileSystem.readAsStringAsync(snap.uri as string, {
       encoding: FileSystem.EncodingType.Base64,
     });
 
     const binaryData = Uint8Array.from(atob(fileData), (c) => c.charCodeAt(0));
+    if (debugMode) {
+      console.log('Snapshot URI:', snap.uri);
+      console.log('Lenght of the array: ' + binaryData.length);
+    }
 
+    glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);
     glContext.deleteFramebuffer(framebuffer);
 
     return binaryData;
@@ -402,6 +402,16 @@ export const resizeRGBTexture = async (texture: WebGLTexture, width: number, hei
     console.error('Error capturing snapshot:', error);
     return new Uint8Array([]);
   }
+};
+
+export const clearFramebuffer = (
+  gl: ExpoWebGLRenderingContext,
+  framebuffer: WebGLFramebuffer | null
+) => {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+  gl.clearColor(0.0, 0.0, 0.0, 0.0); // Black with full transparency
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); // Unbind framebuffer to avoid issues
 };
 
 // Helper function to draw a full-screen quad

@@ -90,11 +90,8 @@ class GLObjectManagerModule : Module() {
     AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: String, promise: Promise ->
       val context = mGLContextMap[exglCtxId]
         ?: throw InvalidGLContextException()
-      Log.i("GLObjectManagerModule","Calling push texture from native buffer")
       // Convert the hex string back to a ULong, then to a signed jlong
       val pointer = pointerString.toULong(16).toLong()
-      
-      Log.i("GLObjectManagerModule", "Reconstructed Pointer from string: $pointer (hex: 0x" + pointer.toULong().toString(16) + ")")
       val exglObjId = context.push_texture_from_native_buffer(pointer)
       promise.resolve(exglObjId)
     }
@@ -102,7 +99,6 @@ class GLObjectManagerModule : Module() {
     AsyncFunction("createAHardwareBufferAsync") {option: Int,promise: Promise ->
       // Call the JNI method to create a hardware buffer
       Log.i("GLObjectManagerModule"," Pre Option : $option .")
-
       val pointer = EXGLContextCreateTestHardwareBuffer(option)
       
       // Cast to unsigned to avoid negative numbers
