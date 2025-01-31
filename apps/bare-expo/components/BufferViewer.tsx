@@ -40,7 +40,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
 
   useEffect(() => {
     const renderFrame = async () => {
-      if (glContext && frames[id] && vertexBuffer && frameBuffer) {
+      if (glContext && vertexBuffer && frameBuffer) {
         const frame = frames[id];
         console.log('Current Id = ' + id);
         /*
