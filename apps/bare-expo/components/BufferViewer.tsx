@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import * as GL from 'expo-gl';
 import React, { useEffect, useState } from 'react';
-import { View, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Image, StyleSheet, TouchableOpacity, Text } from 'react-native'; // Added Text import
 
 import { ProcessedFrame } from './GLBufferFrameManager';
 import {
@@ -24,7 +24,6 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
   const [vertexBuffer, setVertexBuffer] = useState<WebGLBuffer | null>(null);
   const [frameBuffer, setFrameBuffer] = useState<WebGLFramebuffer | null>(null);
 
-  // Update snapshot whenever the frame changes
   useEffect(() => {
     if (glContext) {
       const program = prepareForRgbToScreen(glContext);
@@ -43,41 +42,28 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
       if (glContext && vertexBuffer && frameBuffer) {
         const frame = frames[id];
         console.log('Current Id = ' + id);
-        /*
-        if (frame.metadata.faces) {
-          console.log(frame.metadata.faces[0].bounds);
-        }
-        if (frame.metadata.resized) {
-          console.log(frame.metadata.resized);
-        }
-        */
-        //clearFramebuffer(glContext, frameBuffer);
 
-        // Render the RGB texture to screen
         renderRGBToFramebuffer(
           glContext,
           rgbToScreenProgram,
           vertexBuffer,
           frame.texture,
-          frame.metadata['textureWidth'], // Read width from metadata
-          frame.metadata['textureHeight'], // Read height from metadata
+          frame.metadata['textureWidth'],
+          frame.metadata['textureHeight'],
           frameBuffer,
           frame.metadata.faces
         );
         glContext.endFrameEXP();
 
-        // Optionally delete previous snapshot
         if (snapshot && snapshot.uri) {
           await FileSystem.deleteAsync(snapshot.uri as string, { idempotent: true });
         }
-        // Take a snapshot of the current GL context
         const snap = await GL.GLView.takeSnapshotAsync(glContext, {
           flip: false,
         });
         setSnapshot(snap);
       }
     };
-    // Call the async function
     renderFrame();
   }, [glContext, frames, id, vertexBuffer, rgbToScreenProgram, frameBuffer]);
 
@@ -92,6 +78,12 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
             resizeMode="cover"
           />
         )}
+      </View>
+      {/* Frame counter display */}
+      <View style={styles.frameCounter}>
+        <Text style={styles.frameText}>
+          {id + 1}/{frames.length}
+        </Text>
       </View>
       <View style={styles.navigationContainer}>
         <TouchableOpacity
@@ -140,5 +132,19 @@ const styles = StyleSheet.create({
   },
   rightButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  },
+  // New styles for frame counter
+  frameCounter: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 5,
+  },
+  frameText: {
+    color: 'white',
+    fontSize: 16,
   },
 });
