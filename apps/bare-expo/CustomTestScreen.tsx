@@ -1,5 +1,5 @@
 import BufferViewer from 'components/BufferViewer';
-import { useGLBufferFrameManager, } from 'components/GLBufferFrameManager';
+import { useGLBufferFrameManager } from 'components/GLBufferFrameManager';
 import { renderYUVToRGB, checkGLError } from 'components/GLContextManager';
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -21,11 +21,11 @@ import {
 import { Worklets } from 'react-native-worklets-core';
 
 const CustomTestScreen = () => {
-  const { initializeContext, addFrame, frames ,processAllFramesAsync} = useGLBufferFrameManager();
+  const { initializeContext, addFrame, frames, processAllFramesAsync } = useGLBufferFrameManager();
   const [gl, setGL] = useState(null);
   const [currentFrameId, setCurrentFrameId] = useState(0);
   const [isCameraActive, setIsCameraActive] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isFrameProcessorActive, setisFrameProcessorActive] = useState(false);
   const [progYUV, setProgYuv] = useState(null);
   const [vtxBuffer, setvtxBuffer] = useState(null);
   const [frameBuffer, setFrameBuffer] = useState(null);
@@ -65,12 +65,11 @@ const CustomTestScreen = () => {
     };
     setupGL();
   }, [initializeContext]);
-/*
+
   useEffect(() => {
     setCurrentFrameId(frames.length / 2);
+  }, [frames.length]);
 
-  });
-*/
   // Function to prepare the GL context
   const onContextCreate = async (gl: ExpoWebGLRenderingContext) => {
     console.log('Preparing GL Context.');
@@ -126,7 +125,7 @@ const CustomTestScreen = () => {
   const frameProcessor = useFrameProcessor(
     async (frame: Frame) => {
       'worklet';
-      if (isProcessing) {
+      if (isFrameProcessorActive) {
         //console.log(resized.length)
         //const objectsModelOutput = model.runSync([resized]);
         /*
@@ -141,23 +140,27 @@ const CustomTestScreen = () => {
         await yuvToRGBCallback(frame, faces);
       }
     },
-    [isProcessing]
+    [isFrameProcessorActive]
   );
 
   const handleScreenTap = useCallback(() => {
-    if (!isProcessing && gl != null) {
-      setIsProcessing(true);
+    if (!isFrameProcessorActive && gl != null) {
+      setisFrameProcessorActive(true);
       setTimeout(() => {
-        setIsProcessing(false);
+        setisFrameProcessorActive(false);
         setTimeout(async () => {
           console.log('removing camera...');
           setIsCameraActive(false); // Render an empty view
         }, 1200);
       }, 2500);
     }
-  }, [isProcessing, gl]);
+  }, [isFrameProcessorActive, gl]);
 
-
+  useEffect(() => {
+    if (!isCameraActive) {
+      processAllFramesAsync();
+    }
+  }, [isCameraActive]);
 
   return (
     <TouchableOpacity style={styles.container} onPress={handleScreenTap}>
@@ -180,7 +183,6 @@ const CustomTestScreen = () => {
         <View style={styles.emptyView}>
           <BufferViewer
             frames={frames}
-            processAllFramesAsync={processAllFramesAsync}
             glContext={gl} // Pass the actual GL context if available
             id={currentFrameId}
             onChangeFrame={setCurrentFrameId}

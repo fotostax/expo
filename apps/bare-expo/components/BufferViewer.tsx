@@ -5,6 +5,7 @@ import { View, Image, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ProcessedFrame } from './GLBufferFrameManager';
 import {
+  clearFramebuffer,
   createVertexBuffer,
   prepareForRgbToScreen,
   renderRGBToFramebuffer,
@@ -15,16 +16,9 @@ interface BufferViewerProps {
   glContext: GL.ExpoWebGLRenderingContext | null;
   id: number;
   onChangeFrame: (newId: number) => void;
-  processAllFramesAsync: () => void;
 }
 
-const BufferViewer: React.FC<BufferViewerProps> = ({
-  frames,
-  glContext,
-  id,
-  onChangeFrame,
-  processAllFramesAsync,
-}) => {
+const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onChangeFrame }) => {
   const [snapshot, setSnapshot] = useState<GL.GLSnapshot | null>(null);
   const [rgbToScreenProgram, setRgbToScreenProgram] = useState<WebGLProgram | null>(null);
   const [vertexBuffer, setVertexBuffer] = useState<WebGLBuffer | null>(null);
@@ -40,7 +34,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
       setVertexBuffer(vtxBuffer);
       setFrameBuffer(fb);
       console.log('program :', program);
-      console.log(frames.length);
+      console.log('total frames loaded : ' + frames.length);
     }
   }, [glContext]);
 
@@ -48,18 +42,16 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
     const renderFrame = async () => {
       if (glContext && frames[id] && vertexBuffer && frameBuffer) {
         const frame = frames[id];
+        console.log('Current Id = ' + id);
+        /*
         if (frame.metadata.faces) {
           console.log(frame.metadata.faces[0].bounds);
         }
-        if (frame.metadata.objectsModelOutput) {
-          const outputs = frame.metadata.objectsModelOutput;
-          const detection_boxes = outputs[0];
-          const detection_classes = outputs[1];
-          const detection_scores = outputs[2];
-          const num_detections = outputs[3];
-          console.log(`Detected ${num_detections[0]} objects!`);
-          console.log(`Detected Classes: ${detection_classes[1]} `);
+        if (frame.metadata.resized) {
+          console.log(frame.metadata.resized);
         }
+        */
+        //clearFramebuffer(glContext, frameBuffer);
 
         // Render the RGB texture to screen
         renderRGBToFramebuffer(
@@ -86,9 +78,8 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
       }
     };
     // Call the async function
-    processAllFramesAsync();
     renderFrame();
-  }, [glContext, frames, id, vertexBuffer, rgbToScreenProgram, frameBuffer, processAllFramesAsync]);
+  }, [glContext, frames, id, vertexBuffer, rgbToScreenProgram, frameBuffer]);
 
   return (
     <View style={styles.container}>
