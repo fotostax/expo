@@ -4,7 +4,6 @@ import { renderYUVToRGB, checkGLError } from 'components/GLContextManager';
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-//import { useTensorflowModel } from 'react-native-fast-tflite';
 import {
   Frame,
   FrameInternal,
@@ -29,11 +28,7 @@ const CustomTestScreen = () => {
   const [progYUV, setProgYuv] = useState(null);
   const [vtxBuffer, setvtxBuffer] = useState(null);
   const [frameBuffer, setFrameBuffer] = useState(null);
-  /*
-  const objectDetection = useTensorflowModel(require('assets/efficientdet.tflite'));
 
-  const model = objectDetection.state === 'loaded' ? objectDetection.model : undefined;
-  */
 
   const device = useCameraDevice('front');
 
@@ -126,16 +121,6 @@ const CustomTestScreen = () => {
     async (frame: Frame) => {
       'worklet';
       if (isFrameProcessorActive) {
-        //console.log(resized.length)
-        //const objectsModelOutput = model.runSync([resized]);
-        /*
-        // 3. Interpret outputs accordingly
-        const detection_boxes = outputs[0]
-        const detection_classes = outputs[1]
-        const detection_scores = outputs[2]
-        const num_detections = outputs[3]
-        console.log(`Detected ${num_detections[0]} objects!`);
-        */
         const faces = detectFaces(frame);
         await yuvToRGBCallback(frame, faces);
       }

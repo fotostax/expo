@@ -1,4 +1,3 @@
-import * as FileSystem from 'expo-file-system';
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import { Face } from 'react-native-vision-camera-face-detector';
 

@@ -42,7 +42,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
       if (glContext && vertexBuffer && frameBuffer) {
         const frame = frames[id];
         console.log('Current Id = ' + id);
-
+        console.log(frame.metadata.objectsModelOutput);
         renderRGBToFramebuffer(
           glContext,
           rgbToScreenProgram,
