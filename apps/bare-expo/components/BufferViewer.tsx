@@ -7,6 +7,7 @@ import { ProcessedFrame, COCO_LABELS } from './GLBufferFrameManager';
 import {
   clearFramebuffer,
   createVertexBuffer,
+  drawObjectDetectionOutput,
   prepareForRgbToScreen,
   renderRGBToFramebuffer,
 } from './GLContextManager';
@@ -51,7 +52,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
             console.log(`Frame ${id}: Detected ${labelName} with confidence ${detectionScores[i]}`);
           }
         }
-
+        //console.log(frame.metadata.resizedTexture);
         renderRGBToFramebuffer(
           glContext,
           rgbToScreenProgram,
@@ -60,8 +61,14 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
           frame.metadata['textureWidth'],
           frame.metadata['textureHeight'],
           frameBuffer,
-          frame.metadata.faces,
-          frame.metadata.objectDetectionOutput
+          frame.metadata.faces
+        );
+
+        drawObjectDetectionOutput(
+          frame.metadata.objectDetectionOutput,
+          glContext,
+          frame.metadata['textureWidth'],
+          frame.metadata['textureHeight']
         );
 
         glContext.endFrameEXP();
