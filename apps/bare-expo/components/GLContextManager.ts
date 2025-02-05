@@ -159,37 +159,38 @@ export const prepareRectangleShader = (glCtx: ExpoWebGLRenderingContext) => {
 
   return progRectangle;
 };
-
 export const drawRectangle = (
   gl: ExpoWebGLRenderingContext,
   programRectangle: WebGLProgram,
   bounds: { x: number; y: number; width: number; height: number },
   textureWidth: number,
   textureHeight: number,
+  color: [number, number, number, number] = [1.0, 0.0, 0.0, 1.0], // default color (red)
   strokeWidth: number = 1,
-  isNormalized: boolean = false
+  areBoundsNormalized: boolean = false
 ) => {
   gl.useProgram(programRectangle);
 
-  let rectVertices = null;
-  if (!isNormalized) {
-    rectVertices = new Float32Array([
-      (bounds.x / textureWidth) * 2 - 1,
-      (bounds.y / textureHeight) * -2 + 1,
-      0.0,
-      ((bounds.x + bounds.width) / textureWidth) * 2 - 1,
-      (bounds.y / textureHeight) * -2 + 1,
-      0.0,
-      ((bounds.x + bounds.width) / textureWidth) * 2 - 1,
-      ((bounds.y + bounds.height) / textureHeight) * -2 + 1,
-      0.0,
-      (bounds.x / textureWidth) * 2 - 1,
-      ((bounds.y + bounds.height) / textureHeight) * -2 + 1,
-      0.0,
-    ]);
+  let x1, y1, x2, y2;
+
+  if (areBoundsNormalized) {
+    // If bounds are normalized (0-1) where (0,0) is the top-left,
+    // convert them directly to clip space.
+    // For x: clip = value * 2 - 1.
+    // For y: clip = 1 - value * 2.
+    x1 = bounds.x * 2 - 1;
+    y1 = 1 - bounds.y * 2;
+    x2 = (bounds.x + bounds.width) * 2 - 1;
+    y2 = 1 - (bounds.y + bounds.height) * 2;
   } else {
-    rectVertices = bounds;
+    // Assume bounds are in pixel coordinates. Normalize them by the texture dimensions first.
+    x1 = (bounds.x / textureWidth) * 2 - 1;
+    y1 = 1 - (bounds.y / textureHeight) * 2;
+    x2 = ((bounds.x + bounds.width) / textureWidth) * 2 - 1;
+    y2 = 1 - ((bounds.y + bounds.height) / textureHeight) * 2;
   }
+
+  const rectVertices = new Float32Array([x1, y1, 0.0, x2, y1, 0.0, x2, y2, 0.0, x1, y2, 0.0]);
 
   const rectBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, rectBuffer);
@@ -199,16 +200,18 @@ export const drawRectangle = (
   gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(posLoc);
 
+  // Use the passed-in color for drawing the rectangle.
   const colorLoc = gl.getUniformLocation(programRectangle, 'color');
-  gl.uniform4f(colorLoc, 1.0, 0.0, 0.0, 1.0); // Red color
+  gl.uniform4f(colorLoc, color[0], color[1], color[2], color[3]);
 
-  if (isLineWidthSupported) {
+  if (typeof isLineWidthSupported !== 'undefined' && isLineWidthSupported) {
     gl.lineWidth(strokeWidth);
   }
 
   gl.drawArrays(gl.LINE_LOOP, 0, 4);
   gl.disableVertexAttribArray(posLoc);
 };
+
 export const renderRGBToFramebuffer = (
   gl: ExpoWebGLRenderingContext,
   programBlit: WebGLProgram,
@@ -217,8 +220,7 @@ export const renderRGBToFramebuffer = (
   textureWidth: number,
   textureHeight: number,
   framebuffer: WebGLFramebuffer,
-  faces: Face[],
-  objectDetectionOutput: any
+  faces: Face[]
 ) => {
   // Bind the texture before attaching it to the framebuffer
   gl.bindTexture(gl.TEXTURE_2D, rgbTexture);
@@ -268,40 +270,64 @@ export const renderRGBToFramebuffer = (
   // Draw rectangles around faces (if any)
   if (faces && faces.length > 0) {
     faces.forEach((face) => {
-      drawRectangle(gl, rectangleProgram, face.bounds, textureWidth, textureHeight, 3);
+      drawRectangle(
+        gl,
+        rectangleProgram,
+        face.bounds,
+        textureWidth,
+        textureHeight,
+        [1.0, 0.0, 0.0, 1.0],
+        3,
+        false
+      );
     });
   }
+};
+export const drawObjectDetectionOutput = (
+  objectDetectionOutput: any,
+  gl: ExpoWebGLRenderingContext,
+  textureWidth: number,
+  textureHeight: number,
+  strokeWidth: number = 3
+) => {
+  if (!objectDetectionOutput) return;
 
-  // Draw rectangles for object detection outputs with confidence > 0.7
-  if (objectDetectionOutput) {
-    const detection_boxes = objectDetectionOutput[0];
-    const detection_classes = objectDetectionOutput[1];
-    const detection_scores = objectDetectionOutput[2];
-    const num_detections = objectDetectionOutput[3];
-    let maxConf = -1;
+  // Ensure your rectangle shader program is available.
+  if (rectangleProgram == null) {
+    rectangleProgram = prepareRectangleShader(gl);
+  }
 
-    for (let i = 0; i < detection_boxes.length; i += 4) {
-      const confidence = detection_scores[i / 4];
-      maxConf = Math.max(maxConf, confidence);
-      if (confidence > 0.5) {
-        // Retrieve coordinates from the flat array
-        const left = detection_boxes[i];
-        const top = detection_boxes[i + 1];
-        const right = detection_boxes[i + 2];
-        const bottom = detection_boxes[i + 3];
+  const detection_boxes = objectDetectionOutput[0];
+  const detection_scores = objectDetectionOutput[2];
 
-        const bounds = {
-          x: left,
-          y: top,
-          width: right - left,
-          height: bottom - top,
-        };
-        console.log('drawing texture : ');
-        // Draw the rectangle using the calculated bounds.
-        drawRectangle(gl, rectangleProgram, bounds, textureWidth, textureHeight, 3, true);
-      }
+  for (let i = 0; i < detection_boxes.length; i += 4) {
+    const confidence = detection_scores[i / 4];
+    if (confidence > 0.5) {
+      const left = detection_boxes[i];
+      const top = detection_boxes[i + 1];
+      const right = detection_boxes[i + 2];
+      const bottom = detection_boxes[i + 3];
+
+      const bounds = {
+        x: left,
+        y: top,
+        width: right - left,
+        height: bottom - top,
+      };
+
+      //console.log('Drawing detection rectangle with bounds (normalized):', bounds);
+
+      drawRectangle(
+        gl,
+        rectangleProgram,
+        bounds,
+        textureWidth,
+        textureHeight,
+        [0.0, 0.0, 1.0, 1.0],
+        strokeWidth,
+        true
+      );
     }
-    console.log('Max confidence is :' + maxConf);
   }
 };
 
@@ -403,7 +429,6 @@ export const createVertexBuffer = (gl: ExpoWebGLRenderingContext) => {
   gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
   return vtxBuffer;
 };
-
 export const resizeRGBTexture = async (
   inputTexture: WebGLTexture,
   width: number,
@@ -411,7 +436,7 @@ export const resizeRGBTexture = async (
 ) => {
   if (!glContext) {
     console.log('No context has been created. Please create one');
-    return new Uint8Array([]);
+    return { pixels: new Uint8Array([]), resizedTexture: null };
   }
 
   // Create a new texture for the resized output
@@ -420,11 +445,11 @@ export const resizeRGBTexture = async (
   glContext.texImage2D(
     glContext.TEXTURE_2D,
     0,
-    glContext.RGB, // Set internal format to RGB
+    glContext.RGB, // Internal format: RGB
     width,
     height,
     0,
-    glContext.RGB, // Set format to RGB
+    glContext.RGB, // Format: RGB
     glContext.UNSIGNED_BYTE,
     null
   );
@@ -433,6 +458,7 @@ export const resizeRGBTexture = async (
   glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_WRAP_S, glContext.CLAMP_TO_EDGE);
   glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_WRAP_T, glContext.CLAMP_TO_EDGE);
 
+  // Create a framebuffer and attach the new texture to it
   const framebuffer = glContext.createFramebuffer();
   glContext.bindFramebuffer(glContext.FRAMEBUFFER, framebuffer);
   glContext.framebufferTexture2D(
@@ -446,7 +472,7 @@ export const resizeRGBTexture = async (
   // Check if framebuffer is complete
   if (glContext.checkFramebufferStatus(glContext.FRAMEBUFFER) !== glContext.FRAMEBUFFER_COMPLETE) {
     console.error('Framebuffer is incomplete!');
-    return null;
+    return { pixels: null, resizedTexture: null };
   }
   glContext.viewport(0, 0, width, height);
 
@@ -454,25 +480,30 @@ export const resizeRGBTexture = async (
     resizeShader = createResizeShader(glContext);
   }
   glContext.useProgram(resizeShader);
+
   // Bind the input texture (the one passed to this function)
   glContext.activeTexture(glContext.TEXTURE0);
   glContext.bindTexture(glContext.TEXTURE_2D, inputTexture);
-  // Set uniform
+
+  // Set uniform for the shader
   const inputTextureLocation = glContext.getUniformLocation(resizeShader, 'texture');
   glContext.uniform1i(inputTextureLocation, 0);
 
+  // Render the full-screen quad to copy/resize the texture
   drawFullScreenQuad(glContext);
 
-  // Read raw pixel data (not compressed)
-  const pixels = new Uint8Array(width * height * 3); // RGB
+  // Read raw pixel data (RGB only)
+  const pixels = new Uint8Array(width * height * 3);
   glContext.readPixels(0, 0, width, height, glContext.RGB, glContext.UNSIGNED_BYTE, pixels);
 
-  // Cleanup
+  // Cleanup: unbind framebuffer and delete it (texture is kept for later use)
   glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);
   glContext.deleteFramebuffer(framebuffer);
 
-  return pixels;
+  // Return both the pixel data and the resized texture.
+  return { pixels, resizedTexture };
 };
+
 export const clearFramebuffer = (
   gl: ExpoWebGLRenderingContext,
   framebuffer: WebGLFramebuffer | null

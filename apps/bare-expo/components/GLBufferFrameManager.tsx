@@ -127,6 +127,7 @@ export const useGLBufferFrameManager = () => {
     console.log('GL context initialized or reused:', gl);
     return gl;
   }, []);
+
   const processAllFramesAsync = useCallback(async () => {
     if (model == null) {
       console.log('No model was loaded');
@@ -148,8 +149,12 @@ export const useGLBufferFrameManager = () => {
     while (left >= 0 || right < frames.length) {
       // Process left-side frames
       if (left >= 0) {
-        const resized = await resizeRGBTexture(frames[left].texture, targetWidth, targetHeight);
-        const output = await model.run([resized]);
+        const { pixels, resizedTexture } = await resizeRGBTexture(
+          frames[left].texture,
+          targetWidth,
+          targetHeight
+        );
+        const output = await model.run([pixels]);
 
         // Clone outputs to avoid buffer reuse issues.
         const objectDetectionOutput = [
@@ -179,8 +184,9 @@ export const useGLBufferFrameManager = () => {
           ...frames[left],
           metadata: {
             ...frames[left].metadata,
-            resizedArray: resized,
+            resizedArray: pixels,
             objectDetectionOutput,
+            resizedTexture,
             detectedObjects,
           },
         };
@@ -189,8 +195,12 @@ export const useGLBufferFrameManager = () => {
 
       // Process right-side frames
       if (right < frames.length) {
-        const resized = await resizeRGBTexture(frames[right].texture, targetWidth, targetHeight);
-        const output = await model.run([resized]);
+        const { pixels, resizedTexture } = await resizeRGBTexture(
+          frames[right].texture,
+          targetWidth,
+          targetHeight
+        );
+        const output = await model.run([pixels]);
 
         const objectDetectionOutput = [
           output[0].slice(),
@@ -205,7 +215,7 @@ export const useGLBufferFrameManager = () => {
         // Declare and build detectedObjects array for right-side frame
         const detectedObjects: [string, number][] = [];
         for (let i = 0; i < detectionScores.length; i++) {
-          if (detectionScores[i] > 0.50) {
+          if (detectionScores[i] > 0.5) {
             const labelIndex = detectionClasses[i];
             const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
             detectedObjects.push([labelName, detectionScores[i]]);
@@ -219,9 +229,10 @@ export const useGLBufferFrameManager = () => {
           ...frames[right],
           metadata: {
             ...frames[right].metadata,
-            resizedArray: resized,
+            resizedArray: pixels,
             objectDetectionOutput,
-            detectedObjects, 
+            resizedTexture,
+            detectedObjects,
           },
         };
         right += 1;
@@ -229,6 +240,7 @@ export const useGLBufferFrameManager = () => {
     }
     setFrames(updatedFrames);
   }, [frames, model]);
+
   return {
     initializeContext,
     addFrame,

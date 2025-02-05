@@ -29,7 +29,6 @@ const CustomTestScreen = () => {
   const [vtxBuffer, setvtxBuffer] = useState(null);
   const [frameBuffer, setFrameBuffer] = useState(null);
 
-
   const device = useCameraDevice('front');
 
   const format4k30fps = useCameraFormat(device, [
@@ -64,7 +63,6 @@ const CustomTestScreen = () => {
   useEffect(() => {
     setCurrentFrameId(Math.floor(frames.length / 2) as number);
   }, [frames.length]);
-  
 
   useEffect(() => {
     if (!isCameraActive) {
@@ -147,8 +145,6 @@ const CustomTestScreen = () => {
       }, 2500);
     }
   }, [isFrameProcessorActive, gl]);
-
-
 
   return (
     <TouchableOpacity style={styles.container} onPress={handleScreenTap}>
