@@ -3,7 +3,7 @@ import * as GL from 'expo-gl';
 import React, { useEffect, useState } from 'react';
 import { View, Image, StyleSheet, TouchableOpacity, Text } from 'react-native'; // Added Text import
 
-import { ProcessedFrame } from './GLBufferFrameManager';
+import { ProcessedFrame, COCO_LABELS } from './GLBufferFrameManager';
 import {
   clearFramebuffer,
   createVertexBuffer,
@@ -23,6 +23,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
   const [rgbToScreenProgram, setRgbToScreenProgram] = useState<WebGLProgram | null>(null);
   const [vertexBuffer, setVertexBuffer] = useState<WebGLBuffer | null>(null);
   const [frameBuffer, setFrameBuffer] = useState<WebGLFramebuffer | null>(null);
+  const [isRendering, setisRendering] = useState<boolean>(false);
 
   useEffect(() => {
     if (glContext) {
@@ -32,7 +33,6 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
       setRgbToScreenProgram(program);
       setVertexBuffer(vtxBuffer);
       setFrameBuffer(fb);
-      console.log('program :', program);
       console.log('total frames loaded : ' + frames.length);
     }
   }, [glContext]);
@@ -41,8 +41,17 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
     const renderFrame = async () => {
       if (glContext && vertexBuffer && frameBuffer) {
         const frame = frames[id];
-        console.log('Current Id = ' + id);
-        console.log(frame.metadata.objectsModelOutput);
+        const frameDetectionOutput = frame.metadata.objectDetectionOutput;
+        const detectionScores = frameDetectionOutput[2];
+        const detectionClasses = frameDetectionOutput[1];
+        for (let i = 0; i < detectionScores.length; i++) {
+          if (detectionScores[i] > 0.7) {
+            const labelIndex = detectionClasses[i];
+            const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
+            console.log(`Frame ${id}: Detected ${labelName} with confidence ${detectionScores[i]}`);
+          }
+        }
+
         renderRGBToFramebuffer(
           glContext,
           rgbToScreenProgram,
@@ -51,8 +60,10 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
           frame.metadata['textureWidth'],
           frame.metadata['textureHeight'],
           frameBuffer,
-          frame.metadata.faces
+          frame.metadata.faces,
+          frame.metadata.objectDetectionOutput
         );
+
         glContext.endFrameEXP();
 
         if (snapshot && snapshot.uri) {
@@ -64,8 +75,12 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
         setSnapshot(snap);
       }
     };
-    renderFrame();
-  }, [glContext, frames, id, vertexBuffer, rgbToScreenProgram, frameBuffer]);
+    if (!isRendering) {
+      setisRendering(true);
+      renderFrame();
+      setisRendering(false);
+    }
+  }, [glContext, frames[id], id, vertexBuffer, rgbToScreenProgram, frameBuffer, isRendering]);
 
   return (
     <View style={styles.container}>

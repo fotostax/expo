@@ -166,24 +166,30 @@ export const drawRectangle = (
   bounds: { x: number; y: number; width: number; height: number },
   textureWidth: number,
   textureHeight: number,
-  strokeWidth: number = 1
+  strokeWidth: number = 1,
+  isNormalized: boolean = false
 ) => {
   gl.useProgram(programRectangle);
 
-  const rectVertices = new Float32Array([
-    (bounds.x / textureWidth) * 2 - 1,
-    (bounds.y / textureHeight) * -2 + 1,
-    0.0,
-    ((bounds.x + bounds.width) / textureWidth) * 2 - 1,
-    (bounds.y / textureHeight) * -2 + 1,
-    0.0,
-    ((bounds.x + bounds.width) / textureWidth) * 2 - 1,
-    ((bounds.y + bounds.height) / textureHeight) * -2 + 1,
-    0.0,
-    (bounds.x / textureWidth) * 2 - 1,
-    ((bounds.y + bounds.height) / textureHeight) * -2 + 1,
-    0.0,
-  ]);
+  let rectVertices = null;
+  if (!isNormalized) {
+    rectVertices = new Float32Array([
+      (bounds.x / textureWidth) * 2 - 1,
+      (bounds.y / textureHeight) * -2 + 1,
+      0.0,
+      ((bounds.x + bounds.width) / textureWidth) * 2 - 1,
+      (bounds.y / textureHeight) * -2 + 1,
+      0.0,
+      ((bounds.x + bounds.width) / textureWidth) * 2 - 1,
+      ((bounds.y + bounds.height) / textureHeight) * -2 + 1,
+      0.0,
+      (bounds.x / textureWidth) * 2 - 1,
+      ((bounds.y + bounds.height) / textureHeight) * -2 + 1,
+      0.0,
+    ]);
+  } else {
+    rectVertices = bounds;
+  }
 
   const rectBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, rectBuffer);
@@ -203,7 +209,6 @@ export const drawRectangle = (
   gl.drawArrays(gl.LINE_LOOP, 0, 4);
   gl.disableVertexAttribArray(posLoc);
 };
-
 export const renderRGBToFramebuffer = (
   gl: ExpoWebGLRenderingContext,
   programBlit: WebGLProgram,
@@ -212,8 +217,13 @@ export const renderRGBToFramebuffer = (
   textureWidth: number,
   textureHeight: number,
   framebuffer: WebGLFramebuffer,
-  faces: Face[]
+  faces: Face[],
+  objectDetectionOutput: any
 ) => {
+  // Bind the texture before attaching it to the framebuffer
+  gl.bindTexture(gl.TEXTURE_2D, rgbTexture);
+  checkGLError(gl, 'Binding RGB Texture');
+
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
   checkGLError(gl, 'Binding Framebuffer');
 
@@ -225,6 +235,11 @@ export const renderRGBToFramebuffer = (
     console.error('Framebuffer is incomplete!');
     return;
   }
+
+  // Activate the texture unit and bind texture for rendering
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, rgbTexture);
+  checkGLError(gl, 'Activating and Binding RGB Texture');
 
   gl.viewport(0, 0, textureWidth, textureHeight);
   gl.useProgram(programBlit);
@@ -243,15 +258,50 @@ export const renderRGBToFramebuffer = (
   const scaleLoc = gl.getUniformLocation(programBlit, 'scale');
   gl.uniform2f(scaleLoc, 1.0, 1.0);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, 0);
+
   if (rectangleProgram == null) {
     rectangleProgram = prepareRectangleShader(gl);
   }
 
-  // Draw rectangles around faces
+  // Draw rectangles around faces (if any)
   if (faces && faces.length > 0) {
     faces.forEach((face) => {
       drawRectangle(gl, rectangleProgram, face.bounds, textureWidth, textureHeight, 3);
     });
+  }
+
+  // Draw rectangles for object detection outputs with confidence > 0.7
+  if (objectDetectionOutput) {
+    const detection_boxes = objectDetectionOutput[0];
+    const detection_classes = objectDetectionOutput[1];
+    const detection_scores = objectDetectionOutput[2];
+    const num_detections = objectDetectionOutput[3];
+    let maxConf = -1;
+
+    for (let i = 0; i < detection_boxes.length; i += 4) {
+      const confidence = detection_scores[i / 4];
+      maxConf = Math.max(maxConf, confidence);
+      if (confidence > 0.5) {
+        // Retrieve coordinates from the flat array
+        const left = detection_boxes[i];
+        const top = detection_boxes[i + 1];
+        const right = detection_boxes[i + 2];
+        const bottom = detection_boxes[i + 3];
+
+        const bounds = {
+          x: left,
+          y: top,
+          width: right - left,
+          height: bottom - top,
+        };
+        console.log('drawing texture : ');
+        // Draw the rectangle using the calculated bounds.
+        drawRectangle(gl, rectangleProgram, bounds, textureWidth, textureHeight, 3, true);
+      }
+    }
+    console.log('Max confidence is :' + maxConf);
   }
 };
 
@@ -354,33 +404,68 @@ export const createVertexBuffer = (gl: ExpoWebGLRenderingContext) => {
   return vtxBuffer;
 };
 
-export const resizeRGBTexture = async (texture: WebGLTexture, width: number, height: number) => {
+export const resizeRGBTexture = async (
+  inputTexture: WebGLTexture,
+  width: number,
+  height: number
+) => {
   if (!glContext) {
     console.log('No context has been created. Please create one');
     return new Uint8Array([]);
   }
 
+  // Create a new texture for the resized output
+  const resizedTexture = glContext.createTexture();
+  glContext.bindTexture(glContext.TEXTURE_2D, resizedTexture);
+  glContext.texImage2D(
+    glContext.TEXTURE_2D,
+    0,
+    glContext.RGB, // Set internal format to RGB
+    width,
+    height,
+    0,
+    glContext.RGB, // Set format to RGB
+    glContext.UNSIGNED_BYTE,
+    null
+  );
+  glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_MIN_FILTER, glContext.LINEAR);
+  glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_MAG_FILTER, glContext.LINEAR);
+  glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_WRAP_S, glContext.CLAMP_TO_EDGE);
+  glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_WRAP_T, glContext.CLAMP_TO_EDGE);
+
   const framebuffer = glContext.createFramebuffer();
   glContext.bindFramebuffer(glContext.FRAMEBUFFER, framebuffer);
-  glContext.viewport(0, 0, width, height);
-
   glContext.framebufferTexture2D(
     glContext.FRAMEBUFFER,
     glContext.COLOR_ATTACHMENT0,
     glContext.TEXTURE_2D,
-    texture,
+    resizedTexture,
     0
   );
+
+  // Check if framebuffer is complete
+  if (glContext.checkFramebufferStatus(glContext.FRAMEBUFFER) !== glContext.FRAMEBUFFER_COMPLETE) {
+    console.error('Framebuffer is incomplete!');
+    return null;
+  }
+  glContext.viewport(0, 0, width, height);
 
   if (!resizeShader) {
     resizeShader = createResizeShader(glContext);
   }
   glContext.useProgram(resizeShader);
+  // Bind the input texture (the one passed to this function)
+  glContext.activeTexture(glContext.TEXTURE0);
+  glContext.bindTexture(glContext.TEXTURE_2D, inputTexture);
+  // Set uniform
+  const inputTextureLocation = glContext.getUniformLocation(resizeShader, 'texture');
+  glContext.uniform1i(inputTextureLocation, 0);
+
   drawFullScreenQuad(glContext);
 
   // Read raw pixel data (not compressed)
-  const pixels = new Uint8Array(width * height * 4); // RGBA
-  glContext.readPixels(0, 0, width, height, glContext.RGBA, glContext.UNSIGNED_BYTE, pixels);
+  const pixels = new Uint8Array(width * height * 3); // RGB
+  glContext.readPixels(0, 0, width, height, glContext.RGB, glContext.UNSIGNED_BYTE, pixels);
 
   // Cleanup
   glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);

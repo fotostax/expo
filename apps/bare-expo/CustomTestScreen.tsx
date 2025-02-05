@@ -64,6 +64,13 @@ const CustomTestScreen = () => {
   useEffect(() => {
     setCurrentFrameId(Math.floor(frames.length / 2) as number);
   }, [frames.length]);
+  
+
+  useEffect(() => {
+    if (!isCameraActive) {
+      processAllFramesAsync();
+    }
+  }, [isCameraActive]);
 
   // Function to prepare the GL context
   const onContextCreate = async (gl: ExpoWebGLRenderingContext) => {
@@ -141,11 +148,7 @@ const CustomTestScreen = () => {
     }
   }, [isFrameProcessorActive, gl]);
 
-  useEffect(() => {
-    if (!isCameraActive) {
-      processAllFramesAsync();
-    }
-  }, [isCameraActive]);
+
 
   return (
     <TouchableOpacity style={styles.container} onPress={handleScreenTap}>
