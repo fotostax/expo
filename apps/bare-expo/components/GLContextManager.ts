@@ -1,4 +1,5 @@
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
+import { float } from 'getenv';
 import { Face } from 'react-native-vision-camera-face-detector';
 
 let glContext: ExpoWebGLRenderingContext | null = null;
@@ -128,6 +129,7 @@ export const createResizeShader = (gl: ExpoWebGLRenderingContext): WebGLProgram 
 
 export const prepareRectangleShader = (glCtx: ExpoWebGLRenderingContext) => {
   const vertexShaderSourceRectangle = `
+  
     precision mediump float;
     attribute vec3 position;
     void main() {
@@ -429,6 +431,7 @@ export const createVertexBuffer = (gl: ExpoWebGLRenderingContext) => {
   gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
   return vtxBuffer;
 };
+
 export const resizeRGBTexture = async (
   inputTexture: WebGLTexture,
   width: number,
@@ -436,7 +439,7 @@ export const resizeRGBTexture = async (
 ) => {
   if (!glContext) {
     console.log('No context has been created. Please create one');
-    return { pixels: new Uint8Array([]), resizedTexture: null };
+    return { pixels: null, resizedTexture: null };
   }
 
   // Create a new texture for the resized output
@@ -492,15 +495,28 @@ export const resizeRGBTexture = async (
   // Render the full-screen quad to copy/resize the texture
   drawFullScreenQuad(glContext);
 
-  // Read raw pixel data (RGB only)
-  const pixels = new Uint8Array(width * height * 3);
-  glContext.readPixels(0, 0, width, height, glContext.RGB, glContext.UNSIGNED_BYTE, pixels);
+  // Read raw pixel data (RGB only) as a Uint8Array
+  const uint8Pixels = new Uint8Array(width * height * 3);
+  glContext.readPixels(0, 0, width, height, glContext.RGB, glContext.UNSIGNED_BYTE, uint8Pixels);
 
-  // Cleanup: unbind framebuffer and delete it (texture is kept for later use)
+  // Cleanup: unbind and delete the framebuffer (we keep the texture)
   glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);
   glContext.deleteFramebuffer(framebuffer);
 
-  // Return both the pixel data and the resized texture.
+  // Convert to Float32Array and normalize to [0, 1]
+  const floatPixels = new Float32Array(width * height * 3);
+  for (let i = 0; i < uint8Pixels.length; i++) {
+    floatPixels[i] = uint8Pixels[i] / 255.0;
+    console.log(floatPixels[i])
+
+  }
+  console.log(floatPixels)
+
+  // Add batch dimension: wrap the flat Float32Array in an array.
+  // This represents a tensor of shape [1, height, width, 3].
+  const pixels = [floatPixels];
+
+  // Return both the normalized pixel data and the resized texture.
   return { pixels, resizedTexture };
 };
 

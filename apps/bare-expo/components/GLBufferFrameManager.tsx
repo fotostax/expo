@@ -100,7 +100,7 @@ export const useGLBufferFrameManager = () => {
 
   useEffect(() => {
     async function loadModel() {
-      const loadedModel = await loadTensorflowModel(require('assets/efficientdet.tflite'));
+      const loadedModel = await loadTensorflowModel(require('assets/faster_rcnn.tflite'));
       setModel(loadedModel);
     }
     loadModel();
@@ -132,7 +132,10 @@ export const useGLBufferFrameManager = () => {
     if (model == null) {
       console.log('No model was loaded');
       return;
+    } else {
+      console.log('Processing Frames async...');
     }
+
     if (frames.length === 0) {
       console.log('No frames have been stored in the buffer.');
       return;
@@ -140,9 +143,9 @@ export const useGLBufferFrameManager = () => {
 
     const mid = Math.floor(frames.length / 2);
     let left = mid - 1;
-    let right = mid;
-    const targetWidth = 320;
-    const targetHeight = 320;
+    const right = mid;
+    const targetWidth = 480;
+    const targetHeight = 640;
 
     const updatedFrames = [...frames];
 
@@ -154,25 +157,29 @@ export const useGLBufferFrameManager = () => {
           targetWidth,
           targetHeight
         );
-        const output = await model.run([pixels]);
+        console.log(pixels);
+        // Pass the normalized float32 pixels (with batch dimension) as input to the model.
+        const output = await model.run(pixels);
 
         // Clone outputs to avoid buffer reuse issues.
         const objectDetectionOutput = [
-          output[0].slice(), // detection_boxes
-          output[1].slice(), // detection_classes
-          output[2].slice(), // detection_scores
-          output[3].slice(), // num_detections
+          output[0].slice(), 
+          output[1].slice(),
+          output[2].slice(),
+          output[3].slice(), 
         ];
 
         const detectionScores = objectDetectionOutput[2];
         const detectionClasses = objectDetectionOutput[1];
 
-        // Declare and build detectedObjects array
+        // Build detectedObjects array
         const detectedObjects: [string, number][] = [];
         for (let i = 0; i < detectionScores.length; i++) {
           if (detectionScores[i] > 0.7) {
             const labelIndex = detectionClasses[i];
-            const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
+            //const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
+
+            const labelName = `Unknown(${labelIndex})`;
             detectedObjects.push([labelName, detectionScores[i]]);
             console.log(
               `Frame ${left}: Detected ${labelName} with confidence ${detectionScores[i]}`
@@ -184,6 +191,7 @@ export const useGLBufferFrameManager = () => {
           ...frames[left],
           metadata: {
             ...frames[left].metadata,
+            // Save the normalized pixels and resized texture for later use.
             resizedArray: pixels,
             objectDetectionOutput,
             resizedTexture,
@@ -192,55 +200,11 @@ export const useGLBufferFrameManager = () => {
         };
         left -= 1;
       }
-
-      // Process right-side frames
-      if (right < frames.length) {
-        const { pixels, resizedTexture } = await resizeRGBTexture(
-          frames[right].texture,
-          targetWidth,
-          targetHeight
-        );
-        const output = await model.run([pixels]);
-
-        const objectDetectionOutput = [
-          output[0].slice(),
-          output[1].slice(),
-          output[2].slice(),
-          output[3].slice(),
-        ];
-
-        const detectionScores = objectDetectionOutput[2];
-        const detectionClasses = objectDetectionOutput[1];
-
-        // Declare and build detectedObjects array for right-side frame
-        const detectedObjects: [string, number][] = [];
-        for (let i = 0; i < detectionScores.length; i++) {
-          if (detectionScores[i] > 0.5) {
-            const labelIndex = detectionClasses[i];
-            const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
-            detectedObjects.push([labelName, detectionScores[i]]);
-            console.log(
-              `Frame ${right}: Detected ${labelName} with confidence ${detectionScores[i]}`
-            );
-          }
-        }
-
-        updatedFrames[right] = {
-          ...frames[right],
-          metadata: {
-            ...frames[right].metadata,
-            resizedArray: pixels,
-            objectDetectionOutput,
-            resizedTexture,
-            detectedObjects,
-          },
-        };
-        right += 1;
-      }
+      // (Right-side frame processing can be updated similarly if needed)
+      break;
     }
     setFrames(updatedFrames);
   }, [frames, model]);
-
   return {
     initializeContext,
     addFrame,

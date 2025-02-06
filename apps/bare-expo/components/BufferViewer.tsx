@@ -63,14 +63,14 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
           frameBuffer,
           frame.metadata.faces
         );
-
+/*
         drawObjectDetectionOutput(
           frame.metadata.objectDetectionOutput,
           glContext,
           frame.metadata['textureWidth'],
           frame.metadata['textureHeight']
         );
-
+*/
         glContext.endFrameEXP();
 
         if (snapshot && snapshot.uri) {
