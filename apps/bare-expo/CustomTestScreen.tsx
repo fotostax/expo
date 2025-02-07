@@ -45,6 +45,7 @@ const CustomTestScreen = () => {
 
   const faceDetectionOptions = useRef<FaceDetectionOptions>({
     // detection options
+    landmarkMode: 'all'
   }).current;
   const { detectFaces } = useFaceDetector(faceDetectionOptions);
 
@@ -152,8 +153,8 @@ const CustomTestScreen = () => {
         device ? (
           <Camera
             style={styles.camera}
+            isActive
             device={device}
-            isActive={isCameraActive}
             frameProcessor={frameProcessor}
             resizeMode="contain"
             format={format108030fps}
