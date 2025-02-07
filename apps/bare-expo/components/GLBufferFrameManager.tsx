@@ -174,11 +174,6 @@ export const useGLBufferFrameManager = () => {
             const labelIndex = detectionClasses[i];
             const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
             detectedObjects.push([labelName, detectionScores[i]]);
-            /*
-            console.log(
-              `Frame ${left}: Detected ${labelName} with confidence ${detectionScores[i]}`
-            );
-            */
           }
         }
 
