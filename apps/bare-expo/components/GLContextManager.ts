@@ -557,54 +557,52 @@ export const renderFaces = (
         strokeWidth,
         false
       );
+      if (shouldRenderLandmarks && face.landmarks) {
+        const leftEye = face.landmarks.LEFT_EYE;
+        const rightEye = face.landmarks.RIGHT_EYE;
+
+        const rectWidth = 40;
+        const rectHeight = 40;
+
+        // Flip the eye coordinates on X, similar to the face bounds.
+        const leftEyeBounds = {
+          x: textureWidth - leftEye.x - rectWidth / 2,
+          y: leftEye.y - rectHeight / 2,
+          width: rectWidth,
+          height: rectHeight,
+        };
+
+        const rightEyeBounds = {
+          x: textureWidth - rightEye.x - rectWidth / 2,
+          y: rightEye.y - rectHeight / 2,
+          width: rectWidth,
+          height: rectHeight,
+        };
+
+        const greenVec4: [number, number, number, number] = [0, 1, 0, 1];
+
+        drawRectangle(
+          gl,
+          rectangleProgram,
+          leftEyeBounds,
+          textureWidth,
+          textureHeight,
+          greenVec4,
+          strokeWidth,
+          false
+        );
+
+        drawRectangle(
+          gl,
+          rectangleProgram,
+          rightEyeBounds,
+          textureWidth,
+          textureHeight,
+          greenVec4,
+          strokeWidth,
+          false
+        );
+      }
     });
-
-    if (shouldRenderLandmarks) {
-      const face = faces[0]; // Use the first face (or iterate over all faces if needed)
-      const leftEye = face.landmarks.LEFT_EYE;
-      const rightEye = face.landmarks.RIGHT_EYE;
-
-      const rectWidth = 40;
-      const rectHeight = 40;
-
-      // Flip the eye coordinates on X, similar to the face bounds.
-      const leftEyeBounds = {
-        x: textureWidth - leftEye.x - rectWidth / 2,
-        y: leftEye.y - rectHeight / 2,
-        width: rectWidth,
-        height: rectHeight,
-      };
-
-      const rightEyeBounds = {
-        x: textureWidth - rightEye.x - rectWidth / 2,
-        y: rightEye.y - rectHeight / 2,
-        width: rectWidth,
-        height: rectHeight,
-      };
-
-      const greenVec4: [number, number, number, number] = [0, 1, 0, 1];
-
-      drawRectangle(
-        gl,
-        rectangleProgram,
-        leftEyeBounds,
-        textureWidth,
-        textureHeight,
-        greenVec4,
-        strokeWidth,
-        false
-      );
-
-      drawRectangle(
-        gl,
-        rectangleProgram,
-        rightEyeBounds,
-        textureWidth,
-        textureHeight,
-        greenVec4,
-        strokeWidth,
-        false
-      );
-    }
   }
 };
