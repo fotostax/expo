@@ -9,7 +9,7 @@ import {
   drawObjectDetectionOutput,
   prepareForRgbToScreen,
   renderRGBToFramebuffer,
-  renderAllFaceLandmarks,
+  renderFaces,
 } from './GLContextManager';
 
 interface BufferViewerProps {
@@ -46,15 +46,6 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
         const detectionScores = frameDetectionOutput[2];
         const detectionClasses = frameDetectionOutput[1];
 
-        /*for (let i = 0; i < detectionScores.length; i++) {
-          if (detectionScores[i] > 0.7) {
-            const labelIndex = detectionClasses[i];
-            const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
-            console.log(`Frame ${id}: Detected ${labelName} with confidence ${detectionScores[i]}`);
-          }
-        }
-        */
-
         renderRGBToFramebuffer(
           glContext,
           rgbToScreenProgram,
@@ -76,11 +67,14 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
         }
         if (frame.metadata.faces) {
           // Draw all Faces Landmarks
-          renderAllFaceLandmarks(
+          const shouldRenderLandmarks = true;
+          renderFaces(
             frame.metadata.faces,
             glContext,
             frame.metadata['textureWidth'],
-            frame.metadata['textureHeight']
+            frame.metadata['textureHeight'],
+            3,
+            shouldRenderLandmarks
           );
         }
 

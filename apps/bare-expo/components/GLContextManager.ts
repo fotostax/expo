@@ -262,26 +262,6 @@ export const renderRGBToFramebuffer = (
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, 0);
-
-  if (rectangleProgram == null) {
-    rectangleProgram = prepareRectangleShader(gl);
-  }
-
-  // Draw rectangles around faces (if any)
-  if (faces && faces.length > 0) {
-    faces.forEach((face) => {
-      drawRectangle(
-        gl,
-        rectangleProgram,
-        face.bounds,
-        textureWidth,
-        textureHeight,
-        [1.0, 0.0, 0.0, 1.0],
-        3,
-        false
-      );
-    });
-  }
 };
 export const drawObjectDetectionOutput = (
   objectDetectionOutput: any,
@@ -538,62 +518,93 @@ const drawFullScreenQuad = (gl: ExpoWebGLRenderingContext) => {
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 };
 
-export const renderAllFaceLandmarks = (
+export const renderFaces = (
   faces: any[],
   gl: ExpoWebGLRenderingContext,
   textureWidth: number,
   textureHeight: number,
-  strokeWidth: number = 3
+  strokeWidth: number = 3,
+  shouldRenderLandmarks: boolean = false
 ) => {
   if (!faces || faces.length === 0) {
     console.log('No face landmarks available.');
     return;
   }
 
-  const face = faces[0]; // Use the first face (or iterate over all faces if needed)
-  const leftEye = face.landmarks.LEFT_EYE;
-  const rightEye = face.landmarks.RIGHT_EYE;
-
-  const rectWidth = 40;
-  const rectHeight = 40;
-
-  const leftEyeBounds = {
-    x: leftEye.x - rectWidth / 2,
-    y: leftEye.y - rectHeight / 2,
-    width: rectWidth,
-    height: rectHeight,
-  };
-
-  const rightEyeBounds = {
-    x: rightEye.x - rectWidth / 2,
-    y: rightEye.y - rectHeight / 2,
-    width: rectWidth,
-    height: rectHeight,
-  };
   if (rectangleProgram == null) {
     rectangleProgram = prepareRectangleShader(gl);
   }
-  const greenVec4: [number, number, number, number] = [0, 1, 0, 1];
 
-  drawRectangle(
-    gl,
-    rectangleProgram,
-    leftEyeBounds,
-    textureWidth,
-    textureHeight,
-    greenVec4,
-    strokeWidth,
-    false
-  );
+  // Draw rectangles around faces (if any)
+  if (faces && faces.length > 0) {
+    faces.forEach((face) => {
+      // Compute flipped bounds on X:
+      // new x = textureWidth - face.bounds.x - face.bounds.width
+      const flippedBounds = {
+        x: textureWidth - face.bounds.x - face.bounds.width,
+        y: face.bounds.y,
+        width: face.bounds.width,
+        height: face.bounds.height,
+      };
 
-  drawRectangle(
-    gl,
-    rectangleProgram,
-    rightEyeBounds,
-    textureWidth,
-    textureHeight,
-    greenVec4,
-    strokeWidth,
-    false
-  );
+      drawRectangle(
+        gl,
+        rectangleProgram,
+        flippedBounds,
+        textureWidth,
+        textureHeight,
+        [1.0, 0.0, 0.0, 1.0], // red
+        strokeWidth,
+        false
+      );
+    });
+
+    if (shouldRenderLandmarks) {
+      const face = faces[0]; // Use the first face (or iterate over all faces if needed)
+      const leftEye = face.landmarks.LEFT_EYE;
+      const rightEye = face.landmarks.RIGHT_EYE;
+
+      const rectWidth = 40;
+      const rectHeight = 40;
+
+      // Flip the eye coordinates on X, similar to the face bounds.
+      const leftEyeBounds = {
+        x: textureWidth - leftEye.x - rectWidth / 2,
+        y: leftEye.y - rectHeight / 2,
+        width: rectWidth,
+        height: rectHeight,
+      };
+
+      const rightEyeBounds = {
+        x: textureWidth - rightEye.x - rectWidth / 2,
+        y: rightEye.y - rectHeight / 2,
+        width: rectWidth,
+        height: rectHeight,
+      };
+
+      const greenVec4: [number, number, number, number] = [0, 1, 0, 1];
+
+      drawRectangle(
+        gl,
+        rectangleProgram,
+        leftEyeBounds,
+        textureWidth,
+        textureHeight,
+        greenVec4,
+        strokeWidth,
+        false
+      );
+
+      drawRectangle(
+        gl,
+        rectangleProgram,
+        rightEyeBounds,
+        textureWidth,
+        textureHeight,
+        greenVec4,
+        strokeWidth,
+        false
+      );
+    }
+  }
 };
