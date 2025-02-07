@@ -537,3 +537,63 @@ const drawFullScreenQuad = (gl: ExpoWebGLRenderingContext) => {
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 };
+
+export const renderAllFaceLandmarks = (
+  faces: any[],
+  gl: ExpoWebGLRenderingContext,
+  textureWidth: number,
+  textureHeight: number,
+  strokeWidth: number = 3
+) => {
+  if (!faces || faces.length === 0) {
+    console.log('No face landmarks available.');
+    return;
+  }
+
+  const face = faces[0]; // Use the first face (or iterate over all faces if needed)
+  const leftEye = face.landmarks.LEFT_EYE;
+  const rightEye = face.landmarks.RIGHT_EYE;
+
+  const rectWidth = 40;
+  const rectHeight = 40;
+
+  const leftEyeBounds = {
+    x: leftEye.x - rectWidth / 2,
+    y: leftEye.y - rectHeight / 2,
+    width: rectWidth,
+    height: rectHeight,
+  };
+
+  const rightEyeBounds = {
+    x: rightEye.x - rectWidth / 2,
+    y: rightEye.y - rectHeight / 2,
+    width: rectWidth,
+    height: rectHeight,
+  };
+  if (rectangleProgram == null) {
+    rectangleProgram = prepareRectangleShader(gl);
+  }
+  const greenVec4: [number, number, number, number] = [0, 1, 0, 1];
+
+  drawRectangle(
+    gl,
+    rectangleProgram,
+    leftEyeBounds,
+    textureWidth,
+    textureHeight,
+    greenVec4,
+    strokeWidth,
+    false
+  );
+
+  drawRectangle(
+    gl,
+    rectangleProgram,
+    rightEyeBounds,
+    textureWidth,
+    textureHeight,
+    greenVec4,
+    strokeWidth,
+    false
+  );
+};

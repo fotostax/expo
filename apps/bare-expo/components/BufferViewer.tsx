@@ -3,13 +3,13 @@ import * as GL from 'expo-gl';
 import React, { useEffect, useState } from 'react';
 import { View, Image, StyleSheet, TouchableOpacity, Text } from 'react-native'; // Added Text import
 
-import { ProcessedFrame, COCO_LABELS } from './GLBufferFrameManager';
+import { ProcessedFrame } from './GLBufferFrameManager';
 import {
-  clearFramebuffer,
   createVertexBuffer,
   drawObjectDetectionOutput,
   prepareForRgbToScreen,
   renderRGBToFramebuffer,
+  renderAllFaceLandmarks,
 } from './GLContextManager';
 
 interface BufferViewerProps {
@@ -45,14 +45,16 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
         const frameDetectionOutput = frame.metadata.objectDetectionOutput;
         const detectionScores = frameDetectionOutput[2];
         const detectionClasses = frameDetectionOutput[1];
-        for (let i = 0; i < detectionScores.length; i++) {
+
+        /*for (let i = 0; i < detectionScores.length; i++) {
           if (detectionScores[i] > 0.7) {
             const labelIndex = detectionClasses[i];
             const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
             console.log(`Frame ${id}: Detected ${labelName} with confidence ${detectionScores[i]}`);
           }
         }
-        //console.log(frame.metadata.resizedTexture);
+        */
+
         renderRGBToFramebuffer(
           glContext,
           rgbToScreenProgram,
@@ -64,12 +66,23 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
           frame.metadata.faces
         );
 
-        drawObjectDetectionOutput(
-          frame.metadata.objectDetectionOutput,
-          glContext,
-          frame.metadata['textureWidth'],
-          frame.metadata['textureHeight']
-        );
+        if (frame.metadata.objectDetectionOutput) {
+          drawObjectDetectionOutput(
+            frame.metadata.objectDetectionOutput,
+            glContext,
+            frame.metadata['textureWidth'],
+            frame.metadata['textureHeight']
+          );
+        }
+        if (frame.metadata.faces) {
+          // Draw all Faces Landmarks
+          renderAllFaceLandmarks(
+            frame.metadata.faces,
+            glContext,
+            frame.metadata['textureWidth'],
+            frame.metadata['textureHeight']
+          );
+        }
 
         glContext.endFrameEXP();
 
