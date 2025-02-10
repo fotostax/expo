@@ -43,8 +43,6 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
       if (glContext && vertexBuffer && frameBuffer) {
         const frame = frames[id];
         const frameDetectionOutput = frame.metadata.objectDetectionOutput;
-        const detectionScores = frameDetectionOutput[2];
-        const detectionClasses = frameDetectionOutput[1];
 
         renderRGBToFramebuffer(
           glContext,
@@ -56,7 +54,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
           frameBuffer,
           frame.metadata.faces
         );
-
+        /*
         if (frame.metadata.objectDetectionOutput) {
           drawObjectDetectionOutput(
             frame.metadata.objectDetectionOutput,
@@ -65,6 +63,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
             frame.metadata['textureHeight']
           );
         }
+          */
         if (frame.metadata.faces) {
           // Draw all Faces Landmarks
           const shouldRenderLandmarks = true;

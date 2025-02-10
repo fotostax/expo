@@ -100,7 +100,7 @@ export const useGLBufferFrameManager = () => {
 
   useEffect(() => {
     async function loadModel() {
-      const loadedModel = await loadTensorflowModel(require('assets/efficientdet.tflite'));
+      const loadedModel = await loadTensorflowModel(require('assets/yolo11n_float32nms.tflite'));
       setModel(loadedModel);
     }
     loadModel();
@@ -139,10 +139,10 @@ export const useGLBufferFrameManager = () => {
     }
 
     const mid = Math.floor(frames.length / 2);
-    let left = mid - 1;
-    let right = mid;
-    const targetWidth = 320;
-    const targetHeight = 320;
+    const left = mid - 1;
+    const right = mid;
+    const targetWidth = 640;
+    const targetHeight = 640;
 
     const updatedFrames = [...frames];
 
@@ -152,52 +152,32 @@ export const useGLBufferFrameManager = () => {
         const { pixels, resizedTexture } = await resizeRGBTexture(
           frames[left].texture,
           targetWidth,
-          targetHeight
+          targetHeight,
+          true
         );
+        for (let i = 0; i < 10; i += 1) {
+          console.log(pixels[i]);
+        }
         const output = await model.run([pixels]);
+        //x1, y1, x2, y2, conf, label
+        //console.log(output);
 
-        // Clone outputs to avoid buffer reuse issues.
-        const objectDetectionOutput = [
-          output[0].slice(), // detection_boxes
-          output[1].slice(), // detection_classes
-          output[2].slice(), // detection_scores
-          output[3].slice(), // num_detections
-        ];
+        console.log(output.length);
 
-        const detectionScores = objectDetectionOutput[2];
-        const detectionClasses = objectDetectionOutput[1];
-
-        // Declare and build detectedObjects array
-        const detectedObjects: [string, number][] = [];
-        for (let i = 0; i < detectionScores.length; i++) {
-          if (detectionScores[i] > 0.7) {
-            const labelIndex = detectionClasses[i];
-            const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
-            detectedObjects.push([labelName, detectionScores[i]]);
+        for (let i = 0; i < output[0].length; i += 6) {
+          const x = output[0][i];
+          const y = output[0][i + 1];
+          const w = output[0][i + 2];
+          const h = output[0][i + 3];
+          const conf = output[0][i + 4];
+          const label = output[0][i + 5];
+          if (conf > 0.75) {
+            console.log(x, y, w, h, conf, label);
           }
         }
 
-        updatedFrames[left] = {
-          ...frames[left],
-          metadata: {
-            ...frames[left].metadata,
-            resizedArray: pixels,
-            objectDetectionOutput,
-            resizedTexture,
-            detectedObjects,
-          },
-        };
-        left -= 1;
-      }
-
-      // Process right-side frames
-      if (right < frames.length) {
-        const { pixels, resizedTexture } = await resizeRGBTexture(
-          frames[right].texture,
-          targetWidth,
-          targetHeight
-        );
-        const output = await model.run([pixels]);
+        // process each output individually
+        /*
 
         const objectDetectionOutput = [
           output[0].slice(),
@@ -206,24 +186,7 @@ export const useGLBufferFrameManager = () => {
           output[3].slice(),
         ];
 
-        const detectionScores = objectDetectionOutput[2];
-        const detectionClasses = objectDetectionOutput[1];
-
-        // Declare and build detectedObjects array for right-side frame
         const detectedObjects: [string, number][] = [];
-        for (let i = 0; i < detectionScores.length; i++) {
-          if (detectionScores[i] > 0.5) {
-            const labelIndex = detectionClasses[i];
-            const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
-            detectedObjects.push([labelName, detectionScores[i]]);
-            /*
-            console.log(
-              `Frame ${right}: Detected ${labelName} with confidence ${detectionScores[i]}`
-            );
-            */
-          }
-        }
-
         updatedFrames[right] = {
           ...frames[right],
           metadata: {
@@ -235,7 +198,9 @@ export const useGLBufferFrameManager = () => {
           },
         };
         right += 1;
+        */
       }
+      break;
     }
     setFrames(updatedFrames);
   }, [frames, model]);

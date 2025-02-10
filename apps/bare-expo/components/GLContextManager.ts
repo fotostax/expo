@@ -412,12 +412,22 @@ export const createVertexBuffer = (gl: ExpoWebGLRenderingContext) => {
 export const resizeRGBTexture = async (
   inputTexture: WebGLTexture,
   width: number,
-  height: number
+  height: number,
+  returnFloat32 = false
 ) => {
   if (!glContext) {
     console.log('No context has been created. Please create one');
-    return { pixels: new Uint8Array([]), resizedTexture: null };
+    return {
+      pixels: returnFloat32 ? new Float32Array([]) : new Uint8Array([]),
+      resizedTexture: null,
+    };
   }
+
+  // Check for required WebGL extensions
+  const floatTexExt = glContext.getExtension('OES_texture_float');
+  const floatBufferExt = glContext.getExtension('WEBGL_color_buffer_float');
+
+  const useFloatTexture = returnFloat32 && floatTexExt && floatBufferExt;
 
   // Create a new texture for the resized output
   const resizedTexture = glContext.createTexture();
@@ -425,12 +435,12 @@ export const resizeRGBTexture = async (
   glContext.texImage2D(
     glContext.TEXTURE_2D,
     0,
-    glContext.RGB, // Internal format: RGB
+    glContext.RGB,
     width,
     height,
     0,
-    glContext.RGB, // Format: RGB
-    glContext.UNSIGNED_BYTE,
+    glContext.RGB,
+    useFloatTexture ? glContext.FLOAT : glContext.UNSIGNED_BYTE,
     null
   );
   glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_MIN_FILTER, glContext.LINEAR);
@@ -449,11 +459,11 @@ export const resizeRGBTexture = async (
     0
   );
 
-  // Check if framebuffer is complete
   if (glContext.checkFramebufferStatus(glContext.FRAMEBUFFER) !== glContext.FRAMEBUFFER_COMPLETE) {
     console.error('Framebuffer is incomplete!');
     return { pixels: null, resizedTexture: null };
   }
+
   glContext.viewport(0, 0, width, height);
 
   if (!resizeShader) {
@@ -461,26 +471,44 @@ export const resizeRGBTexture = async (
   }
   glContext.useProgram(resizeShader);
 
-  // Bind the input texture (the one passed to this function)
+  // Bind the input texture
   glContext.activeTexture(glContext.TEXTURE0);
   glContext.bindTexture(glContext.TEXTURE_2D, inputTexture);
 
-  // Set uniform for the shader
+  // Set shader uniform
   const inputTextureLocation = glContext.getUniformLocation(resizeShader, 'texture');
   glContext.uniform1i(inputTextureLocation, 0);
 
-  // Render the full-screen quad to copy/resize the texture
+  // Render to framebuffer
   drawFullScreenQuad(glContext);
 
-  // Read raw pixel data (RGB only)
-  const pixels = new Uint8Array(width * height * 3);
-  glContext.readPixels(0, 0, width, height, glContext.RGB, glContext.UNSIGNED_BYTE, pixels);
+  // Read raw pixel data (RGB)
+  const pixelsUint8 = new Uint8Array(width * height * 3);
+  glContext.readPixels(0, 0, width, height, glContext.RGB, glContext.UNSIGNED_BYTE, pixelsUint8);
 
-  // Cleanup: unbind framebuffer and delete it (texture is kept for later use)
+  let pixels;
+  if (returnFloat32) {
+    if (useFloatTexture) {
+      // If float texture is supported, read directly as FLOAT
+      pixels = new Float32Array(width * height * 3);
+      glContext.readPixels(0, 0, width, height, glContext.RGB, glContext.FLOAT, pixels);
+    } else {
+      // If float texture is NOT supported, manually normalize values from Uint8 -> Float32
+      pixels = new Float32Array(pixelsUint8.length);
+      for (let i = 0; i < pixelsUint8.length; i++) {
+        pixels[i] = pixelsUint8[i];
+      }
+    }
+  } else {
+    pixels = pixelsUint8;
+  }
+
+  // Cleanup
   glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);
   glContext.deleteFramebuffer(framebuffer);
 
-  // Return both the pixel data and the resized texture.
+  console.log('Framebuffer processed successfully!');
+
   return { pixels, resizedTexture };
 };
 
