@@ -144,56 +144,17 @@ export const useGLBufferFrameManager = () => {
     const targetWidth = 320;
     const targetHeight = 320;
 
-    const updatedFrames = [...frames];
-
     while (left >= 0 || right < frames.length) {
       // Process left-side frames
       if (left >= 0) {
-        const { pixels, resizedTexture } = await resizeRGBTexture(
-          frames[left].texture,
-          targetWidth,
-          targetHeight
-        );
-        const output = await model.run([pixels]);
-
-        // Clone outputs to avoid buffer reuse issues.
-        const objectDetectionOutput = [
-          output[0].slice(), // detection_boxes
-          output[1].slice(), // detection_classes
-          output[2].slice(), // detection_scores
-          output[3].slice(), // num_detections
-        ];
-
-        const detectionScores = objectDetectionOutput[2];
-        const detectionClasses = objectDetectionOutput[1];
-
-        // Declare and build detectedObjects array
-        const detectedObjects: [string, number][] = [];
-        for (let i = 0; i < detectionScores.length; i++) {
-          if (detectionScores[i] > 0.7) {
-            const labelIndex = detectionClasses[i];
-            const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
-            detectedObjects.push([labelName, detectionScores[i]]);
-          }
+        const frame = frames[left];
+        if (!frame) {
+          left -= 1;
+          continue;
         }
 
-        updatedFrames[left] = {
-          ...frames[left],
-          metadata: {
-            ...frames[left].metadata,
-            resizedArray: pixels,
-            objectDetectionOutput,
-            resizedTexture,
-            detectedObjects,
-          },
-        };
-        left -= 1;
-      }
-
-      // Process right-side frames
-      if (right < frames.length) {
         const { pixels, resizedTexture } = await resizeRGBTexture(
-          frames[right].texture,
+          frame.texture,
           targetWidth,
           targetHeight
         );
@@ -206,38 +167,90 @@ export const useGLBufferFrameManager = () => {
           output[3].slice(),
         ];
 
+        const detectedObjects: [string, number][] = [];
         const detectionScores = objectDetectionOutput[2];
         const detectionClasses = objectDetectionOutput[1];
 
-        // Declare and build detectedObjects array for right-side frame
+        for (let i = 0; i < detectionScores.length; i++) {
+          if (detectionScores[i] > 0.7) {
+            const labelIndex = detectionClasses[i];
+            const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
+            detectedObjects.push([labelName, detectionScores[i]]);
+          }
+        }
+
+        setFrames((prevFrames) => {
+          if (!prevFrames[left]) return prevFrames; // Prevent updating if undefined
+          const newFrames = [...prevFrames];
+          newFrames[left] = {
+            ...newFrames[left],
+            metadata: {
+              ...newFrames[left].metadata,
+              resizedArray: pixels,
+              objectDetectionOutput,
+              resizedTexture,
+              detectedObjects,
+            },
+          };
+          return newFrames;
+        });
+
+        left -= 1;
+      }
+
+      // Process right-side frames
+      if (right < frames.length) {
+        const frame = frames[right];
+        if (!frame) {
+          right += 1;
+          continue;
+        }
+
+        const { pixels, resizedTexture } = await resizeRGBTexture(
+          frame.texture,
+          targetWidth,
+          targetHeight
+        );
+        const output = await model.run([pixels]);
+
+        const objectDetectionOutput = [
+          output[0].slice(),
+          output[1].slice(),
+          output[2].slice(),
+          output[3].slice(),
+        ];
+
         const detectedObjects: [string, number][] = [];
+        const detectionScores = objectDetectionOutput[2];
+        const detectionClasses = objectDetectionOutput[1];
+
         for (let i = 0; i < detectionScores.length; i++) {
           if (detectionScores[i] > 0.5) {
             const labelIndex = detectionClasses[i];
             const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
             detectedObjects.push([labelName, detectionScores[i]]);
-            /*
-            console.log(
-              `Frame ${right}: Detected ${labelName} with confidence ${detectionScores[i]}`
-            );
-            */
           }
         }
 
-        updatedFrames[right] = {
-          ...frames[right],
-          metadata: {
-            ...frames[right].metadata,
-            resizedArray: pixels,
-            objectDetectionOutput,
-            resizedTexture,
-            detectedObjects,
-          },
-        };
+        setFrames((prevFrames) => {
+          if (!prevFrames[right]) return prevFrames; // Prevent updating if undefined
+          const newFrames = [...prevFrames];
+          newFrames[right] = {
+            ...newFrames[right],
+            metadata: {
+              ...newFrames[right].metadata,
+              resizedArray: pixels,
+              objectDetectionOutput,
+              resizedTexture,
+              detectedObjects,
+            },
+          };
+          return newFrames;
+        });
+
         right += 1;
       }
     }
-    setFrames(updatedFrames);
   }, [frames, model]);
 
   return {
