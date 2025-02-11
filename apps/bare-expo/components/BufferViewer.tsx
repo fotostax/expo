@@ -42,9 +42,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
     const renderFrame = async () => {
       if (glContext && vertexBuffer && frameBuffer) {
         const frame = frames[id];
-        const frameDetectionOutput = frame.metadata.objectDetectionOutput;
-        const detectionScores = frameDetectionOutput[2];
-        const detectionClasses = frameDetectionOutput[1];
+        const frameDetectionOutput = frame.metadata.objectDetectionOutput || null;
 
         renderRGBToFramebuffer(
           glContext,
