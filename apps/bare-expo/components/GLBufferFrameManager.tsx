@@ -5,6 +5,7 @@ import { getGLContext, resizeRGBTexture } from './GLContextManager';
 
 export interface ProcessedFrame {
   texture: WebGLTexture;
+  resizedTexture: WebGLTexture | null;
   metadata: Record<string, any>;
 }
 
@@ -109,7 +110,7 @@ export const useGLBufferFrameManager = () => {
   const addFrame = useCallback(
     (texture: WebGLTexture, metadata = {}) => {
       const id = nextId.current++;
-      const newFrame: ProcessedFrame = { texture, metadata };
+      const newFrame: ProcessedFrame = { texture, metadata, resizedTexture: null };
       setFrames((prev) => [...prev, newFrame]);
       return id;
     },
@@ -145,20 +146,26 @@ export const useGLBufferFrameManager = () => {
     const targetHeight = 320;
 
     while (left >= 0 || right < frames.length) {
-      // Process left-side frames
-      if (left >= 0) {
-        const frame = frames[left];
-        if (!frame) {
-          left -= 1;
-          continue;
-        }
+      // Function to process a single frame
+      const processFrame = async (index: number) => {
+        if (index < 0 || index >= frames.length) return;
 
-        const { pixels, resizedTexture } = await resizeRGBTexture(
+        const frame = frames[index];
+        if (!frame) return;
+
+        const { rgbPixels, resizedTexture } = await resizeRGBTexture(
           frame.texture,
           targetWidth,
           targetHeight
         );
-        const output = await model.run([pixels]);
+
+        if (!resizedTexture) {
+          console.error(`🚨 Error: Resized texture is NULL for frame ${index}!`);
+          return;
+        }
+
+        // Run model inference
+        const output = await model.run([rgbPixels]);
 
         const objectDetectionOutput = [
           output[0].slice(),
@@ -179,77 +186,31 @@ export const useGLBufferFrameManager = () => {
           }
         }
 
+        // Update frames state
         setFrames((prevFrames) => {
-          if (!prevFrames[left]) return prevFrames; // Prevent updating if undefined
+          if (!prevFrames[index]) return prevFrames;
           const newFrames = [...prevFrames];
-          newFrames[left] = {
-            ...newFrames[left],
+          newFrames[index] = {
+            ...newFrames[index],
+            resizedTexture, // ✅ Storing at the top level, NOT in metadata
             metadata: {
-              ...newFrames[left].metadata,
-              resizedArray: pixels,
+              ...newFrames[index].metadata,
               objectDetectionOutput,
-              resizedTexture,
               detectedObjects,
+              resizedTextureWidth: targetWidth, // Store width
+              resizedTextureHeight: targetHeight, // Store height
             },
           };
           return newFrames;
         });
+      };
 
-        left -= 1;
-      }
+      // Process left and right frames asynchronously
+      if (left >= 0) await processFrame(left);
+      if (right < frames.length) await processFrame(right);
 
-      // Process right-side frames
-      if (right < frames.length) {
-        const frame = frames[right];
-        if (!frame) {
-          right += 1;
-          continue;
-        }
-
-        const { pixels, resizedTexture } = await resizeRGBTexture(
-          frame.texture,
-          targetWidth,
-          targetHeight
-        );
-        const output = await model.run([pixels]);
-
-        const objectDetectionOutput = [
-          output[0].slice(),
-          output[1].slice(),
-          output[2].slice(),
-          output[3].slice(),
-        ];
-
-        const detectedObjects: [string, number][] = [];
-        const detectionScores = objectDetectionOutput[2];
-        const detectionClasses = objectDetectionOutput[1];
-
-        for (let i = 0; i < detectionScores.length; i++) {
-          if (detectionScores[i] > 0.5) {
-            const labelIndex = detectionClasses[i];
-            const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
-            detectedObjects.push([labelName, detectionScores[i]]);
-          }
-        }
-
-        setFrames((prevFrames) => {
-          if (!prevFrames[right]) return prevFrames; // Prevent updating if undefined
-          const newFrames = [...prevFrames];
-          newFrames[right] = {
-            ...newFrames[right],
-            metadata: {
-              ...newFrames[right].metadata,
-              resizedArray: pixels,
-              objectDetectionOutput,
-              resizedTexture,
-              detectedObjects,
-            },
-          };
-          return newFrames;
-        });
-
-        right += 1;
-      }
+      left -= 1;
+      right += 1;
     }
   }, [frames, model]);
 

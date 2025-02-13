@@ -45,7 +45,7 @@ const CustomTestScreen = () => {
 
   const faceDetectionOptions = useRef<FaceDetectionOptions>({
     // detection options
-    landmarkMode: 'all'
+    landmarkMode: 'all',
   }).current;
   const { detectFaces } = useFaceDetector(faceDetectionOptions);
 
