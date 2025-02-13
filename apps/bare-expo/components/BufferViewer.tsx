@@ -71,9 +71,6 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
           `Rendering Frame ${id} - Using ${showResizedTexture ? 'Resized Texture' : 'Full Texture'}`
         );
 
-        // ✅ Use the View's size for the WebGL viewport
-        glContext.viewport(0, 0, viewSize.width, viewSize.height);
-
         renderRGBToFramebuffer(
           glContext,
           rgbToScreenProgram,
