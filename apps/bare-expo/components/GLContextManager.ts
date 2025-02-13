@@ -222,6 +222,10 @@ export const renderRGBToFramebuffer = (
   framebuffer: WebGLFramebuffer,
   faces: Face[]
 ) => {
+  console.log('Debug: Binding rgbTexture to framebuffer:', rgbTexture);
+  if (!rgbTexture) {
+    console.error('Error: rgbTexture is NULL!');
+  }
   // Bind the texture before attaching it to the framebuffer
   gl.bindTexture(gl.TEXTURE_2D, rgbTexture);
   checkGLError(gl, 'Binding RGB Texture');
@@ -233,9 +237,27 @@ export const renderRGBToFramebuffer = (
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rgbTexture, 0);
   checkGLError(gl, 'Attaching Texture to Framebuffer');
 
-  if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
-    console.error('Framebuffer is incomplete!');
-    return;
+  const fbstatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+
+  if (fbstatus !== gl.FRAMEBUFFER_COMPLETE) {
+    switch (fbstatus) {
+      case gl.FRAMEBUFFER_COMPLETE:
+        console.log('Framebuffer is complete');
+        break;
+      case gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+        console.error('Framebuffer incomplete: INCOMPLETE_ATTACHMENT');
+        break;
+      case gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+        console.error('Framebuffer incomplete: MISSING_ATTACHMENT');
+        break;
+      case gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
+        console.error('Framebuffer incomplete: INCOMPLETE_DIMENSIONS');
+        break;
+      default:
+        console.error('Framebuffer incomplete: Unknown error');
+
+        return;
+    }
   }
 
   // Activate the texture unit and bind texture for rendering
@@ -257,12 +279,12 @@ export const renderRGBToFramebuffer = (
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, rgbTexture);
-  const scaleLoc = gl.getUniformLocation(programBlit, 'scale');
-  gl.uniform2f(scaleLoc, 1.0, 1.0);
+
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, 0);
 };
+
 export const drawObjectDetectionOutput = (
   objectDetectionOutput: any,
   gl: ExpoWebGLRenderingContext,
@@ -294,8 +316,6 @@ export const drawObjectDetectionOutput = (
         width: right - left,
         height: bottom - top,
       };
-
-      //console.log('Drawing detection rectangle with bounds (normalized):', bounds);
 
       drawRectangle(
         gl,
@@ -409,6 +429,7 @@ export const createVertexBuffer = (gl: ExpoWebGLRenderingContext) => {
   gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
   return vtxBuffer;
 };
+
 export const resizeRGBTexture = async (
   inputTexture: WebGLTexture,
   width: number,
@@ -422,14 +443,15 @@ export const resizeRGBTexture = async (
   // Create a new texture for the resized output
   const resizedTexture = glContext.createTexture();
   glContext.bindTexture(glContext.TEXTURE_2D, resizedTexture);
+
   glContext.texImage2D(
     glContext.TEXTURE_2D,
     0,
-    glContext.RGB, // Internal format: RGB
+    glContext.RGBA,
     width,
     height,
     0,
-    glContext.RGB, // Format: RGB
+    glContext.RGBA,
     glContext.UNSIGNED_BYTE,
     null
   );
@@ -451,7 +473,7 @@ export const resizeRGBTexture = async (
 
   // Check if framebuffer is complete
   if (glContext.checkFramebufferStatus(glContext.FRAMEBUFFER) !== glContext.FRAMEBUFFER_COMPLETE) {
-    console.error('Framebuffer is incomplete!');
+    console.error('Framebuffer is incomplete!(Resize Texture)');
     return { pixels: null, resizedTexture: null };
   }
   glContext.viewport(0, 0, width, height);
@@ -472,16 +494,23 @@ export const resizeRGBTexture = async (
   // Render the full-screen quad to copy/resize the texture
   drawFullScreenQuad(glContext);
 
-  // Read raw pixel data (RGB only)
-  const pixels = new Uint8Array(width * height * 3);
-  glContext.readPixels(0, 0, width, height, glContext.RGB, glContext.UNSIGNED_BYTE, pixels);
+  // Read raw pixel data (RGBA)
+  const rgbaPixels = new Uint8Array(width * height * 4);
+  glContext.readPixels(0, 0, width, height, glContext.RGBA, glContext.UNSIGNED_BYTE, rgbaPixels);
 
+  // Convert RGBA to RGB (Remove Alpha)
+  const rgbPixels = new Uint8Array(width * height * 3);
+
+  for (let i = 0, j = 0; i < rgbaPixels.length; i += 4, j += 3) {
+    rgbPixels[j] = rgbaPixels[i]; // R
+    rgbPixels[j + 1] = rgbaPixels[i + 1]; // G
+    rgbPixels[j + 2] = rgbaPixels[i + 2]; // B
+  }
   // Cleanup: unbind framebuffer and delete it (texture is kept for later use)
   glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);
   glContext.deleteFramebuffer(framebuffer);
-
-  // Return both the pixel data and the resized texture.
-  return { pixels, resizedTexture };
+  console.log('resizedTexture created successfully:', resizedTexture);
+  return { rgbPixels, resizedTexture };
 };
 
 export const clearFramebuffer = (
