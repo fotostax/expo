@@ -69,8 +69,6 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
           ? frame.metadata?.resizedTextureHeight || 320
           : frame.metadata?.textureHeight || 320;
 
-        const facesToRender = showResizedTexture ? [] : frame.metadata?.faces || [];
-
         console.log(
           `Rendering Frame ${id} - Using ${showResizedTexture ? 'Resized Texture' : 'Full Texture'}`
         );
@@ -82,10 +80,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
           textureToRender,
           textureWidth,
           textureHeight,
-          viewSize.width, // Pass updated view size
-          viewSize.height,
-          frameBuffer,
-          facesToRender
+          frameBuffer
         );
 
         if (!showResizedTexture && frame.metadata?.objectDetectionOutput) {
@@ -124,7 +119,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
     rgbToScreenProgram,
     isRendering,
     showResizedTexture,
-    viewSize, // Now passed as a prop
+    viewSize,
   ]);
 
   return (

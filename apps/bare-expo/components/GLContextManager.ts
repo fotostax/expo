@@ -156,6 +156,7 @@ export const prepareRectangleShader = (glCtx: ExpoWebGLRenderingContext) => {
 
   return progRectangle;
 };
+
 export const drawRectangle = (
   gl: ExpoWebGLRenderingContext,
   programRectangle: WebGLProgram,
@@ -216,10 +217,7 @@ export const renderRGBToFramebuffer = (
   rgbTexture: WebGLTexture,
   textureWidth: number,
   textureHeight: number,
-  viewWidth: number,
-  viewHeight: number,
   framebuffer: WebGLFramebuffer,
-  faces: Face[]
 ) => {
   console.log('Debug: Binding rgbTexture to framebuffer:', rgbTexture);
   if (!rgbTexture) {
