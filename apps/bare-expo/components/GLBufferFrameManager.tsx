@@ -192,7 +192,7 @@ export const useGLBufferFrameManager = () => {
           const newFrames = [...prevFrames];
           newFrames[index] = {
             ...newFrames[index],
-            resizedTexture, // ✅ Storing at the top level, NOT in metadata
+            resizedTexture, //
             metadata: {
               ...newFrames[index].metadata,
               objectDetectionOutput,
