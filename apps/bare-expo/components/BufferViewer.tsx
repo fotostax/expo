@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Text,
   TouchableWithoutFeedback,
-  LayoutChangeEvent,
 } from 'react-native';
 
 import { ProcessedFrame } from './GLBufferFrameManager';
@@ -24,35 +23,40 @@ interface BufferViewerProps {
   glContext: GL.ExpoWebGLRenderingContext | null;
   id: number;
   onChangeFrame: (newId: number) => void;
+  viewSize: { width: number; height: number }; // New prop for resolution
 }
 
-const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onChangeFrame }) => {
+const BufferViewer: React.FC<BufferViewerProps> = ({
+  frames,
+  glContext,
+  id,
+  onChangeFrame,
+  viewSize,
+}) => {
   const [snapshot, setSnapshot] = useState<GL.GLSnapshot | null>(null);
   const [rgbToScreenProgram, setRgbToScreenProgram] = useState<WebGLProgram | null>(null);
   const [vertexBuffer, setVertexBuffer] = useState<WebGLBuffer | null>(null);
-  const [frameBuffer, setFrameBuffer] = useState<WebGLFramebuffer | null>(null);
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [showResizedTexture, setShowResizedTexture] = useState<boolean>(false);
-
-  const [viewSize, setViewSize] = useState({ width: 1, height: 1 });
 
   useEffect(() => {
     if (glContext) {
       const program = prepareForRgbToScreen(glContext);
       const vtxBuffer = createVertexBuffer(glContext);
-      const fb = glContext.createFramebuffer();
       setRgbToScreenProgram(program);
       setVertexBuffer(vtxBuffer);
-      setFrameBuffer(fb);
       console.log('Total frames loaded: ' + frames.length);
     }
   }, [glContext]);
 
   useEffect(() => {
     const renderFrame = async () => {
-      if (glContext && vertexBuffer && frameBuffer) {
+      if (glContext && vertexBuffer) {
         const frame = frames[id];
         if (!frame) return;
+
+        console.log('View Size:', viewSize);
+        const frameBuffer = glContext.createFramebuffer();
 
         const textureToRender =
           showResizedTexture && frame.resizedTexture ? frame.resizedTexture : frame.texture;
@@ -78,6 +82,8 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
           textureToRender,
           textureWidth,
           textureHeight,
+          viewSize.width, // Pass updated view size
+          viewSize.height,
           frameBuffer,
           facesToRender
         );
@@ -92,7 +98,6 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
         }
 
         if (!showResizedTexture && frame.metadata?.faces) {
-          // Draw Faces Landmarks
           renderFaces(frame.metadata.faces, glContext, textureWidth, textureHeight, 3, true);
         }
 
@@ -101,6 +106,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
         const snap = await GL.GLView.takeSnapshotAsync(glContext, {
           flip: false,
         });
+        glContext.deleteFramebuffer(frameBuffer);
         setSnapshot(snap);
       }
     };
@@ -116,32 +122,25 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
     id,
     vertexBuffer,
     rgbToScreenProgram,
-    frameBuffer,
     isRendering,
     showResizedTexture,
-    viewSize, // Track View size changes
+    viewSize, // Now passed as a prop
   ]);
 
   return (
     <TouchableWithoutFeedback>
-      <View
-        style={styles.container}
-        onLayout={(event: LayoutChangeEvent) => {
-          const { width, height } = event.nativeEvent.layout;
-          setViewSize({ width, height });
-        }}>
+      <View style={styles.container}>
         <View style={styles.flex}>
           {snapshot && (
             <Image
               style={styles.flex}
               fadeDuration={0}
               source={{ uri: snapshot.uri as string }}
-              resizeMode="cover"
+              resizeMode="center"
             />
           )}
         </View>
 
-        {/* Toggle Button (Fixed Placement) */}
         <TouchableOpacity
           style={styles.toggleButton}
           onPress={() => setShowResizedTexture((prev) => !prev)}>
@@ -150,14 +149,12 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
           </Text>
         </TouchableOpacity>
 
-        {/* Frame counter display */}
         <View style={styles.frameCounter}>
           <Text style={styles.frameText}>
             {id + 1}/{frames.length}
           </Text>
         </View>
 
-        {/* Navigation Buttons (Now Limited to Edges) */}
         <View style={styles.navigationContainer}>
           <TouchableOpacity
             style={[styles.navButton, styles.leftButton]}
@@ -178,15 +175,8 @@ const BufferViewer: React.FC<BufferViewerProps> = ({ frames, glContext, id, onCh
 export default BufferViewer;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    width: '100%',
-    backgroundColor: 'white',
-  },
-  flex: {
-    flex: 1,
-    width: '100%',
-  },
+  container: { flex: 1, width: '100%', backgroundColor: 'white' },
+  flex: { flex: 1, width: '100%' },
   navigationContainer: {
     position: 'absolute',
     width: '100%',
@@ -196,22 +186,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
-  navButton: {
-    width: 50,
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  leftButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-  },
-  rightButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-  },
-  arrowText: {
-    fontSize: 24,
-    color: 'white',
-  },
+  navButton: { width: 50, height: '100%', justifyContent: 'center', alignItems: 'center' },
+  leftButton: { backgroundColor: 'rgba(0, 0, 0, 0.2)' },
+  rightButton: { backgroundColor: 'rgba(0, 0, 0, 0.2)' },
+  arrowText: { fontSize: 24, color: 'white' },
   frameCounter: {
     position: 'absolute',
     bottom: 20,
@@ -221,10 +199,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 5,
   },
-  frameText: {
-    color: 'white',
-    fontSize: 16,
-  },
+  frameText: { color: 'white', fontSize: 16 },
   toggleButton: {
     position: 'absolute',
     top: 20,
@@ -234,8 +209,5 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     zIndex: 10,
   },
-  toggleButtonText: {
-    color: 'white',
-    fontSize: 14,
-  },
+  toggleButtonText: { color: 'white', fontSize: 14 },
 });

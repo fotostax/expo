@@ -5,7 +5,7 @@ let glContext: ExpoWebGLRenderingContext | null = null;
 let rectangleProgram: WebGLProgram | null = null;
 let isLineWidthSupported: boolean = false;
 let resizeShader: WebGLShader | null = null;
-const debugMode: boolean = true;
+const debugMode: boolean = false;
 
 export const checkGLError = (gl: ExpoWebGLRenderingContext, message: string) => {
   if (!debugMode) {
@@ -44,10 +44,8 @@ export const prepareForRgbToScreen = (glCtx: ExpoWebGLRenderingContext) => {
   attribute vec2 texcoord;
   varying vec2 vTexCoord;
 
-  uniform vec2 scale;
-
   void main() {
-    gl_Position = vec4(position.xy * scale, position.z, 1.0);
+    gl_Position = vec4(position.xy, position.z, 1.0);
     vTexCoord = texcoord;
   }
   `;
@@ -56,12 +54,11 @@ export const prepareForRgbToScreen = (glCtx: ExpoWebGLRenderingContext) => {
   precision mediump float;
   varying vec2 vTexCoord;
   uniform sampler2D rgbTex;
-  uniform vec4 borderColor; // Define the border color
 
   void main() {
     if (vTexCoord.x < 0.0 || vTexCoord.x > 1.0 || vTexCoord.y < 0.0 || vTexCoord.y > 1.0) {
-      // Use border color for out-of-bounds texture coordinates
-      gl_FragColor = borderColor;
+      // Static black border color
+      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
     } else {
       // Sample the texture for in-bounds coordinates
       gl_FragColor = texture2D(rgbTex, vTexCoord);
@@ -219,6 +216,8 @@ export const renderRGBToFramebuffer = (
   rgbTexture: WebGLTexture,
   textureWidth: number,
   textureHeight: number,
+  viewWidth: number,
+  viewHeight: number,
   framebuffer: WebGLFramebuffer,
   faces: Face[]
 ) => {
@@ -255,7 +254,6 @@ export const renderRGBToFramebuffer = (
         break;
       default:
         console.error('Framebuffer incomplete: Unknown error');
-
         return;
     }
   }
@@ -509,7 +507,9 @@ export const resizeRGBTexture = async (
   // Cleanup: unbind framebuffer and delete it (texture is kept for later use)
   glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);
   glContext.deleteFramebuffer(framebuffer);
-  console.log('resizedTexture created successfully:', resizedTexture);
+  if (debugMode) {
+    console.log('resizedTexture created successfully:', resizedTexture);
+  }
   return { rgbPixels, resizedTexture };
 };
 

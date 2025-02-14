@@ -39,7 +39,7 @@ const CustomTestScreen = () => {
 
   const format108030fps = useCameraFormat(device, [
     { videoAspectRatio: 16 / 9 },
-    { videoResolution: { width: 1929, height: 1080 } },
+    { videoResolution: { width: 1080, height: 1920 } },
     { fps: 30 },
   ]);
 
@@ -168,9 +168,10 @@ const CustomTestScreen = () => {
         <View style={styles.emptyView}>
           <BufferViewer
             frames={frames}
-            glContext={gl} // Pass the actual GL context if available
+            glContext={gl}
             id={currentFrameId}
             onChangeFrame={setCurrentFrameId}
+            viewSize={{ width: format108030fps.videoHeight, height: format108030fps.videoWidth }} // Pass video resolution
           />
         </View>
       )}
