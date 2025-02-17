@@ -1,4 +1,6 @@
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
+import * as GL from 'expo-gl';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { Face } from 'react-native-vision-camera-face-detector';
 
 let glContext: ExpoWebGLRenderingContext | null = null;
@@ -217,7 +219,7 @@ export const renderRGBToFramebuffer = (
   rgbTexture: WebGLTexture,
   textureWidth: number,
   textureHeight: number,
-  framebuffer: WebGLFramebuffer,
+  framebuffer: WebGLFramebuffer
 ) => {
   console.log('Debug: Binding rgbTexture to framebuffer:', rgbTexture);
   if (!rgbTexture) {
@@ -545,91 +547,95 @@ const drawFullScreenQuad = (gl: ExpoWebGLRenderingContext) => {
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 };
 
-export const renderFaces = (
-  faces: any[],
+export const renderFaces = async (
+  faces: Face[],
   gl: ExpoWebGLRenderingContext,
   textureWidth: number,
   textureHeight: number,
   strokeWidth: number = 3,
-  shouldRenderLandmarks: boolean = false
-) => {
+  shouldRenderLandmarks: boolean = falsea
+): Promise<string[]> => {
   if (!faces || faces.length === 0) {
     console.log('No face landmarks available.');
-    return;
+    return [];
   }
 
   if (rectangleProgram == null) {
     rectangleProgram = prepareRectangleShader(gl);
   }
 
-  // Draw rectangles around faces (if any)
-  if (faces && faces.length > 0) {
-    faces.forEach((face) => {
-      // Compute flipped bounds on X:
-      // new x = textureWidth - face.bounds.x - face.bounds.width
-      const flippedBounds = {
-        x: textureWidth - face.bounds.x - face.bounds.width,
-        y: face.bounds.y,
-        width: face.bounds.width,
-        height: face.bounds.height,
-      };
+  faces.forEach((face) => {
+    const flippedBounds = {
+      x: textureWidth - face.bounds.x - face.bounds.width,
+      y: face.bounds.y,
+      width: face.bounds.width,
+      height: face.bounds.height,
+    };
 
-      drawRectangle(
-        gl,
-        rectangleProgram,
-        flippedBounds,
-        textureWidth,
-        textureHeight,
-        [1.0, 0.0, 0.0, 1.0], // red
-        strokeWidth,
-        false
-      );
-      if (shouldRenderLandmarks && face.landmarks) {
-        const leftEye = face.landmarks.LEFT_EYE;
-        const rightEye = face.landmarks.RIGHT_EYE;
+    drawRectangle(
+      gl,
+      rectangleProgram,
+      flippedBounds,
+      textureWidth,
+      textureHeight,
+      [1.0, 0.0, 0.0, 1.0], // red
+      strokeWidth,
+      false
+    );
+  });
 
-        const rectWidth = 40;
-        const rectHeight = 40;
+  // Capture the snapshot and crop faces
+  return captureAndCropFaces(gl, faces, textureWidth, textureHeight);
+};
 
-        // Flip the eye coordinates on X, similar to the face bounds.
-        const leftEyeBounds = {
-          x: textureWidth - leftEye.x - rectWidth / 2,
-          y: leftEye.y - rectHeight / 2,
-          width: rectWidth,
-          height: rectHeight,
-        };
-
-        const rightEyeBounds = {
-          x: textureWidth - rightEye.x - rectWidth / 2,
-          y: rightEye.y - rectHeight / 2,
-          width: rectWidth,
-          height: rectHeight,
-        };
-
-        const greenVec4: [number, number, number, number] = [0, 1, 0, 1];
-
-        drawRectangle(
-          gl,
-          rectangleProgram,
-          leftEyeBounds,
-          textureWidth,
-          textureHeight,
-          greenVec4,
-          strokeWidth,
-          false
-        );
-
-        drawRectangle(
-          gl,
-          rectangleProgram,
-          rightEyeBounds,
-          textureWidth,
-          textureHeight,
-          greenVec4,
-          strokeWidth,
-          false
-        );
-      }
-    });
+export const captureAndCropFaces = async (
+  gl: ExpoWebGLRenderingContext,
+  faces: Face[],
+  textureWidth: number,
+  textureHeight: number
+): Promise<string[]> => {
+  if (!gl || faces.length === 0) {
+    console.warn('No GL context or no faces detected.');
+    return [];
   }
+
+  console.log(`Capturing ${faces.length} faces...`);
+
+  // Take a snapshot of the full frame
+  const snapshot = await GL.GLView.takeSnapshotAsync(gl, {
+    format: 'png',
+    flip: false,
+  });
+
+  if (!snapshot?.uri) {
+    console.error('Failed to capture snapshot.');
+    return [];
+  }
+
+  const faceSnapshots: string[] = [];
+
+  for (const face of faces) {
+    const x = Math.max(0, face.bounds.x);
+    const y = Math.max(0, face.bounds.y);
+    const width = Math.min(textureWidth - x, face.bounds.width);
+    const height = Math.min(textureHeight - y, face.bounds.height);
+
+    console.log(`Cropping face at: x=${x}, y=${y}, width=${width}, height=${height}`);
+
+    try {
+      // Use Expo ImageManipulator to crop the snapshot
+      const croppedImage = await manipulateAsync(snapshot.uri, [
+        { crop: { originX: x, originY: y, width, height } },
+      ]);
+
+      if (croppedImage?.uri) {
+        faceSnapshots.push(croppedImage.uri);
+      }
+    } catch (error) {
+      console.error('Error cropping face snapshot:', error);
+    }
+  }
+
+  console.log(`Captured and cropped ${faceSnapshots.length} face images.`);
+  return faceSnapshots;
 };

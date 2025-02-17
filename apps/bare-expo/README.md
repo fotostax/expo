@@ -15,3 +15,5 @@ Learn more about this project in [CONTRIBUTING.md](https://github.com/expo/expo/
 ## Considerations
 
 - `adb -s R5CW60ETW1B tcpip 5555`
+
+- Review the TFLite model specs in https://netron.app/

@@ -1,7 +1,8 @@
+import { ExpoWebGLRenderingContext } from 'expo-gl';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { loadTensorflowModel } from 'react-native-fast-tflite';
 
-import { getGLContext, resizeRGBTexture } from './GLContextManager';
+import { captureAndCropFaces, getGLContext, resizeRGBTexture } from './GLContextManager';
 
 export interface ProcessedFrame {
   texture: WebGLTexture;
@@ -129,90 +130,93 @@ export const useGLBufferFrameManager = () => {
     return gl;
   }, []);
 
-  const processAllFramesAsync = useCallback(async () => {
-    if (model == null) {
-      console.log('No model was loaded');
-      return;
-    }
-    if (frames.length === 0) {
-      console.log('No frames have been stored in the buffer.');
-      return;
-    }
+  const processAllFramesAsync = useCallback(
+    async (gl: ExpoWebGLRenderingContext) => {
+      if (model == null) {
+        console.log('No model was loaded');
+        return;
+      }
+      if (frames.length === 0) {
+        console.log('No frames have been stored in the buffer.');
+        return;
+      }
 
-    const mid = Math.floor(frames.length / 2);
-    let left = mid - 1;
-    let right = mid;
-    const targetWidth = 320;
-    const targetHeight = 320;
+      const mid = Math.floor(frames.length / 2);
+      let left = mid - 1;
+      let right = mid;
+      const targetWidth = 320;
+      const targetHeight = 320;
 
-    while (left >= 0 || right < frames.length) {
-      // Function to process a single frame
-      const processFrame = async (index: number) => {
-        if (index < 0 || index >= frames.length) return;
+      while (left >= 0 || right < frames.length) {
+        // Function to process a single frame
+        const processFrame = async (index: number) => {
+          if (index < 0 || index >= frames.length) return;
 
-        const frame = frames[index];
-        if (!frame) return;
+          const frame = frames[index];
+          if (!frame) return;
 
-        const { rgbPixels, resizedTexture } = await resizeRGBTexture(
-          frame.texture,
-          targetWidth,
-          targetHeight
-        );
+          const { rgbPixels, resizedTexture } = await resizeRGBTexture(
+            frame.texture,
+            targetWidth,
+            targetHeight
+          );
 
-        if (!resizedTexture) {
-          console.error(`🚨 Error: Resized texture is NULL for frame ${index}!`);
-          return;
-        }
-
-        // Run model inference
-        const output = await model.run([rgbPixels]);
-
-        const objectDetectionOutput = [
-          output[0].slice(),
-          output[1].slice(),
-          output[2].slice(),
-          output[3].slice(),
-        ];
-
-        const detectedObjects: [string, number][] = [];
-        const detectionScores = objectDetectionOutput[2];
-        const detectionClasses = objectDetectionOutput[1];
-
-        for (let i = 0; i < detectionScores.length; i++) {
-          if (detectionScores[i] > 0.7) {
-            const labelIndex = detectionClasses[i];
-            const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
-            detectedObjects.push([labelName, detectionScores[i]]);
+          if (!resizedTexture) {
+            console.error(`🚨 Error: Resized texture is NULL for frame ${index}!`);
+            return;
           }
-        }
 
-        // Update frames state
-        setFrames((prevFrames) => {
-          if (!prevFrames[index]) return prevFrames;
-          const newFrames = [...prevFrames];
-          newFrames[index] = {
-            ...newFrames[index],
-            resizedTexture, //
-            metadata: {
-              ...newFrames[index].metadata,
-              objectDetectionOutput,
-              detectedObjects,
-              resizedTextureWidth: targetWidth, // Store width
-              resizedTextureHeight: targetHeight, // Store height
-            },
-          };
-          return newFrames;
-        });
-      };
+          // Run model inference
+          const output = await model.run([rgbPixels]);
 
-      // Process left and right frames asynchronously
-      if (left >= 0) await processFrame(left);
-      if (right < frames.length) await processFrame(right);
+          const objectDetectionOutput = [
+            output[0].slice(),
+            output[1].slice(),
+            output[2].slice(),
+            output[3].slice(),
+          ];
 
-      left -= 1;
-      right += 1;
-    }
-  }, [frames, model]);
+          const detectedObjects: [string, number][] = [];
+          const detectionScores = objectDetectionOutput[2];
+          const detectionClasses = objectDetectionOutput[1];
+
+          for (let i = 0; i < detectionScores.length; i++) {
+            if (detectionScores[i] > 0.7) {
+              const labelIndex = detectionClasses[i];
+              const labelName = COCO_LABELS[labelIndex as number] || `Unknown(${labelIndex})`;
+              detectedObjects.push([labelName, detectionScores[i]]);
+            }
+          }
+          // Update frames state
+          setFrames((prevFrames) => {
+            if (!prevFrames[index]) return prevFrames;
+            const newFrames = [...prevFrames];
+            newFrames[index] = {
+              ...newFrames[index],
+              resizedTexture,
+              metadata: {
+                ...newFrames[index].metadata,
+                objectDetectionOutput,
+                detectedObjects,
+                resizedTextureWidth: targetWidth,
+                resizedTextureHeight: targetHeight,
+              },
+            };
+            return newFrames;
+          });
+        };
+
+        // Process left and right frames asynchronously
+        if (left >= 0) await processFrame(left);
+        if (right < frames.length) await processFrame(right);
+
+        left -= 1;
+        right += 1;
+        break;
+      }
+    },
+    [frames, model]
+  );
 
   return {
     initializeContext,

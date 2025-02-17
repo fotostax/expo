@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Text,
   TouchableWithoutFeedback,
+  ScrollView,
 } from 'react-native';
 
 import { ProcessedFrame } from './GLBufferFrameManager';
@@ -38,6 +39,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
   const [vertexBuffer, setVertexBuffer] = useState<WebGLBuffer | null>(null);
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [showResizedTexture, setShowResizedTexture] = useState<boolean>(false);
+  const [faceImages, setFaceImages] = useState<string[]>([]);
 
   useEffect(() => {
     if (glContext) {
@@ -93,7 +95,16 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
         }
 
         if (!showResizedTexture && frame.metadata?.faces) {
-          renderFaces(frame.metadata.faces, glContext, textureWidth, textureHeight, 3, true);
+          const capturedFaces = await renderFaces(
+            frame.metadata.faces,
+            glContext,
+            textureWidth,
+            textureHeight,
+            3,
+            true
+          );
+          console.log(capturedFaces);
+          setFaceImages(capturedFaces); // Store the cropped face images
         }
 
         glContext.endFrameEXP();
@@ -136,6 +147,7 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
           )}
         </View>
 
+        {/* Toggle Button */}
         <TouchableOpacity
           style={styles.toggleButton}
           onPress={() => setShowResizedTexture((prev) => !prev)}>
@@ -144,12 +156,14 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
           </Text>
         </TouchableOpacity>
 
+        {/* Frame Counter */}
         <View style={styles.frameCounter}>
           <Text style={styles.frameText}>
             {id + 1}/{frames.length}
           </Text>
         </View>
 
+        {/* Navigation Buttons */}
         <View style={styles.navigationContainer}>
           <TouchableOpacity
             style={[styles.navButton, styles.leftButton]}
@@ -162,6 +176,17 @@ const BufferViewer: React.FC<BufferViewerProps> = ({
             <Text style={styles.arrowText}>▶</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Face Previews at Bottom - Visible only when resized texture is active */}
+        {showResizedTexture && faceImages.length > 0 && (
+          <View style={styles.faceContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {faceImages.map((faceUri, index) => (
+                <Image key={index} source={{ uri: faceUri }} style={styles.faceImage} />
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </View>
     </TouchableWithoutFeedback>
   );
@@ -205,4 +230,22 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   toggleButtonText: { color: 'white', fontSize: 14 },
+
+  // Styles for the Face Preview Container
+  faceContainer: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    height: 100,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  faceImage: {
+    width: 80,
+    height: 80,
+    marginHorizontal: 5,
+    borderRadius: 5,
+  },
 });
