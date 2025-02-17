@@ -67,7 +67,7 @@ const CustomTestScreen = () => {
 
   useEffect(() => {
     if (!isCameraActive) {
-      processAllFramesAsync();
+      processAllFramesAsync(gl);
     }
   }, [isCameraActive]);
 
