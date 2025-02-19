@@ -31,11 +31,7 @@ export const SidebarLink = ({ info, className, children }: SidebarLinkProps) => 
 
   useEffect(() => {
     if (isSelected && ref?.current && !isLinkInViewport(ref?.current)) {
-      setTimeout(() => {
-        if (ref?.current) {
-          ref.current.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 50);
+      setTimeout(() => ref?.current && ref.current.scrollIntoView({ behavior: 'smooth' }), 50);
     }
   }, []);
 
@@ -50,7 +46,7 @@ export const SidebarLink = ({ info, className, children }: SidebarLinkProps) => 
 
   return (
     <LinkBase
-      href={info.href}
+      href={info.href as string}
       ref={ref}
       className={mergeClasses(
         'group -ml-2.5 flex w-full scroll-m-[60px] items-center p-1 pr-0 text-xs text-secondary decoration-0',

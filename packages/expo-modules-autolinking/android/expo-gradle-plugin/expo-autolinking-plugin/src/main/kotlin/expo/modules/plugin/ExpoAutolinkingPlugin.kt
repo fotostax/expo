@@ -3,6 +3,7 @@ package expo.modules.plugin
 import com.android.build.api.variant.AndroidComponentsExtension
 import com.android.build.gradle.internal.tasks.factory.dependsOn
 import expo.modules.plugin.text.Colors
+import expo.modules.plugin.text.withColor
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
@@ -18,8 +19,7 @@ const val generatedFilesSrcDir = "generated/expo/src/main/java"
 
 open class ExpoAutolinkingPlugin : Plugin<Project> {
   override fun apply(project: Project) {
-    val gradleExtension = project.gradle.extensions.findByType(ExpoGradleExtension::class.java)
-      ?: throw IllegalStateException("`ExpoGradleExtension` not found. Please, make sure that `useExpoModules` was called in `settings.gradle`.")
+    val gradleExtension = project.gradle.extensions.getByType(ExpoGradleExtension::class.java)
     val config = gradleExtension.config
 
     project.logger.quiet("")
@@ -31,13 +31,13 @@ open class ExpoAutolinkingPlugin : Plugin<Project> {
       // Adds the subproject as a dependency to the current project (expo package).
       project.dependencies.add("api", subproject)
 
-      project.logger.quiet("  - ${Colors.GREEN}${subproject.name}${Colors.RESET} (${subproject.version})")
+      project.logger.quiet("  - ${subproject.name.withColor(Colors.GREEN)} (${subproject.version})")
     }
 
     project.logger.quiet("")
 
     // Creates a task that generates a list of expo modules.
-    val generatePackagesList = createGeneratePackagesListTask(project, gradleExtension.options, gradleExtension.hash)
+    val generatePackagesList = createGeneratePackagesListTask(project)
 
     // Ensures that the task is executed before the build.
     project.tasks
@@ -67,15 +67,12 @@ open class ExpoAutolinkingPlugin : Plugin<Project> {
     return project.layout.buildDirectory.file(packageListRelativePath)
   }
 
-  fun createGeneratePackagesListTask(project: Project, options: AutolinkingOptions, hash: String): TaskProvider<GeneratePackagesListTask> {
+  fun createGeneratePackagesListTask(project: Project): TaskProvider<GeneratePackagesListTask> {
     return project.tasks.register("generatePackagesList", GeneratePackagesListTask::class.java) {
-      it.hash.set(hash)
+      it.hash.set(project.extensions.getByType(ExpoGradleExtension::class.java).hash)
       it.namespace.set(generatedPackageListNamespace)
       it.outputFile.set(getPackageListFile(project))
       it.workingDir = project.rootDir
-      // Serializes the autolinking options to JSON to pass them to the task.
-      // The types supported as a task input are limited to primitives, strings, and files.
-      it.options.set(options.toJson())
     }
   }
 }

@@ -8,13 +8,12 @@ import {
 
 // Filter out common packages that don't make sense for us to validate on the directory.
 const DEFAULT_PACKAGES_TO_IGNORE = [
-  'jest',
+  'react-native',
   'react',
   'react-dom',
-  'react-native',
   'react-native-web',
+  'jest',
   /^babel-.*$/,
-  /^@expo-google-fonts\/.*$/,
   /^@types\/.*$/,
 ];
 

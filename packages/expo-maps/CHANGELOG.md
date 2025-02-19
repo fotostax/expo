@@ -6,11 +6,11 @@
 
 ### 🎉 New features
 
+- [iOS] Implement setCameraPosition ([#34886](https://github.com/expo/expo/pull/34886) by [@jakex7](https://github.com/jakex7))
+
 ### 🐛 Bug fixes
 
 ### 💡 Others
-
-- [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
 
 ## 0.6.1 — 2024-10-29
 

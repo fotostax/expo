@@ -49,7 +49,6 @@ export async function loadConfigAsync(
     'enableReactImportsPatcher',
     'useRNCoreAutolinkingFromExpo',
     'debug',
-    'fileHookTransform',
   ];
   const config: NormalizedConfig = {};
   for (const key of supportedConfigKeys) {

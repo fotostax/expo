@@ -26,7 +26,6 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
     mm.gyroUpdateInterval = 0.2
     return mm
   }()
-  private var cameraShouldInit = true
   private var isSessionPaused = false
 
   // MARK: Property Observers
@@ -39,8 +38,10 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
 
   var videoQuality: VideoQuality = .video1080p {
     didSet {
-      Task {
-        await updateSessionPreset(preset: videoQuality.toPreset())
+      if session.sessionPreset != videoQuality.toPreset() {
+        Task {
+          await updateSessionPreset(preset: videoQuality.toPreset())
+        }
       }
     }
   }
@@ -57,7 +58,9 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
 
   var presetCamera = AVCaptureDevice.Position.back {
     didSet {
-      updateType()
+      sessionQueue.async {
+        self.updateDevice()
+      }
     }
   }
 
@@ -77,31 +80,31 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
 
   var pictureSize = PictureSize.high {
     didSet {
-      Task {
-        await updatePictureSize()
-      }
+      updatePictureSize()
     }
   }
 
   var mode = CameraMode.picture {
     didSet {
-      Task {
-        await setCameraMode()
+      sessionQueue.async {
+        self.setCameraMode()
       }
     }
   }
 
   var isMuted = false {
     didSet {
-      Task {
-        await updateSessionAudioIsMuted()
+      sessionQueue.async {
+        self.updateSessionAudioIsMuted()
       }
     }
   }
 
   var active = true {
     didSet {
-      updateCameraIsActive()
+      sessionQueue.async {
+        self.updateCameraIsActive()
+      }
     }
   }
 
@@ -134,7 +137,9 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
   let onResponsiveOrientationChanged = EventDispatcher()
 
   private var deviceOrientation: UIInterfaceOrientation {
-    window?.windowScene?.interfaceOrientation ?? .unknown
+    UIApplication.shared.connectedScenes.compactMap {
+      $0 as? UIWindowScene
+    }.first?.interfaceOrientation ?? .unknown
   }
 
   required init(appContext: AppContext? = nil) {
@@ -152,6 +157,7 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
       name: UIDevice.orientationDidChangeNotification,
       object: nil)
     lifecycleManager?.register(self)
+    initializeCaptureSessionInput()
   }
 
   private func setupPreview() {
@@ -159,44 +165,63 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
     previewLayer.needsDisplayOnBoundsChange = true
   }
 
-  func initCamera() async {
-    guard cameraShouldInit else {
+  private func updateDevice() {
+    guard let device = ExpoCameraUtils.device(with: .video, preferring: presetCamera) else {
       return
     }
-    cameraShouldInit = false
-    await initializeCaptureSessionInput()
-  }
 
-  private func updateType() {
-    cameraShouldInit = true
+    session.beginConfiguration()
+    defer { session.commitConfiguration() }
+    if let captureDeviceInput {
+      session.removeInput(captureDeviceInput)
+    }
+
+    do {
+      let deviceInput = try AVCaptureDeviceInput(device: device)
+      if session.canAddInput(deviceInput) {
+        session.addInput(deviceInput)
+        captureDeviceInput = deviceInput
+        updateZoom()
+      }
+    } catch {
+      onMountError(["message": "Camera could not be started - \(error.localizedDescription)"])
+    }
   }
 
   public func onAppForegrounded() {
-    if !session.isRunning && isSessionPaused {
-      isSessionPaused = false
-      sessionQueue.async {
-        self.session.startRunning()
-        self.enableTorch()
+    sessionQueue.async { [weak self] in
+      guard let self else {
+        return
+      }
+      if !session.isRunning && isSessionPaused {
+        isSessionPaused = false
+        session.startRunning()
+        if torchEnabled {
+          enableTorch()
+        }
       }
     }
   }
 
   public func onAppBackgrounded() {
-    if session.isRunning && !isSessionPaused {
-      isSessionPaused = true
-      sessionQueue.async {
-        self.session.stopRunning()
+    sessionQueue.async { [weak self] in
+      guard let self else {
+        return
+      }
+      if session.isRunning && !isSessionPaused {
+        isSessionPaused = true
+        session.stopRunning()
       }
     }
   }
 
-  private func updatePictureSize() async {
+  private func updatePictureSize() {
 #if !targetEnvironment(simulator)
-    session.beginConfiguration()
-    defer { session.commitConfiguration() }
-    let preset = pictureSize.toCapturePreset()
-    if session.canSetSessionPreset(preset) {
-      session.sessionPreset = preset
+    sessionQueue.async {
+      let preset = self.pictureSize.toCapturePreset()
+      if self.session.canSetSessionPreset(preset) {
+        self.session.sessionPreset = preset
+      }
     }
 #endif
   }
@@ -234,18 +259,18 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
     device.unlockForConfiguration()
   }
 
-  private func setCameraMode() async {
+  private func setCameraMode() {
     if mode == .video {
       if videoFileOutput == nil {
-        await setupMovieFileCapture()
+        setupMovieFileCapture()
       }
-      await updateSessionAudioIsMuted()
+      updateSessionAudioIsMuted()
     } else {
-      await cleanupMovieFileCapture()
+      cleanupMovieFileCapture()
     }
   }
 
-  private func startSession() async {
+  private func startSession() {
 #if targetEnvironment(simulator)
     return
 #else
@@ -260,17 +285,19 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
 
     let photoOutput = AVCapturePhotoOutput()
     photoOutput.isLivePhotoCaptureEnabled = false
+    session.beginConfiguration()
     if session.canAddOutput(photoOutput) {
       session.addOutput(photoOutput)
       self.photoOutput = photoOutput
     }
 
     session.sessionPreset = mode == .video ? pictureSize.toCapturePreset() : .photo
-    addErrorNotification()
-    await changePreviewOrientation()
-
-    await barcodeScanner?.maybeStartBarcodeScanning()
     session.commitConfiguration()
+    addErrorNotification()
+    changePreviewOrientation()
+    Task.detached(priority: .userInitiated, operation: {
+      await self.barcodeScanner?.maybeStartBarcodeScanning()
+    })
     updateCameraIsActive()
     onCameraReady()
     enableTorch()
@@ -301,7 +328,9 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
         if !session.isRunning {
           session.startRunning()
         }
-        await updateSessionAudioIsMuted()
+        sessionQueue.async {
+          self.updateSessionAudioIsMuted()
+        }
         onCameraReady()
       }
     }
@@ -418,9 +447,8 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
       return
     }
 
-    let imageData = photo.fileDataRepresentation()
     handleCapturedImageData(
-      imageData: imageData,
+      imageData: photo.fileDataRepresentation(),
       metadata: photo.metadata,
       options: options,
       promise: promise
@@ -455,12 +483,6 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
     let croppedSize = AVMakeRect(aspectRatio: previewSize, insideRect: cropRect)
 
     takenImage = ExpoCameraUtils.crop(image: takenImage, to: croppedSize)
-
-    let path = FileSystemUtilities.generatePathInCache(
-      appContext,
-      in: "Camera",
-      extension: ".jpg"
-    )
 
     let width = takenImage.size.width
     let height = takenImage.size.height
@@ -522,9 +544,22 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
     }
 
     guard let processedImageData else {
-      promise.reject(CameraSavingImageException())
+      promise.reject(CameraSavingImageException("Image data could not be processed"))
       return
     }
+
+    if options.pictureRef {
+      if let image = UIImage(data: processedImageData) {
+        promise.resolve(PictureRef(image))
+        return
+      }
+    }
+
+    let path = FileSystemUtilities.generatePathInCache(
+      appContext,
+      in: "Camera",
+      extension: ".jpg"
+    )
 
     response["uri"] = ExpoCameraUtils.write(data: processedImageData, to: path)
     response["width"] = width
@@ -542,6 +577,11 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
   }
 
   func record(options: CameraRecordingOptions, promise: Promise) async {
+    let preset = options.quality?.toPreset()
+    if let preset {
+      await updateSessionPreset(preset: preset)
+    }
+
     if let videoFileOutput, !videoFileOutput.isRecording && videoRecordedPromise == nil {
       if let connection = videoFileOutput.connection(with: .video) {
         let orientation = responsiveWhenOrientationLocked ? physicalOrientation : UIDevice.current.orientation
@@ -562,18 +602,6 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
       videoRecordedPromise = promise
 
       videoFileOutput.startRecording(to: fileUrl, recordingDelegate: self)
-    }
-  }
-
-  @available(iOS 18.0, *)
-  func toggleRecording() {
-    guard let videoFileOutput else {
-      return
-    }
-    if videoFileOutput.isRecordingPaused {
-      videoFileOutput.resumeRecording()
-    } else {
-      videoFileOutput.pauseRecording()
     }
   }
 
@@ -603,14 +631,14 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
         self.videoCodecType = codecType
       } else {
         promise.reject(CameraRecordingException(options.codec?.rawValue))
-        await cleanupMovieFileCapture()
+        cleanupMovieFileCapture()
         videoRecordedPromise = nil
         isValidVideoOptions = false
       }
     }
   }
 
-  func updateSessionAudioIsMuted() async {
+  func updateSessionAudioIsMuted() {
     session.beginConfiguration()
     defer { session.commitConfiguration() }
 
@@ -639,21 +667,17 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
     }
   }
 
-  func setupMovieFileCapture() async {
+  func setupMovieFileCapture() {
     let output = AVCaptureMovieFileOutput()
     if session.canAddOutput(output) {
-      session.beginConfiguration()
-      defer { session.commitConfiguration() }
       session.addOutput(output)
       videoFileOutput = output
     }
   }
 
-  func cleanupMovieFileCapture() async {
+  func cleanupMovieFileCapture() {
     if let videoFileOutput {
       if session.outputs.contains(videoFileOutput) {
-        session.beginConfiguration()
-        defer { session.commitConfiguration() }
         session.removeOutput(videoFileOutput)
         self.videoFileOutput = nil
       }
@@ -669,8 +693,8 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
 
   public override func removeFromSuperview() {
     super.removeFromSuperview()
-    Task {
-      await stopSession()
+    sessionQueue.async {
+      self.stopSession()
     }
     lifecycleManager?.unregisterAppLifecycleListener(self)
     UIDevice.current.endGeneratingDeviceOrientationNotifications()
@@ -714,15 +738,11 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
     videoCodecType = nil
   }
 
-  func setPresetCamera(presetCamera: AVCaptureDevice.Position) {
-    self.presetCamera = presetCamera
-  }
-
   func stopRecording() {
     videoFileOutput?.stopRecording()
   }
 
-  func updateSessionPreset(preset: AVCaptureSession.Preset) async {
+  func updateSessionPreset(preset: AVCaptureSession.Preset) {
 #if !targetEnvironment(simulator)
     if session.canSetSessionPreset(preset) {
       if session.sessionPreset != preset {
@@ -730,36 +750,25 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
         defer { session.commitConfiguration() }
         session.sessionPreset = preset
       }
+    } else {
+      // The selected preset cannot be used on the current device so we fall back to the highest available.
+      if session.sessionPreset != .high {
+        session.beginConfiguration()
+        defer { session.commitConfiguration() }
+        session.sessionPreset = .high
+      }
     }
 #endif
   }
 
-  func initializeCaptureSessionInput() async {
-    session.beginConfiguration()
-
-    guard let device = ExpoCameraUtils.device(with: .video, preferring: presetCamera) else {
-      return
+  func initializeCaptureSessionInput() {
+    sessionQueue.async {
+      self.updateDevice()
+      self.startSession()
     }
-
-    if let captureDeviceInput {
-      session.removeInput(captureDeviceInput)
-    }
-
-    do {
-      let deviceInput = try AVCaptureDeviceInput(device: device)
-
-      if session.canAddInput(deviceInput) {
-        session.addInput(deviceInput)
-        captureDeviceInput = deviceInput
-        updateZoom()
-      }
-    } catch {
-      onMountError(["message": "Camera could not be started - \(error.localizedDescription)"])
-    }
-    await startSession()
   }
 
-  private func stopSession() async {
+  private func stopSession() {
 #if targetEnvironment(simulator)
     return
 #else
@@ -771,7 +780,9 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
     for output in session.outputs {
       session.removeOutput(output)
     }
-    await barcodeScanner?.stopBarcodeScanning()
+    Task {
+      await barcodeScanner?.stopBarcodeScanning()
+    }
     session.commitConfiguration()
 
     motionManager.stopAccelerometerUpdates()
@@ -790,18 +801,17 @@ public class CameraView: ExpoView, EXAppLifecycleListener,
   }
 
   @objc func orientationChanged() {
-    Task {
-      await changePreviewOrientation()
-    }
+    changePreviewOrientation()
   }
 
-  @MainActor
-  func changePreviewOrientation() async {
+  func changePreviewOrientation() {
     // We shouldn't access the device orientation anywhere but on the main thread
-    let videoOrientation = ExpoCameraUtils.videoOrientation(for: deviceOrientation)
-    if (previewLayer.connection?.isVideoOrientationSupported) == true {
-      physicalOrientation = ExpoCameraUtils.physicalOrientation(for: deviceOrientation)
-      previewLayer.connection?.videoOrientation = videoOrientation
+    Task { @MainActor in
+      let videoOrientation = ExpoCameraUtils.videoOrientation(for: deviceOrientation)
+      if (previewLayer.connection?.isVideoOrientationSupported) == true {
+        physicalOrientation = ExpoCameraUtils.physicalOrientation(for: deviceOrientation)
+        previewLayer.connection?.videoOrientation = videoOrientation
+      }
     }
   }
 

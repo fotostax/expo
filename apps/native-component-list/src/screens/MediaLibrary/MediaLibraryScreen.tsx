@@ -25,9 +25,7 @@ const COLUMNS = 3;
 const PAGE_SIZE = COLUMNS * 10;
 const WINDOW_SIZE = Dimensions.get('window');
 
-type MediaTypeWithoutPairedVideo = Exclude<MediaLibrary.MediaTypeValue, 'pairedVideo'>;
-
-const mediaTypeStates: Record<MediaTypeWithoutPairedVideo, MediaTypeWithoutPairedVideo> = {
+const mediaTypeStates: { [key in MediaLibrary.MediaTypeValue]: MediaLibrary.MediaTypeValue } = {
   [MediaLibrary.MediaType.unknown]: MediaLibrary.MediaType.photo,
   [MediaLibrary.MediaType.photo]: MediaLibrary.MediaType.video,
   [MediaLibrary.MediaType.video]: MediaLibrary.MediaType.audio,
@@ -183,7 +181,7 @@ function MediaLibraryView({ navigation, route, accessPrivileges }: Props) {
   const isLoadingAssets = React.useRef(false);
 
   const [sortBy, setSortBy] = React.useState<MediaLibrary.SortByKey>(MediaLibrary.SortBy.default);
-  const [mediaType, setMediaType] = React.useState<MediaTypeWithoutPairedVideo>(
+  const [mediaType, setMediaType] = React.useState<MediaLibrary.MediaTypeValue>(
     MediaLibrary.MediaType.photo
   );
 

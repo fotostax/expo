@@ -1,9 +1,9 @@
 import { mergeClasses } from '@expo/styleguide';
 import React, { ReactNode, ComponentType, HTMLAttributes, PropsWithChildren } from 'react';
 
-import { LABEL } from '~/ui/components/Text';
-
 import { FileStatus } from './FileStatus';
+
+import { LABEL } from '~/ui/components/Text';
 
 export type SnippetHeaderProps = PropsWithChildren<{
   title: string | ReactNode;

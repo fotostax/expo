@@ -16,10 +16,9 @@ typedef void (^CompletionHandler)(NSData *data, NSURLResponse *response);
 
 @interface EXDevLauncherManifestParser ()
 
+@property (weak, nonatomic) NSURLSession *session;
 @property (strong, nonatomic) NSURL *url;
 @property (nonatomic, strong) NSString *installationID;
-@property (weak, nonatomic) NSURLSession *session;
-@property (nonatomic, assign) NSTimeInterval requestTimeout;
 
 @end
 
@@ -29,13 +28,11 @@ typedef void (^CompletionHandler)(NSData *data, NSURLResponse *response);
 - (instancetype)initWithURL:(NSURL *)url
              installationID:(NSString *)installationID
                     session:(NSURLSession *)session
-             requestTimeout:(NSTimeInterval)requestTimeout
 {
   if (self = [super init]) {
+    self.session = session;
     self.url = url;
     self.installationID = installationID;
-    self.session = session;
-    self.requestTimeout = requestTimeout;
   }
   return self;
 }
@@ -103,7 +100,6 @@ typedef void (^CompletionHandler)(NSData *data, NSURLResponse *response);
   [request setHTTPMethod:method];
   [request setValue:@"ios" forHTTPHeaderField:@"expo-platform"];
   [request setValue:@"application/expo+json,application/json" forHTTPHeaderField:@"accept"];
-  [request setTimeoutInterval:self.requestTimeout];
   if (self.installationID) {
     [request setValue:self.installationID forHTTPHeaderField:@"Expo-Dev-Client-ID"];
   }

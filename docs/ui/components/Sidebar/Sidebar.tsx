@@ -1,15 +1,18 @@
 import { mergeClasses } from '@expo/styleguide';
 import type { PropsWithChildren, ComponentType } from 'react';
 
-import { NavigationType, NavigationRoute } from '~/types/common';
+import { SidebarGroup, SidebarSection } from './index';
 
-import { SidebarGroup } from './SidebarGroup';
-import { SidebarSection } from './SidebarSection';
-import { SidebarNodeProps } from './types';
+import { NavigationType, NavigationRoute } from '~/types/common';
 
 type SidebarProps = PropsWithChildren<{
   routes?: NavigationRoute[];
 }>;
+
+export type SidebarNodeProps = {
+  route: NavigationRoute;
+  parentRoute?: NavigationRoute;
+};
 
 export const Sidebar = ({ routes = [] }: SidebarProps) => {
   const renderTypes: Record<NavigationType, ComponentType<SidebarNodeProps> | null> = {
@@ -22,7 +25,8 @@ export const Sidebar = ({ routes = [] }: SidebarProps) => {
     <nav className="relative w-[280px] bg-default p-4 max-lg-gutters:w-full" data-sidebar>
       <div
         className={mergeClasses(
-          'pointer-events-none fixed left-0 z-10 mt-[-22px] h-8 w-[273px] bg-gradient-to-b from-default to-transparent',
+          'pointer-events-none fixed left-0 z-10 mt-[-22px] h-8 w-[273px]',
+          'bg-gradient-to-b from-default to-transparent opacity-90',
           'max-lg-gutters:hidden'
         )}
       />

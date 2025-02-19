@@ -3,7 +3,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import rimraf from 'rimraf';
 
-import getFingerprintHashFromCLIAsync from './utils/CLIUtils';
 import { createProjectHashAsync } from '../../src/Fingerprint';
 
 jest.mock('../../src/sourcer/ExpoConfigLoader', () => ({
@@ -40,41 +39,26 @@ describe('bare project test', () => {
 
   it('should have same hash after adding js only library', async () => {
     const hash = await createProjectHashAsync(projectRoot);
-    const hashCLI = await getFingerprintHashFromCLIAsync(projectRoot);
-    expect(hash).toEqual(hashCLI);
-
     await spawnAsync('npx', ['expo', 'install', '@react-navigation/core'], {
       stdio: 'ignore',
       cwd: projectRoot,
     });
     const hash2 = await createProjectHashAsync(projectRoot);
-    const hash2CLI = await getFingerprintHashFromCLIAsync(projectRoot);
-    expect(hash2).toEqual(hash2CLI);
-
     expect(hash).toBe(hash2);
   });
 
   it('should have different hash after adding native library', async () => {
     const hash = await createProjectHashAsync(projectRoot);
-    const hashCLI = await getFingerprintHashFromCLIAsync(projectRoot);
-    expect(hash).toEqual(hashCLI);
-
     await spawnAsync('npx', ['expo', 'install', 'react-native-reanimated'], {
       stdio: 'ignore',
       cwd: projectRoot,
     });
     const hash2 = await createProjectHashAsync(projectRoot);
-    const hash2CLI = await getFingerprintHashFromCLIAsync(projectRoot);
-    expect(hash2).toEqual(hash2CLI);
-
     expect(hash).not.toBe(hash2);
   });
 
   it('should have different hash after changing podfile', async () => {
     const hash = await createProjectHashAsync(projectRoot);
-    const hashCLI = await getFingerprintHashFromCLIAsync(projectRoot);
-    expect(hash).toEqual(hashCLI);
-
     const filePath = path.join(projectRoot, 'ios', 'Podfile');
     const contents = await fs.readFile(filePath, 'utf8');
     await fs.writeFile(
@@ -82,17 +66,11 @@ describe('bare project test', () => {
       modifyPodfileContents(contents, /(:path)\s*=>.*,$/gm, `$1 => ../node_modules/react-native,`)
     );
     const hash2 = await createProjectHashAsync(projectRoot);
-    const hash2CLI = await getFingerprintHashFromCLIAsync(projectRoot);
-    expect(hash2).toEqual(hash2CLI);
-
     expect(hash).not.toBe(hash2);
   });
 
   it('should have same hash for specifing android platform after changing podfile', async () => {
     const hash = await createProjectHashAsync(projectRoot, { platforms: ['android'] });
-    const hashCLI = await getFingerprintHashFromCLIAsync(projectRoot, ['--platform', 'android']);
-    expect(hash).toEqual(hashCLI);
-
     const filePath = path.join(projectRoot, 'ios', 'Podfile');
     const contents = await fs.readFile(filePath, 'utf8');
     await fs.writeFile(
@@ -101,9 +79,6 @@ describe('bare project test', () => {
     );
     await fs.writeFile(filePath, contents);
     const hash2 = await createProjectHashAsync(projectRoot, { platforms: ['android'] });
-    const hash2CLI = await getFingerprintHashFromCLIAsync(projectRoot, ['--platform', 'android']);
-    expect(hash2).toEqual(hash2CLI);
-
     expect(hash).toBe(hash2);
   });
 });

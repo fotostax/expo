@@ -95,7 +95,6 @@ export default class VideoPlayerWeb
     this._mountedVideos.forEach((video) => {
       video.playbackRate = value;
     });
-    this._playbackRate = value;
   }
 
   get playbackRate(): number {

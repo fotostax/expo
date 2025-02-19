@@ -4,25 +4,50 @@ import { renderYUVToRGB, checkGLError } from 'components/GLContextManager';
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { Frame, FrameInternal, runAsync } from 'react-native-vision-camera';
+import {
+  Frame,
+  FrameInternal,
+  useCameraDevice,
+  useFrameProcessor,
+  Camera,
+  useCameraFormat,
+} from 'react-native-vision-camera';
 import {
   Face,
   useFaceDetector,
   FaceDetectionOptions,
 } from 'react-native-vision-camera-face-detector';
 import { Worklets } from 'react-native-worklets-core';
-import { CameraPage } from 'screens/CameraView';
 
 const CustomTestScreen = () => {
-  const { initializeContext, addFrame, frames } = useGLBufferFrameManager();
+  const { initializeContext, addFrame, frames, processAllFramesAsync } = useGLBufferFrameManager();
   const [gl, setGL] = useState(null);
   const [currentFrameId, setCurrentFrameId] = useState(0);
-  // State for managing camera visibility and frame processing
   const [isCameraActive, setIsCameraActive] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isFrameProcessorActive, setisFrameProcessorActive] = useState(false);
   const [progYUV, setProgYuv] = useState(null);
   const [vtxBuffer, setvtxBuffer] = useState(null);
   const [frameBuffer, setFrameBuffer] = useState(null);
+
+  const device = useCameraDevice('front');
+
+  const format4k30fps = useCameraFormat(device, [
+    { videoAspectRatio: 16 / 9 },
+    { videoResolution: { width: 3048, height: 2160 } },
+    { fps: 30 },
+  ]);
+
+  const format108030fps = useCameraFormat(device, [
+    { videoAspectRatio: 16 / 9 },
+    { videoResolution: { width: 1080, height: 1920 } },
+    { fps: 30 },
+  ]);
+
+  const faceDetectionOptions = useRef<FaceDetectionOptions>({
+    // detection options
+    landmarkMode: 'all',
+  }).current;
+  const { detectFaces } = useFaceDetector(faceDetectionOptions);
 
   // Initialize GL context when the component mounts
   useEffect(() => {
@@ -35,6 +60,16 @@ const CustomTestScreen = () => {
     };
     setupGL();
   }, [initializeContext]);
+
+  useEffect(() => {
+    setCurrentFrameId(Math.floor(frames.length / 2) as number);
+  }, [frames.length]);
+
+  useEffect(() => {
+    if (!isCameraActive) {
+      processAllFramesAsync(gl);
+    }
+  }, [isCameraActive]);
 
   // Function to prepare the GL context
   const onContextCreate = async (gl: ExpoWebGLRenderingContext) => {
@@ -54,22 +89,7 @@ const CustomTestScreen = () => {
     }
   };
 
-  // Handle screen tap to start frame processing
-  const handleScreenTap = useCallback(() => {
-    if (!isProcessing && gl != null) {
-      setIsProcessing(true);
-      // Stop frame processing and remove the camera afrter 3 seconds
-      setTimeout(() => {
-        setIsProcessing(false);
-        setTimeout(() => {
-          console.log('removing camera...');
-          setIsCameraActive(false); // Render an empty view
-        }, 2000);
-      }, 5000);
-    }
-  }, [isProcessing, gl]);
-
-  const yuvToRGBCallback = Worklets.createRunOnJS(async (frame: Frame) => {
+  const yuvToRGBCallback = Worklets.createRunOnJS(async (frame: Frame, faces: Face[]) => {
     const internal = frame as FrameInternal;
     internal.incrementRefCount();
 
@@ -96,32 +116,62 @@ const CustomTestScreen = () => {
         textureHeight
       );
       checkGLError(gl, 'Rendering Yuv to RGB');
-
-      addFrame(rgbTexture, { textureWidth, textureHeight });
+      addFrame(rgbTexture, { textureWidth, textureHeight, faces });
     } catch (error) {
       console.error('Error in HB upload:', error);
       throw error;
     }
   });
 
-  const renderCallback = async (frame: Frame) => {
-    'worklet';
-    if (isProcessing) {
-      await yuvToRGBCallback(frame);
+  const frameProcessor = useFrameProcessor(
+    async (frame: Frame) => {
+      'worklet';
+      if (isFrameProcessorActive) {
+        const faces = detectFaces(frame);
+        await yuvToRGBCallback(frame, faces);
+      }
+    },
+    [isFrameProcessorActive]
+  );
+
+  const handleScreenTap = useCallback(() => {
+    if (!isFrameProcessorActive && gl != null) {
+      setisFrameProcessorActive(true);
+      setTimeout(() => {
+        setisFrameProcessorActive(false);
+        setTimeout(async () => {
+          console.log('removing camera...');
+          setIsCameraActive(false); // Render an empty view
+        }, 1200);
+      }, 2500);
     }
-  };
+  }, [isFrameProcessorActive, gl]);
 
   return (
     <TouchableOpacity style={styles.container} onPress={handleScreenTap}>
       {isCameraActive ? (
-        <CameraPage style={styles.cameraView} renderCallback={yuvToRGBCallback} isProcessing={isProcessing}/>
+        device ? (
+          <Camera
+            style={styles.camera}
+            isActive
+            device={device}
+            frameProcessor={frameProcessor}
+            resizeMode="contain"
+            format={format108030fps}
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.text}>Loading Camera...</Text>
+          </View>
+        )
       ) : (
         <View style={styles.emptyView}>
           <BufferViewer
             frames={frames}
-            glContext={gl} // Pass the actual GL context if available
+            glContext={gl}
             id={currentFrameId}
             onChangeFrame={setCurrentFrameId}
+            viewSize={{ width: format108030fps.videoHeight, height: format108030fps.videoWidth }} // Pass video resolution
           />
         </View>
       )}
@@ -131,9 +181,19 @@ const CustomTestScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'white' },
-  cameraView: { flex: 1 },
+  camera: { flex: 1 },
   emptyView: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
-  emptyText: { color: '#fff', fontSize: 16 },
+  text: {
+    color: 'white',
+    fontSize: 11,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
 
 export default CustomTestScreen;

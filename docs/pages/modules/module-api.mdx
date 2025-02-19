@@ -4,12 +4,11 @@ description: An API reference of Expo modules API.
 sidebar_title: Module API
 ---
 
+import { APIBox } from '~/components/plugins/APIBox';
 import { CodeBlocksTable } from '~/components/plugins/CodeBlocksTable';
-import { PaddedAPIBox } from '~/components/plugins/PaddedAPIBox';
 import { APIMethod } from '~/components/plugins/api/APIMethod';
 import { FileTree } from '~/ui/components/FileTree';
-import { PlatformTags } from '~/ui/components/Tag/PlatformTags';
-import { StatusTag } from '~/ui/components/Tag/StatusTag';
+import { PlatformTags, StatusTag } from '~/ui/components/Tag';
 import { A, CALLOUT } from '~/ui/components/Text';
 
 The native modules API is an abstraction layer on top of [JSI](https://reactnative.dev/architecture/glossary#javascript-interfaces-jsi) and other low-level primitives that React Native is built upon. It is built with modern languages (Swift and Kotlin) and provides an easy-to-use and convenient API that is consistent across platforms where possible.
@@ -19,7 +18,7 @@ The native modules API is an abstraction layer on top of [JSI](https://reactnati
 As you might have noticed in the snippets on the [Get Started](/modules/get-started) page, each module class must implement the `definition` function.
 The module definition consists of the DSL components that describe the module's functionality and behavior.
 
-<PaddedAPIBox header="Name">
+<APIBox header="Name">
 
 Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument. This can be inferred from the module's class name, but it's recommended to set it explicitly for clarity.
 
@@ -27,8 +26,8 @@ Sets the name of the module that JavaScript code will use to refer to the module
 Name("MyModuleName")
 ```
 
-</PaddedAPIBox>
-<PaddedAPIBox header="Constants">
+</APIBox>
+<APIBox header="Constants">
 
 Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
 
@@ -63,8 +62,8 @@ Constants {
 ```
 
 </CodeBlocksTable>
-</PaddedAPIBox>
-<PaddedAPIBox header="Function">
+</APIBox>
+<APIBox header="Function">
 
 Defines a native synchronous function that will be exported to JavaScript. Synchronous means that when the function is executed in JavaScript, its native code is run on the same thread and blocks further execution of the script until the native function returns.
 
@@ -104,8 +103,8 @@ function getMessage() {
 }
 ```
 
-</PaddedAPIBox>
-<PaddedAPIBox header="AsyncFunction">
+</APIBox>
+<APIBox header="AsyncFunction">
 
 Defines a JavaScript function that always returns a `Promise` and whose native code is by default dispatched on a different thread than the JavaScript runtime runs on.
 
@@ -206,8 +205,8 @@ AsyncFunction("suspendFunction") Coroutine { message: String ->
 }
 ```
 
-</PaddedAPIBox>
-<PaddedAPIBox header="Events">
+</APIBox>
+<APIBox header="Events">
 
 Defines event names that the module can send to JavaScript.
 
@@ -227,8 +226,8 @@ Events("onCameraReady", "onPictureSaved", "onBarCodeScanned")
 
 See [Sending events](#sending-events) to learn how to send events from the native code to JavaScript/TypeScript.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="Property">
+</APIBox>
+<APIBox header="Property">
 
 Defines a new property directly on the JavaScript object that represents a native module. It is the same as calling [`Object.defineProperty`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty) on the module object.
 
@@ -292,8 +291,8 @@ MyModule.foo;
 MyModule.foo = 'foobar';
 ```
 
-</PaddedAPIBox>
-<PaddedAPIBox header="View">
+</APIBox>
+<APIBox header="View">
 
 Enables the module to be used as a native view. Definition components that are accepted as part of the view definition: [`Prop`](#prop), [`Events`](#events), [`GroupView`](#groupview) and [`AsyncFunction`](#asyncfunction).
 
@@ -331,8 +330,8 @@ View(TextView::class) {
 
 > **Info** Support for rendering SwiftUI views is planned. For now, you can use [`UIHostingController`](https://developer.apple.com/documentation/swiftui/uihostingcontroller) and add its content view to your UIKit view.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="Prop">
+</APIBox>
+<APIBox header="Prop">
 
 Defines a setter for the view prop of given name.
 
@@ -361,76 +360,76 @@ Prop("background") { view: View, @ColorInt color: Int ->
 
 > **Note** Props of function type (callbacks) are not supported yet.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnCreate">
+</APIBox>
+<APIBox header="OnCreate">
 
 Defines module's lifecycle listener that is called right after module initialization. If you need to set up something when the module gets initialized, use this instead of module's class initializer.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnDestroy">
+</APIBox>
+<APIBox header="OnDestroy">
 
 Defines module's lifecycle listener that is called when the module is about to be deallocated. Use it instead of module's class destructor.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnStartObserving">
+</APIBox>
+<APIBox header="OnStartObserving">
 
 Defines the function that is invoked when the first event listener is added.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnStopObserving">
+</APIBox>
+<APIBox header="OnStopObserving">
 
 Defines the function that is invoked when all event listeners are removed.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnAppContextDestroys">
+</APIBox>
+<APIBox header="OnAppContextDestroys">
 
 Defines module's lifecycle listener that is called when the app context owning the module is about to be deallocated.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnAppEntersForeground" platforms={["ios"]}>
+</APIBox>
+<APIBox header="OnAppEntersForeground" platforms={["ios"]}>
 
 Defines the listener that is called when the app is about to enter the foreground mode.
 
 > **Note** This function is not available on Android — you may want to use [`OnActivityEntersForeground`](#onactivityentersforeground) instead.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnAppEntersBackground" platforms={["ios"]}>
+</APIBox>
+<APIBox header="OnAppEntersBackground" platforms={["ios"]}>
 
 Defines the listener that is called when the app enters the background mode.
 
 > **Note** This function is not available on Android — you may want to use [`OnActivityEntersBackground`](#onactivityentersbackground) instead.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnAppBecomesActive" platforms={["ios"]}>
+</APIBox>
+<APIBox header="OnAppBecomesActive" platforms={["ios"]}>
 
 Defines the listener that is called when the app becomes active again (after `OnAppEntersForeground`).
 
 > **Note** This function is not available on Android — you may want to use [`OnActivityEntersForeground`](#onactivityentersforeground) instead.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnActivityEntersForeground" platforms={["android"]}>
+</APIBox>
+<APIBox header="OnActivityEntersForeground" platforms={["android"]}>
 
 Defines the activity lifecycle listener that is called right after the activity is resumed.
 
 > **Note** This function is not available on iOS — you may want to use [`OnAppEntersForeground`](#onappentersforeground) instead.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnActivityEntersBackground" platforms={["android"]}>
+</APIBox>
+<APIBox header="OnActivityEntersBackground" platforms={["android"]}>
 
 Defines the activity lifecycle listener that is called right after the activity is paused.
 
 > **Note** This function is not available on iOS — you may want to use [`OnAppEntersBackground`](#onappentersbackground) instead.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="OnActivityDestroys" platforms={["android"]}>
+</APIBox>
+<APIBox header="OnActivityDestroys" platforms={["android"]}>
 
 Defines the activity lifecycle listener that is called when the activity owning the JavaScript context is about to be destroyed.
 
 > **Note** This function is not available on iOS — you may want to use [`OnAppEntersBackground`](#onappentersbackground) instead.
 
-</PaddedAPIBox>
+</APIBox>
 
-<PaddedAPIBox header="GroupView" platforms={["android"]}>
+<APIBox header="GroupView" platforms={["android"]}>
 
 Enables the view to be used as a view group. Definition components that are accepted as part of the group view definition: [`AddChildView`](#addchildview), [`GetChildCount`](#getchildcount), [`GetChildViewAt`](#getchildviewat), [`RemoveChildView`](#removechildview), [`RemoveChildViewAt`](#removechildviewat).
 
@@ -447,9 +446,9 @@ GroupView<ViewGroup> {
 }
 ```
 
-</PaddedAPIBox>
+</APIBox>
 
-<PaddedAPIBox header="AddChildView" platforms={["android"]}>
+<APIBox header="AddChildView" platforms={["android"]}>
 
 Defines action that adds a child view to the view group.
 
@@ -465,9 +464,9 @@ AddChildView { parent, child: View, index ->
 }
 ```
 
-</PaddedAPIBox>
+</APIBox>
 
-<PaddedAPIBox header="GetChildCount" platforms={["android"]}>
+<APIBox header="GetChildCount" platforms={["android"]}>
 
 Defines action the retrieves the number of child views in the view group.
 
@@ -483,9 +482,9 @@ GetChildCount { parent ->
 }
 ```
 
-</PaddedAPIBox>
+</APIBox>
 
-<PaddedAPIBox header="GetChildViewAt" platforms={["android"]}>
+<APIBox header="GetChildViewAt" platforms={["android"]}>
 
 Defines action that retrieves a child view at a specific index from the view group.
 
@@ -501,9 +500,9 @@ GetChildViewAt { parent, index ->
 }
 ```
 
-</PaddedAPIBox>
+</APIBox>
 
-<PaddedAPIBox header="RemoveChildView" platforms={["android"]}>
+<APIBox header="RemoveChildView" platforms={["android"]}>
 
 Defines action that removes a specific child view from the view group.
 
@@ -519,9 +518,9 @@ RemoveChildView { parent, child: View ->
 }
 ```
 
-</PaddedAPIBox>
+</APIBox>
 
-<PaddedAPIBox header="RemoveChildViewAt" platforms={["android"]}>
+<APIBox header="RemoveChildViewAt" platforms={["android"]}>
 
 Defines action that removes a child view at a specific index from the view group.
 
@@ -537,13 +536,13 @@ RemoveChildViewAt { parent, index ->
 }
 ```
 
-</PaddedAPIBox>
+</APIBox>
 
 ## Argument types
 
 Fundamentally, only primitive and serializable data can be passed back and forth between the runtimes. However, usually native modules need to receive custom data structures — more sophisticated than just the dictionary/map where the values are of unknown (`Any`) type and so each value has to be validated and cast on its own. The Expo Modules API provides protocols to make it more convenient to work with data objects, to provide automatic validation, and finally, to ensure native type-safety on each object member.
 
-<PaddedAPIBox header="Primitives">
+<APIBox header="Primitives">
 
 All functions and view prop setters accept all common primitive types in Swift and Kotlin as the arguments. This includes arrays, dictionaries/maps and optionals of these primitive types.
 
@@ -552,14 +551,59 @@ All functions and view prop setters accept all common primitive types in Swift a
 | Swift    | `Bool`, `Int`, `Int8`, `Int16`, `Int32`, `Int64`, `UInt`, `UInt8`, `UInt16`, `UInt32`, `UInt64`, `Float32`, `Double`, `String` |
 | Kotlin   | `Boolean`, `Int`, `Long`, `Float`, `Double`, `String`, `Pair`                                                                  |
 
-</PaddedAPIBox>
-<PaddedAPIBox header="Convertibles">
+</APIBox>
+<APIBox header="Convertibles">
 
 _Convertibles_ are native types that can be initialized from certain specific kinds of data received from JavaScript. Such types are allowed to be used as an argument type in `Function`'s body. For example, when the `CGPoint` type is used as a function argument type, its instance can be created from an array of two numbers `(x, y)` or a JavaScript object with numeric `x` and `y` properties.
 
+The built-in Convertibles are documented [further below](#built-in-convertibles). You can define additional Convertibles by making native Swift types conform to the `Convertible` protocol:
+
+<PaddedAPIBox header="Convertible" platforms={["ios"]}>
+
+`Convertible` is a Swift protocol with one static method:
+
+<APIMethod
+  name="convert"
+  comment="A static method that converts a dynamically typed value from JavaScript to an instance of the Swift type conforming to `Convertible`. Implementers should throw an exception when the given value is invalid or of an unsupported type."
+  returnTypeName="Self"
+  parameters={[
+    {
+      name: 'value',
+      comment: 'A value from JavaScript to convert',
+      typeName: 'Any?',
+    },
+    {
+      name: 'appContext',
+      comment: 'The context object for the currently running Expo app instance',
+      typeName: 'AppContext',
+    },
+  ]}
+/>
+
+### Example
+
+```swift Swift
+import ExpoModulesCore
+
+extension CMTime: @retroactive Convertible {
+  public static func convert(from value: Any?, appContext: AppContext) throws -> CMTime {
+    if let seconds = value as? Double {
+      return CMTime(seconds: seconds, preferredTimescale: .max)
+    }
+    throw Conversions.ConvertingException<CMTime>(value)
+  }
+}
+```
+
+</PaddedAPIBox>
+
+> **Info** Support for defining Convertibles with Kotlin is planned to be available by SDK 53.
+
 ---
 
-Some common iOS types from `CoreGraphics` and `UIKit` system frameworks are already made convertible.
+## Built-in Convertibles
+
+Some common iOS types from the `CoreGraphics` and `UIKit` system frameworks are already made convertible.
 
 | Native iOS Type         | TypeScript                                                                                                                                                                        |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -586,8 +630,8 @@ Similarly, some common Android types from packages like `java.io`, `java.net`, o
 | `kotlin.ByteArray`                                                            | `Uint8Array` <StatusTag note="SDK 50+" />                                                                                                                                         |
 | `kotlin.time.Duration`                                                        | `number` represents a duration in seconds <StatusTag note="SDK 52+" />                                                                                                            |
 
-</PaddedAPIBox>
-<PaddedAPIBox header="Records">
+</APIBox>
+<APIBox header="Records">
 
 _Record_ is a convertible type and an equivalent of the dictionary (Swift) or map (Kotlin), but represented as a struct where each field can have its type and provide a default value.
 It is a better way to represent a JavaScript object with the native type safety.
@@ -631,8 +675,8 @@ Function("readFile") { path: String, options: FileReadOptions ->
 ```
 
 </CodeBlocksTable>
-</PaddedAPIBox>
-<PaddedAPIBox header="Enums">
+</APIBox>
+<APIBox header="Enums">
 
 With enums, we can go even further with the above example (with `FileReadOptions` record) and limit supported encodings to `"utf8"` and `"base64"`. To use an enum as an argument or record field, it must represent a primitive value (for example, `String`, `Int`) and conform to `Enumerable`.
 
@@ -666,8 +710,8 @@ class FileReadOptions : Record {
 ```
 
 </CodeBlocksTable>
-</PaddedAPIBox>
-<PaddedAPIBox header="Eithers">
+</APIBox>
+<APIBox header="Eithers">
 
 There are some use cases where you want to pass various types for a single function argument. This is where Either types might come in handy.
 They act as a container for a value of one of a couple of types.
@@ -704,8 +748,8 @@ The implementation for three Either types is currently provided out of the box, 
 - `EitherOfThree<FirstType, SecondType, ThirdType>` — A container for one of three types.
 - `EitherOfFour<FirstType, SecondType, ThirdType, FourthType>` — A container for one of four types.
 
-</PaddedAPIBox>
-<PaddedAPIBox header="JavaScript values">
+</APIBox>
+<APIBox header="JavaScript values">
 
 It's also possible to use a `JavaScriptValue` type which is a holder for any value that can be represented in JavaScript.
 This type is useful when you want to mutate the given argument or when you want to omit type validations and conversions.
@@ -748,11 +792,11 @@ Function("mutateMe") { jsObject: JavaScriptObject ->
 
 </CodeBlocksTable>
 
-</PaddedAPIBox>
+</APIBox>
 
 ## Native classes
 
-<PaddedAPIBox header="Module">
+<APIBox header="Module">
 
 A base class for a native module.
 
@@ -786,9 +830,9 @@ A base class for a native module.
   ]}
 />
 
-</PaddedAPIBox>
+</APIBox>
 
-<PaddedAPIBox header="AppContext">
+<APIBox header="AppContext">
 
 The app context is an interface to a single Expo app.
 
@@ -887,9 +931,9 @@ The app context is an interface to a single Expo app.
   platforms={['iOS']}
 />
 
-</PaddedAPIBox>
+</APIBox>
 
-<PaddedAPIBox header="ExpoView">
+<APIBox header="ExpoView">
 
 A base class that should be used by all exported views.
 
@@ -940,11 +984,11 @@ class LinearGradientModule : Module() {
 
 </CodeBlocksTable>
 
-</PaddedAPIBox>
+</APIBox>
 
 ## Guides
 
-<PaddedAPIBox>
+<APIBox>
 ### Sending events
 
 While JavaScript/TypeScript to Native communication is mostly covered by native functions, you might also want to let the JavaScript/TypeScript code know about certain system events, for example, when the clipboard content changes.
@@ -1044,9 +1088,9 @@ Clipboard.addListener('onClipboardChanged', (event: ClipboardChangeEvent) => {
 });
 ```
 
-</PaddedAPIBox>
+</APIBox>
 
-<PaddedAPIBox>
+<APIBox>
 ### View callbacks
 
 Some events are connected to a certain view. For example, the touch event should be sent only to the underlying JavaScript view which was pressed. In that case, you can't use `sendEvent` described in [`Sending events`](#sending-events). The `expo-modules-core` introduces a view callbacks mechanism to handle view-bound events.
@@ -1128,7 +1172,7 @@ export default function MainView() {
 
 Provided payload is available under the `nativeEvent` key.
 
-</PaddedAPIBox>
+</APIBox>
 
 ## Examples
 

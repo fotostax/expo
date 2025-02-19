@@ -107,7 +107,6 @@ const schema = {
                 },
                 usesCleartextTraffic: { type: 'boolean', nullable: true },
                 useLegacyPackaging: { type: 'boolean', nullable: true },
-                useDayNightTheme: { type: 'boolean', nullable: true },
                 manifestQueries: {
                     type: 'object',
                     properties: {

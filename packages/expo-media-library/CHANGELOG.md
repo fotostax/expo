@@ -6,19 +6,9 @@
 
 ### 🎉 New features
 
-- [iOS] Adding `pairedVideoAsset` for Live Photo support. ([#33274](https://github.com/expo/expo/pull/33274) by [@entiendoNull](https://github.com/entiendoNull))
-
 ### 🐛 Bug fixes
 
 ### 💡 Others
-
-- [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
-
-## 17.0.4 - 2024-12-19
-
-### 🐛 Bug fixes
-
-- [iOS] Fix `unknown` file type being returned for video files. ([#33589](https://github.com/expo/expo/pull/33589) by [@behenate](https://github.com/behenate))
 
 ## 17.0.3 — 2024-11-22
 

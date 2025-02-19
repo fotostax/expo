@@ -1,13 +1,13 @@
 import { vol } from 'memfs';
 import requireString from 'require-from-string';
 
-import { satisfyExpoVersion } from '../ExpoResolver';
+import { satisfyExpoVersion } from '../ExpoVersions';
 import { normalizeOptionsAsync } from '../Options';
 
 jest.mock('fs/promises');
 // Mock cpus to return a single core for consistent snapshot testing
 jest.mock('os', () => ({ cpus: jest.fn().mockReturnValue([0]) }));
-jest.mock('../ExpoResolver');
+jest.mock('../ExpoVersions');
 
 describe(normalizeOptionsAsync, () => {
   afterEach(() => {
@@ -16,10 +16,12 @@ describe(normalizeOptionsAsync, () => {
 
   it('should return the default options if no options are provided', async () => {
     const options = await normalizeOptionsAsync('/app');
-    // @ts-expect-error: mutate the objects to only show patterns in the snapshot
-    options.ignorePathMatchObjects = options.ignorePathMatchObjects.map(({ pattern }) => pattern);
-    // @ts-expect-error: mutate the objects to only show patterns in the snapshot
-    options.ignoreDirMatchObjects = options.ignoreDirMatchObjects.map(({ pattern }) => pattern);
+    expect(options.ignorePathMatchObjects.length).toBeGreaterThan(0);
+    expect(options.ignoreDirMatchObjects.length).toBeGreaterThan(0);
+
+    // Because the default ignored paths change over time, we don't want to snapshot them.
+    delete options.ignorePathMatchObjects;
+    delete options.ignoreDirMatchObjects;
     expect(options).toMatchSnapshot();
   });
 

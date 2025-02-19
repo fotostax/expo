@@ -49,11 +49,8 @@ export default function App() {
   const [startTime, setStartTime] = React.useState<number | null>(null);
   const [didCheckAndDownloadHappenInParallel, setDidCheckAndDownloadHappenInParallel] =
     React.useState(false);
-  const [wasIsStartupProcedureRunningEverTrue, setWasIsStartupProcedureRunningEverTrue] =
-    React.useState(false);
 
   const {
-    isStartupProcedureRunning,
     currentlyRunning,
     availableUpdate,
     downloadedUpdate,
@@ -62,19 +59,11 @@ export default function App() {
     checkError,
     isChecking,
     isDownloading,
-    isRestarting,
-    restartCount,
   } = Updates.useUpdates();
 
   React.useEffect(() => {
     setStartTime(Date.now());
   }, []);
-
-  React.useEffect(() => {
-    if (isStartupProcedureRunning) {
-      setWasIsStartupProcedureRunningEverTrue(true);
-    }
-  }, [isStartupProcedureRunning]);
 
   // Get rollback state with this, until useUpdates() supports rollbacks
   React.useEffect(() => {
@@ -110,6 +99,13 @@ export default function App() {
     await Updates.setExtraParamAsync('testparam', 'testvalue');
     const params = await Updates.getExtraParamsAsync();
     setExtraParamsString(JSON.stringify(params, null, 2));
+  });
+
+  const handleSetUpdateURLAndRequestHeadersOverride = runBlockAsync(async () => {
+    Updates.setUpdateURLAndRequestHeadersOverride({
+      updateUrl: `${Constants.expoConfig?.updates?.url}-override`,
+      requestHeaders: {},
+    });
   });
 
   const handleReadAssetFiles = runBlockAsync(async () => {
@@ -195,11 +191,6 @@ export default function App() {
       <TestValue testID="isReloading" value={`${isReloading}`} />
       <TestValue testID="startTime" value={`${startTime}`} />
 
-      <TestValue
-        testID="wasIsStartupProcedureRunningEverTrue"
-        value={`${wasIsStartupProcedureRunningEverTrue}`}
-      />
-      <TestValue testID="state.isStartupProcedureRunning" value={`${isStartupProcedureRunning}`} />
       <TestValue testID="state.isUpdateAvailable" value={`${isUpdateAvailable}`} />
       <TestValue testID="state.isUpdatePending" value={`${isUpdatePending}`} />
       <TestValue testID="state.isRollback" value={`${isRollback}`} />
@@ -216,8 +207,6 @@ export default function App() {
         testID="state.downloadedManifest.id"
         value={`${downloadedUpdate?.manifest?.id || ''}`}
       />
-      <TestValue testID="state.isRestarting" value={`${isRestarting}`} />
-      <TestValue testID="state.restartCount" value={`${restartCount}`} />
 
       <Text>Log messages</Text>
       <ScrollView contentContainerStyle={styles.logEntriesContainer}>
@@ -257,6 +246,10 @@ export default function App() {
             onPress={handleCheckAndDownloadAtSameTime}
           />
           <TestButton testID="reload" onPress={handleReload} />
+          <TestButton
+            testID="setUpdateURLAndRequestHeadersOverride"
+            onPress={handleSetUpdateURLAndRequestHeadersOverride}
+          />
         </View>
       </View>
 

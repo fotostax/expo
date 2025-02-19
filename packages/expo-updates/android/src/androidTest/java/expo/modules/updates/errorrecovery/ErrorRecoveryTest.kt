@@ -3,7 +3,6 @@ package expo.modules.updates.errorrecovery
 import android.os.Message
 import androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner
 import androidx.test.platform.app.InstrumentationRegistry
-import expo.modules.rncompatibility.IReactNativeFeatureFlagsProvider
 import expo.modules.updates.UpdatesConfiguration
 import expo.modules.updates.launcher.Launcher
 import expo.modules.updates.logging.UpdatesLogger
@@ -17,14 +16,12 @@ class ErrorRecoveryTest {
   private var mockDelegate: ErrorRecoveryDelegate = mockk()
   private val context = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
   private val updatesLogger = UpdatesLogger(context)
-  private var errorRecovery: ErrorRecovery = ErrorRecovery(updatesLogger, mockk<IReactNativeFeatureFlagsProvider>())
+  private var errorRecovery: ErrorRecovery = ErrorRecovery(updatesLogger)
 
   @Before
   fun setup() {
     mockDelegate = mockk(relaxed = true)
-    val mockFeatureFlagsProvider = mockk<IReactNativeFeatureFlagsProvider>()
-    every { mockFeatureFlagsProvider.enableBridgelessArchitecture } returns true
-    errorRecovery = ErrorRecovery(updatesLogger, mockFeatureFlagsProvider)
+    errorRecovery = ErrorRecovery(updatesLogger)
     errorRecovery.initialize(mockDelegate)
     errorRecovery.handler = spyk(ErrorRecoveryHandler(errorRecovery.handlerThread.looper, mockDelegate, UpdatesLogger(context)))
     // make handler run synchronously

@@ -3,7 +3,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import rimraf from 'rimraf';
 
-import getFingerprintHashFromCLIAsync from './utils/CLIUtils';
 import { createProjectHashAsync } from '../../src/Fingerprint';
 
 jest.mock('../../src/sourcer/ExpoConfigLoader', () => ({
@@ -57,14 +56,6 @@ describe('updates managed support', () => {
       ignorePaths: ['android/**/*', 'ios/**/*'],
     });
 
-    const fingerprintHash1FromCLI = await getFingerprintHashFromCLIAsync(projectRoot, [
-      '--ignore-path',
-      'android/**/*',
-      '--ignore-path',
-      'ios/**/*',
-    ]);
-    expect(fingerprintHash1).toEqual(fingerprintHash1FromCLI);
-
     // Reset modules to prevent cached `require(projectRoot/package.json)`
     jest.resetModules();
 
@@ -76,13 +67,5 @@ describe('updates managed support', () => {
       ignorePaths: ['android/**/*', 'ios/**/*'],
     });
     expect(fingerprintHash1).toEqual(fingerprintHash2);
-
-    const fingerprintHash2FromCLI = await getFingerprintHashFromCLIAsync(projectRoot, [
-      '--ignore-path',
-      'android/**/*',
-      '--ignore-path',
-      'ios/**/*',
-    ]);
-    expect(fingerprintHash2).toEqual(fingerprintHash2FromCLI);
   });
 });

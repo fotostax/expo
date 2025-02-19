@@ -14,6 +14,7 @@ const UseUpdatesTestApp = () => {
     isUpdatePending,
     checkError,
     downloadError,
+    initializationError,
     lastCheckForUpdateTimeSinceRestart,
   } = useUpdates();
   return (
@@ -44,6 +45,9 @@ const UseUpdatesTestApp = () => {
       {/* Errors, if they occur */}
       {checkError ? <Text testID="checkError">{checkError.message}</Text> : null}
       {downloadError ? <Text testID="downloadError">{downloadError.message}</Text> : null}
+      {initializationError ? (
+        <Text testID="initializationError">{initializationError.message}</Text>
+      ) : null}
       {/* Buttons for test code to invoke methods */}
       <Pressable testID="checkForUpdate" onPress={() => checkForUpdateAsync()} />
       <Pressable testID="downloadUpdate" onPress={() => fetchUpdateAsync()} />

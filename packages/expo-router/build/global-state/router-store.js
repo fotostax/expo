@@ -40,7 +40,6 @@ const getPathFromState_1 = require("../fork/getPathFromState");
 // import { ResultState } from '../fork/getStateFromPath';
 const getLinkingConfig_1 = require("../getLinkingConfig");
 const getRoutes_1 = require("../getRoutes");
-const href_1 = require("../link/href");
 const useScreens_1 = require("../useScreens");
 const SplashScreen = __importStar(require("../views/Splash"));
 /**
@@ -209,11 +208,6 @@ class RouterStore {
         if (this.splashScreenAnimationFrame) {
             cancelAnimationFrame(this.splashScreenAnimationFrame);
         }
-    }
-    getStateFromPath(href, options = {}) {
-        href = (0, href_1.resolveHref)(href);
-        href = (0, href_1.resolveHrefStringWithSegments)(href, this.routeInfo, options);
-        return this.linking?.getStateFromPath?.(href, this.linking.config);
     }
 }
 exports.RouterStore = RouterStore;

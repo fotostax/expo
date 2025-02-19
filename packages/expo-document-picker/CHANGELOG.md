@@ -6,11 +6,11 @@
 
 ### 🎉 New features
 
+- [iOS] Allow setting of the `com.apple.developer.ubiquity-kvstore-identifier` entitlement directly. ([#34338](https://github.com/expo/expo/pull/34338) by [@keith-kurak](https://github.com/keith-kurak))
+
 ### 🐛 Bug fixes
 
 ### 💡 Others
-
-- [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
 
 ## 13.0.1 — 2024-10-22
 

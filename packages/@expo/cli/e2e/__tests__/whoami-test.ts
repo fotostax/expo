@@ -1,9 +1,9 @@
 /* eslint-env jest */
+import { ExecaError } from 'execa';
 import fs from 'fs/promises';
 import os from 'os';
 
-import { getLoadedModulesAsync, projectRoot } from './utils';
-import { executeExpoAsync } from '../utils/expo';
+import { execute, getLoadedModulesAsync, projectRoot } from './utils';
 
 const originalForceColor = process.env.FORCE_COLOR;
 beforeAll(async () => {
@@ -25,7 +25,7 @@ it('loads expected modules by default', async () => {
 });
 
 it('runs `npx expo whoami --help`', async () => {
-  const results = await executeExpoAsync(projectRoot, ['whoami', '--help']);
+  const results = await execute('whoami', '--help');
   expect(results.stdout).toMatchInlineSnapshot(`
     "
       Info
@@ -41,15 +41,18 @@ it('runs `npx expo whoami --help`', async () => {
 });
 
 it('throws on invalid project root', async () => {
-  await expect(
-    executeExpoAsync(projectRoot, ['very---invalid', 'whoami'], { verbose: false })
-  ).rejects.toThrow(/^Invalid project root: .*very---invalid$/m);
+  expect.assertions(1);
+  try {
+    await execute('very---invalid', 'whoami');
+  } catch (e) {
+    const error = e as ExecaError;
+    // Test on the invalid project prefix, and absolute path ending in the expected project folder
+    expect(error.stderr).toMatch(/^Invalid project root: .*very---invalid$/);
+  }
 });
 
 it('runs `npx expo whoami`', async () => {
-  const results = await executeExpoAsync(projectRoot, ['whoami'], { verbose: false }).catch(
-    (e) => e
-  );
+  const results = await execute('whoami').catch((e) => e);
 
   // Test logged in or logged out.
   if (results.stderr) {
@@ -63,8 +66,12 @@ it('runs `npx expo whoami`', async () => {
 
 if (process.env.CI) {
   it('runs `npx expo whoami` and throws logged out error', async () => {
-    await expect(executeExpoAsync(projectRoot, ['whoami'], { verbose: false })).rejects.toThrow(
-      /Not logged in/
-    );
+    expect.assertions(1);
+    try {
+      console.log(await execute('whoami'));
+    } catch (e) {
+      const error = e as ExecaError;
+      expect(error.stderr).toMatch(/Not logged in/);
+    }
   });
 }

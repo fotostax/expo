@@ -1,9 +1,18 @@
-import { Children, FC, isValidElement, ReactNode, useContext, PropsWithChildren } from 'react';
+import GithubSlugger from 'github-slugger';
+import {
+  Children,
+  FC,
+  createContext,
+  isValidElement,
+  ReactNode,
+  useContext,
+  PropsWithChildren,
+} from 'react';
 
-import { A } from '~/ui/components/Text';
-
-import { AnchorContext } from './AnchorContext';
+import { A } from '.';
 import { TextComponentProps } from './types';
+
+export const AnchorContext = createContext<GithubSlugger | null>(null);
 
 /**
  * Render the component with anchor elements and properties.

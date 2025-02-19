@@ -22,12 +22,6 @@ abstract class GeneratePackagesListTask : Exec() {
   abstract val hash: Property<String>
 
   /**
-   * Serialized autolinking options.
-   */
-  @get:Input
-  abstract val options: Property<String>
-
-  /**
    * Java package name under which the package list should be placed.
    */
   @get:Input
@@ -40,13 +34,11 @@ abstract class GeneratePackagesListTask : Exec() {
   abstract val outputFile: RegularFileProperty
 
   override fun exec() {
-    val autolingOptions = AutolinkingOptions.fromJson(options.get())
     commandLine(
       AutolinkigCommandBuilder()
         .command("generate-package-list")
         .option("namespace", namespace.get())
         .option("target", outputFile.get().asFile.absolutePath)
-        .useAutolinkingOptions(autolingOptions)
         .build()
     )
     super.exec()

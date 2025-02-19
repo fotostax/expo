@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { AsyncLocalStorage } from 'async_hooks';
+import { type AsyncLocalStorage } from 'node:async_hooks';
 import type { ReactNode } from 'react';
 
 import type { PathSpec } from './path';
@@ -15,7 +15,6 @@ export const REQUEST_HEADERS = '__expo_requestHeaders';
 
 declare let globalThis: {
   __EXPO_RSC_CACHE__?: Map<string, any>;
-  __expo_platform_header?: string;
   __webpack_chunk_load__: (id: string) => Promise<any>;
   __webpack_require__: (id: string) => any;
 };
@@ -87,34 +86,50 @@ type RenderStore<> = {
 
 // TODO(EvanBacon): This can leak between platforms and runs.
 // We need to share this module between the server action module and the renderer module, per platform, and invalidate on refreshes.
-function getGlobalCacheForPlatform() {
-  // HACK: This is a workaround for the shared middleware being shared between web and native.
-  // In production the shared middleware is web-only and that causes the first version of this module
-  // to be bound to web.
-  const platform = globalThis.__expo_platform_header ?? process.env.EXPO_OS;
+function getGlobalCacheForPlatform(): Pick<AsyncLocalStorage<RenderStore>, 'getStore' | 'run'> {
   if (!globalThis.__EXPO_RSC_CACHE__) {
     globalThis.__EXPO_RSC_CACHE__ = new Map();
   }
 
-  if (globalThis.__EXPO_RSC_CACHE__.has(platform!)) {
-    return globalThis.__EXPO_RSC_CACHE__.get(platform!)!;
+  if (globalThis.__EXPO_RSC_CACHE__.has(process.env.EXPO_OS!)) {
+    return globalThis.__EXPO_RSC_CACHE__.get(process.env.EXPO_OS!)!;
   }
+  try {
+    const { AsyncLocalStorage } = require('node:async_hooks');
+    // @ts-expect-error: This is a Node.js feature.
+    const serverCache = new AsyncLocalStorage<RenderStore>();
+    globalThis.__EXPO_RSC_CACHE__.set(process.env.EXPO_OS!, serverCache);
+    return serverCache;
+  } catch (error) {
+    console.log('[RSC]: Failed to create cache:', error);
 
-  const serverCache = new AsyncLocalStorage<RenderStore>();
-
-  globalThis.__EXPO_RSC_CACHE__.set(platform!, serverCache);
-
-  return serverCache;
+    // Fallback to a simple in-memory cache.
+    const cache = new Map();
+    const serverCache = {
+      getStore: () => cache.get('store'),
+      run: <T>(store: RenderStore, fn: () => T) => {
+        cache.set('store', store);
+        try {
+          return fn();
+        } finally {
+          cache.delete('store');
+        }
+      },
+    };
+    globalThis.__EXPO_RSC_CACHE__.set(process.env.EXPO_OS!, serverCache);
+    return serverCache;
+  }
 }
 
 let previousRenderStore: RenderStore | undefined;
 let currentRenderStore: RenderStore | undefined;
 
+const renderStorage = getGlobalCacheForPlatform();
+
 /**
  * This is an internal function and not for public use.
  */
 export const runWithRenderStore = <T>(renderStore: RenderStore, fn: () => T): T => {
-  const renderStorage = getGlobalCacheForPlatform();
   if (renderStorage) {
     return renderStorage.run(renderStore, fn);
   }
@@ -127,11 +142,10 @@ export const runWithRenderStore = <T>(renderStore: RenderStore, fn: () => T): T 
   }
 };
 
-export async function rerender(input: string, params?: unknown) {
-  const renderStorage = getGlobalCacheForPlatform();
-  const renderStore = renderStorage.getStore() ?? currentRenderStore;
+export function rerender(input: string, params?: unknown) {
+  const renderStore = renderStorage?.getStore() ?? currentRenderStore;
   if (!renderStore) {
-    throw new Error('Render store is not available for rerender');
+    throw new Error('Render store is not available');
   }
   renderStore.rerender(input, params);
 }
@@ -139,10 +153,9 @@ export async function rerender(input: string, params?: unknown) {
 export function getContext<
   RscContext extends Record<string, unknown> = Record<string, unknown>,
 >(): RscContext {
-  const renderStorage = getGlobalCacheForPlatform();
-  const renderStore = renderStorage.getStore() ?? currentRenderStore;
+  const renderStore = renderStorage?.getStore() ?? currentRenderStore;
   if (!renderStore) {
-    throw new Error('Render store is not available for accessing context');
+    throw new Error('Render store is not available');
   }
   return renderStore.context as RscContext;
 }

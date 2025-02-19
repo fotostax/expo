@@ -118,13 +118,6 @@ export class ExpoModuleConfig {
   }
 
   /**
-   * Returns core features required by the module author.
-   */
-  coreFeatures(): string[] {
-    return arrayize(this.rawConfig.coreFeatures ?? []);
-  }
-
-  /**
    * Returns serializable raw config.
    */
   toJSON(): RawExpoModuleConfig {

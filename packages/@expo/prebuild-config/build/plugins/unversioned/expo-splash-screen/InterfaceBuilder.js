@@ -137,9 +137,8 @@ function applyImageToSplashScreenXML(xml, {
     }
   });
 
-  // Clear existing color
-  mainView.color = [];
   // Add background color
+  mainView.color = mainView.color ?? [];
   const colorSection = mainView.color;
   colorSection.push({
     $: {
@@ -148,9 +147,9 @@ function applyImageToSplashScreenXML(xml, {
     }
   });
 
-  // Clear existing named colors
-  const namedColorSection = [];
   // Add background named color reference
+  xml.document.resources[0].namedColor = xml.document.resources[0].namedColor ?? [];
+  const namedColorSection = xml.document.resources[0].namedColor;
   const color = parseColor(backgroundColor);
   namedColorSection.push({
     $: {
@@ -167,7 +166,6 @@ function applyImageToSplashScreenXML(xml, {
       }
     }]
   });
-  xml.document.resources[0].namedColor = namedColorSection;
   return xml;
 }
 

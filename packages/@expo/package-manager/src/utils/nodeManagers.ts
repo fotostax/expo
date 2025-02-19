@@ -23,7 +23,6 @@ export const NPM_LOCK_FILE = 'package-lock.json';
 export const YARN_LOCK_FILE = 'yarn.lock';
 export const PNPM_LOCK_FILE = 'pnpm-lock.yaml';
 export const BUN_LOCK_FILE = 'bun.lockb';
-export const BUN_TEXT_LOCK_FILE = 'bun.lock';
 
 /** The order of the package managers to use when resolving automatically */
 export const RESOLUTION_ORDER: NodePackageManager['name'][] = ['bun', 'yarn', 'npm', 'pnpm'];
@@ -38,21 +37,23 @@ export function resolvePackageManager(
   preferredManager?: NodePackageManager['name']
 ): NodePackageManager['name'] | null {
   const root = resolveWorkspaceRoot(projectRoot) ?? projectRoot;
-  const lockFiles: Record<NodePackageManager['name'], string[]> = {
-    npm: [NPM_LOCK_FILE],
-    pnpm: [PNPM_LOCK_FILE],
-    yarn: [YARN_LOCK_FILE],
-    bun: [BUN_LOCK_FILE, BUN_TEXT_LOCK_FILE],
+  const lockFiles: Record<NodePackageManager['name'], string> = {
+    npm: NPM_LOCK_FILE,
+    pnpm: PNPM_LOCK_FILE,
+    yarn: YARN_LOCK_FILE,
+    bun: BUN_LOCK_FILE,
   };
 
   if (preferredManager) {
-    return lockFiles[preferredManager].some((file) => fs.existsSync(path.join(root, file)))
-      ? preferredManager
-      : null;
+    if (fs.existsSync(path.join(root, lockFiles[preferredManager]))) {
+      return preferredManager;
+    }
+
+    return null;
   }
 
   for (const managerName of RESOLUTION_ORDER) {
-    if (lockFiles[managerName].some((file) => fs.existsSync(path.join(root, file)))) {
+    if (fs.existsSync(path.join(root, lockFiles[managerName]))) {
       return managerName;
     }
   }

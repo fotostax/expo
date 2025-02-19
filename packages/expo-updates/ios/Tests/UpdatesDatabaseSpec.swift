@@ -24,7 +24,7 @@ class UpdatesDatabaseSpec : ExpoSpec {
       
       db = UpdatesDatabase()
       db.databaseQueue.sync {
-        try! db.openDatabase(inDirectory: testDatabaseDir, logger: UpdatesLogger())
+        try! db.openDatabase(inDirectory: testDatabaseDir)
       }
       
       manifest = ExpoUpdatesManifest(rawManifestJSON: [

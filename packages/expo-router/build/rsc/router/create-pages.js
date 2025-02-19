@@ -112,7 +112,7 @@ function createPages(fn) {
             wildcardPagePathMap.set(page.path, [pathSpec, page.component]);
         }
         else {
-            throw new Error('Invalid page configuration: ' + page.path);
+            throw new Error('Invalid page configuration');
         }
     };
     const createLayout = (layout) => {

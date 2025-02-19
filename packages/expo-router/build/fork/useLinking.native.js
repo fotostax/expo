@@ -23,14 +23,20 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getInitialURLWithTimeout = exports.useLinking = void 0;
+exports.useLinking = void 0;
 const native_1 = require("@react-navigation/native");
-const ExpoLinking = __importStar(require("expo-linking"));
 const React = __importStar(require("react"));
 const react_native_1 = require("react-native");
 const extractPathFromURL_1 = require("./extractPathFromURL");
 const linkingHandlers = [];
-function useLinking(ref, { enabled = true, prefixes, filter, config, getInitialURL = () => getInitialURLWithTimeout(), subscribe = (listener) => {
+function useLinking(ref, { enabled = true, prefixes, filter, config, getInitialURL = () => Promise.race([
+    react_native_1.Linking.getInitialURL(),
+    new Promise((resolve) => {
+        // Timeout in 150ms if `getInitialState` doesn't resolve
+        // Workaround for https://github.com/facebook/react-native/issues/25675
+        setTimeout(resolve, 150);
+    }),
+]), subscribe = (listener) => {
     const callback = ({ url }) => listener(url);
     const subscription = react_native_1.Linking.addEventListener('url', callback);
     // Storing this in a local variable stops Jest from complaining about import after teardown
@@ -171,22 +177,4 @@ function useLinking(ref, { enabled = true, prefixes, filter, config, getInitialU
     };
 }
 exports.useLinking = useLinking;
-function getInitialURLWithTimeout() {
-    if (typeof window === 'undefined') {
-        return '';
-    }
-    else if (react_native_1.Platform.OS === 'ios') {
-        // Use the new Expo API for iOS. This has better support for App Clips and handoff.
-        return ExpoLinking.getLinkingURL();
-    }
-    return Promise.race([
-        // TODO: Phase this out in favor of expo-linking on Android.
-        react_native_1.Linking.getInitialURL(),
-        new Promise((resolve) => 
-        // Timeout in 150ms if `getInitialState` doesn't resolve
-        // Workaround for https://github.com/facebook/react-native/issues/25675
-        setTimeout(() => resolve(null), 150)),
-    ]);
-}
-exports.getInitialURLWithTimeout = getInitialURLWithTimeout;
 //# sourceMappingURL=useLinking.native.js.map

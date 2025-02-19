@@ -101,13 +101,13 @@ exports.useSegments = useSegments;
  * @example
  * ```tsx app/profile/[user].tsx
  * import { Text } from 'react-native';
- * import { usePathname } from 'expo-router';
+ * import { useSegments } from 'expo-router';
  *
  * export default function Route() {
- *   // pathname = "/profile/baconbrix"
- *   const pathname = usePathname();
+ *   // segments = ["profile", "[user]"]
+ *   const segments = useSegments();
  *
- *   return <Text>User: {user}</Text>;
+ *   return <Text>Hello</Text>;
  * }
  * ```
  */

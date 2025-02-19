@@ -13,11 +13,9 @@ export function Textarea({ characterLimit, className, onChange, ...rest }: Props
   return (
     <div className="relative">
       <textarea
-        onChange={event => {
-          setCharacterCount(event.target.value.length ?? 0);
-          if (onChange) {
-            onChange(event);
-          }
+        onChange={e => {
+          setCharacterCount(e.target.value.length ?? 0);
+          if (onChange) onChange(e);
         }}
         className={mergeClasses(
           'my-2.5 block h-12 w-full rounded-sm border border-default bg-default p-4 leading-5 text-default shadow-xs placeholder:text-icon-tertiary',

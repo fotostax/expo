@@ -1,18 +1,12 @@
 'use client';
-import {
-  useNavigation as useUpstreamNavigation,
-  NavigationProp,
-  NavigationState,
-} from '@react-navigation/native';
+import { useNavigation as useUpstreamNavigation, NavigationProp } from '@react-navigation/native';
 import React from 'react';
 
-import { store } from './global-state/router-store';
-import { useSegments } from './hooks';
-import { resolveHref } from './link/href';
-import { Href } from './types';
+import { useContextKey } from './Route';
+import { getNameFromFilePath } from './matchers';
 
 /**
- * Returns the underlying React Navigation [`navigation` object](https://reactnavigation.org/docs/navigation-object)
+ * Returns the underlying React Navigation [`navigation` prop](https://reactnavigation.org/docs/navigation-prop)
  * to imperatively access layout-specific functionality like `navigation.openDrawer()` in a
  * [Drawer](/router/advanced/drawer/) layout.
  *
@@ -60,92 +54,71 @@ import { Href } from './types';
  * @param parent Provide an absolute path such as `/(root)` to the parent route or a relative path like `../../` to the parent route.
  * @returns The navigation object for the current route.
  *
- * @see React Navigation documentation on [navigation dependent functions](https://reactnavigation.org/docs/navigation-object/#navigator-dependent-functions)
+ * @see React Navigation documentation on [navigation dependent functions](https://reactnavigation.org/docs/navigation-prop/#navigator-dependent-functions)
  * for more information.
  */
-export function useNavigation<
-  T = Omit<NavigationProp<ReactNavigation.RootParamList>, 'getState'> & {
-    getState(): NavigationState | undefined;
-  },
->(parent?: string | Href): T {
-  let navigation = useUpstreamNavigation<any>();
-  const initialNavigation = navigation;
-  const segments = useSegments();
+export function useNavigation<T = NavigationProp<ReactNavigation.RootParamList>>(
+  parent?: string
+): T {
+  const navigation = useUpstreamNavigation<any>();
 
-  const targetNavigatorContextKey = React.useMemo(() => {
+  const contextKey = useContextKey();
+  const normalizedParent = React.useMemo(() => {
     if (!parent) {
-      return;
+      return null;
     }
+    const normalized = getNameFromFilePath(parent);
 
-    if (typeof parent === 'object') {
-      parent = resolveHref(parent);
+    if (parent.startsWith('.')) {
+      return relativePaths(contextKey, parent);
     }
+    return normalized;
+  }, [contextKey, parent]);
 
-    if (parent === '/') {
-      return '';
+  if (normalizedParent != null) {
+    const parentNavigation = navigation.getParent(normalizedParent);
+
+    // TODO: Maybe print a list of parents...
+
+    if (!parentNavigation) {
+      throw new Error(
+        `Could not find parent navigation with route "${parent}".` +
+          (normalizedParent !== parent ? ` (normalized: ${normalizedParent})` : '')
+      );
     }
-
-    let state = store.getStateFromPath(parent.startsWith('../') ? segments.join('/') : parent);
-
-    // Reconstruct the context key from the state
-    let contextKey = '';
-    const names: string[] = [];
-
-    while (state) {
-      const routes = state.routes;
-      const route = routes[state.index ?? routes.length - 1];
-
-      if (route.state) {
-        contextKey = `${contextKey}/${route.name}`;
-        names.push(route.name);
-
-        if (parent === contextKey) {
-          break;
-        }
-
-        state = route.state;
-      } else {
-        break;
-      }
-    }
-
-    if (parent.startsWith('../')) {
-      const parentSegments = parent.split('/').filter(Boolean);
-
-      for (const segment of parentSegments) {
-        if (segment === '..') {
-          names.pop();
-        } else {
-          throw new Error(
-            "Relative parent paths may only contain '..' and cannot contain other segments"
-          );
-        }
-      }
-
-      contextKey = names.length > 0 ? `/${names.join('/')}` : '';
-    }
-
-    return contextKey;
-  }, [segments, parent]);
-
-  if (targetNavigatorContextKey !== undefined) {
-    navigation = navigation.getParent(targetNavigatorContextKey as any);
+    return parentNavigation;
   }
-
-  if (!navigation) {
-    const ids: (string | undefined)[] = [];
-
-    navigation = initialNavigation;
-
-    while (navigation) {
-      ids.push(navigation.getId() || '/');
-      navigation = navigation.getParent();
-    }
-
-    throw new Error(
-      `Could not find parent navigation with route "${parent}". Available routes are: '${ids.join("', '")}'`
-    );
-  }
-
   return navigation;
+}
+
+export function resolveParentId(contextKey: string, parentId?: string | null): string | null {
+  if (!parentId) {
+    return null;
+  }
+
+  if (parentId.startsWith('.')) {
+    return getNameFromFilePath(relativePaths(contextKey, parentId));
+  }
+  return getNameFromFilePath(parentId);
+}
+
+// Resolve a path like `../` relative to a path like `/foo/bar`
+function relativePaths(from: string, to: string): string {
+  const fromParts = from.split('/').filter(Boolean);
+  const toParts = to.split('/').filter(Boolean);
+
+  for (const part of toParts) {
+    if (part === '..') {
+      if (fromParts.length === 0) {
+        throw new Error(`Cannot resolve path "${to}" relative to "${from}"`);
+      }
+      fromParts.pop();
+    } else if (part === '.') {
+      // Ignore
+    } else {
+      fromParts.push(part);
+    }
+  }
+
+  return '/' + fromParts.join('/');
 }

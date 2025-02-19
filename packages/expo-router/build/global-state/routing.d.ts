@@ -20,9 +20,9 @@ export type LinkToOptions = {
      */
     relativeToDirectory?: boolean;
     /**
-     *
+     * Include the anchor when navigating to a new navigator
      */
     withAnchor?: boolean;
 };
-export declare function linkTo(this: RouterStore, href: string, options?: LinkToOptions): void;
+export declare function linkTo(this: RouterStore, href: string, { event, relativeToDirectory, withAnchor }?: LinkToOptions): void;
 //# sourceMappingURL=routing.d.ts.map

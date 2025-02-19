@@ -93,16 +93,14 @@ public final class ErrorRecovery: NSObject {
 
   private let logger: UpdatesLogger
 
-  public convenience init(logger: UpdatesLogger) {
+  public convenience override init() {
     self.init(
-      logger: logger,
       errorRecoveryQueue: DispatchQueue(label: "expo.controller.errorRecoveryQueue"),
       remoteLoadTimeout: ErrorRecovery.RemoteLoadTimeoutMs
     )
   }
 
   public required init(
-    logger: UpdatesLogger,
     errorRecoveryQueue: DispatchQueue,
     remoteLoadTimeout: Int
   ) {
@@ -119,7 +117,7 @@ public final class ErrorRecovery: NSObject {
     self.errorRecoveryQueue = errorRecoveryQueue
     self.remoteLoadTimeout = remoteLoadTimeout
     self.encounteredErrors = []
-    self.logger = logger
+    self.logger = UpdatesLogger()
   }
 
   public func startMonitoring() {

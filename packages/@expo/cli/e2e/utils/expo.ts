@@ -6,7 +6,7 @@ import {
 import assert from 'node:assert';
 import { stripVTControlCharacters } from 'node:util';
 
-import { executeAsync, processFindPrefixedValue } from './process';
+import { processFindPrefixedValue } from './process';
 import {
   type BackgroundServer,
   type BackgroundServerOptions,
@@ -14,20 +14,6 @@ import {
 } from './server';
 
 const EXPO_CLI_BIN = require.resolve('../../build/bin/cli');
-
-/** Execute the Expo CLI, from source and with verbose logging on unexpected errors */
-export const executeExpoAsync: typeof executeAsync = (cwd, flags, options) =>
-  executeAsync(cwd, flags, {
-    command: ['node', EXPO_CLI_BIN],
-    ...options,
-  });
-
-/** Install any (dev) dependencies with Bun and verbose logging on unexpected errors */
-export const executeBunAsync: typeof executeAsync = (cwd, flags, options) =>
-  executeAsync(cwd, flags, {
-    command: ['bun'],
-    ...options,
-  });
 
 /** Create a managed background server running `expo serve` from source */
 export function createExpoServe(options: Partial<BackgroundServerOptions> = {}) {
@@ -46,8 +32,10 @@ export function createExpoStart(options: Partial<BackgroundServerOptions> = {}) 
       const info = processFindPrefixedValue(chunk, '[__EXPO_E2E_TEST:server]');
       if (info) {
         const url = new URL(JSON.parse(info).url);
-        // NOTE(cedric): it returns `localhost`, but prefer to use `127.0.0.1` for Windows
-        url.host = '127.0.0.1';
+        // NOTE(cedric): if it returns `localhost`, prefer to use `127.0.0.1` for Windows
+        if (url.hostname === 'localhost') {
+          url.hostname = '127.0.0.1';
+        }
         return url;
       }
 

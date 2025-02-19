@@ -2,23 +2,23 @@ import { mergeClasses } from '@expo/styleguide';
 import { breakpoints } from '@expo/styleguide-base';
 import { useRouter } from 'next/compat/router';
 import { useEffect, useState, createRef, type PropsWithChildren, useRef } from 'react';
-import { InlineHelp } from 'ui/components/InlineHelp';
 
 import * as RoutesUtils from '~/common/routes';
 import { appendSectionToRoute, isRouteActive } from '~/common/routes';
-import { versionToText } from '~/common/utilities';
 import * as WindowUtils from '~/common/window';
 import DocumentationHead from '~/components/DocumentationHead';
 import DocumentationNestedScrollLayout from '~/components/DocumentationNestedScrollLayout';
 import { usePageApiVersion } from '~/providers/page-api-version';
 import versions from '~/public/static/constants/versions.json';
 import { PageMetadata } from '~/types/common';
+import { Callout } from '~/ui/components/Callout';
 import { Footer } from '~/ui/components/Footer';
 import { Header } from '~/ui/components/Header';
 import { PagePlatformTags } from '~/ui/components/PagePlatformTags';
 import { PageTitle } from '~/ui/components/PageTitle';
 import { Separator } from '~/ui/components/Separator';
-import { Sidebar } from '~/ui/components/Sidebar/Sidebar';
+import { Sidebar } from '~/ui/components/Sidebar';
+import { versionToText } from '~/ui/components/Sidebar/ApiVersionSelect';
 import {
   TableOfContentsWithManager,
   TableOfContentsHandles,
@@ -54,11 +54,13 @@ export default function DocumentationPage({
   const sidebarScrollPosition = process?.browser ? window.__sidebarScroll : 0;
 
   useEffect(() => {
-    router?.events.on('routeChangeStart', url => {
-      if (layoutRef.current) {
+    if (layoutRef.current) {
+      layoutRef.current.contentRef.current?.getScrollRef().current?.focus();
+      router?.events.on('routeChangeStart', url => {
         if (
           RoutesUtils.getPageSection(pathname) !== RoutesUtils.getPageSection(url) ||
-          pathname === '/'
+          pathname === '/' ||
+          !layoutRef.current
         ) {
           window.__sidebarScroll = 0;
         } else {
@@ -67,9 +69,7 @@ export default function DocumentationPage({
       }
     });
     window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   });
 
   const handleResize = () => {
@@ -81,7 +81,7 @@ export default function DocumentationPage({
 
   const handleContentScroll = (contentScrollPosition: number) => {
     window.requestAnimationFrame(() => {
-      if (tableOfContentsRef?.current?.handleContentScroll) {
+      if (tableOfContentsRef.current?.handleContentScroll) {
         tableOfContentsRef.current.handleContentScroll(contentScrollPosition);
       }
     });
@@ -94,9 +94,7 @@ export default function DocumentationPage({
       sidebar={sidebarElement}
       sidebarActiveGroup={sidebarActiveGroup}
       isMobileMenuVisible={isMobileMenuVisible}
-      setMobileMenuVisible={newState => {
-        setMobileMenuVisible(newState);
-      }}
+      setMobileMenuVisible={newState => setMobileMenuVisible(newState)}
     />
   );
 
@@ -142,15 +140,21 @@ export default function DocumentationPage({
       </DocumentationHead>
       <div
         className={mergeClasses(
+          'pointer-events-none absolute z-10 h-8 w-[calc(100%-6px)] max-w-screen-xl',
+          'bg-gradient-to-b from-default to-transparent opacity-90'
+        )}
+      />
+      <div
+        className={mergeClasses(
           'mx-auto px-14 py-10',
           'max-lg-gutters:px-4 max-lg-gutters:pb-12 max-lg-gutters:pt-5'
         )}>
         {version && version === 'unversioned' && (
-          <InlineHelp type="default" size="sm" className="!mb-5 !inline-flex w-full">
+          <Callout type="default" size="sm" className="!mb-5 !inline-flex w-full">
             This is documentation for the next SDK version. For up-to-date documentation, see the{' '}
             <A href={pathname.replace('unversioned', 'latest')}>latest version</A> (
             {versionToText(LATEST_VERSION)}).
-          </InlineHelp>
+          </Callout>
         )}
         {title && (
           <PageTitle

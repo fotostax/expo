@@ -2,7 +2,6 @@ package expo.modules.kotlin.defaultmodules
 
 import com.facebook.react.ReactActivity
 import expo.modules.kotlin.events.normalizeEventName
-import expo.modules.kotlin.modules.DEFAULT_MODULE_VIEW
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.uuidv5.InvalidNamespaceException
@@ -25,11 +24,11 @@ class CoreModule : Module() {
       return@Function uuidv5(namespaceUUID, name).toString()
     }
 
-    Function("getViewConfig") { moduleName: String, viewName: String? ->
-      val holder = runtimeContext.registry.getModuleHolder(moduleName)
+    Function("getViewConfig") { viewName: String ->
+      val holder = runtimeContext.registry.getModuleHolder(viewName)
         ?: return@Function null
 
-      val viewManagerDefinition = holder.definition.viewManagerDefinitions[viewName ?: DEFAULT_MODULE_VIEW]
+      val viewManagerDefinition = holder.definition.viewManagerDefinition
         ?: return@Function null
 
       val validAttributes = viewManagerDefinition

@@ -1,8 +1,6 @@
 package expo.modules.audio
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.MediaRecorder
@@ -13,7 +11,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
-import androidx.core.content.ContextCompat
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.sharedobjects.SharedObject
 import java.io.File
@@ -31,23 +28,22 @@ class AudioRecorder(
   MediaRecorder.OnErrorListener,
   MediaRecorder.OnInfoListener {
   private var filePath: String? = null
-  private var meteringEnabled = options.isMeteringEnabled
+  private var meteringEnabled = false
   private var durationAlreadyRecorded = 0L
-  private var isPrepared = false
-  private var shouldCreateRecorder = false
+  var isPrepared = false
 
-  private var recorder = createRecorder(options)
+  var recorder = createRecorder(options)
   val id = UUID.randomUUID().toString()
-  var uri: String? = null
-  var uptime = 0L
+  var startTime = 0L
   var isRecording = false
   var isPaused = false
 
-  private fun getAudioRecorderLevels(): Int {
-    if (!meteringEnabled) {
-      return -160
+  private fun getAudioRecorderLevels(): Int? {
+    if (!meteringEnabled || recorder == null || !isRecording) {
+      return null
     }
-    val amplitude: Int = recorder.maxAmplitude
+
+    val amplitude: Int = recorder?.maxAmplitude ?: 0
     return if (amplitude == 0) {
       -160
     } else {
@@ -56,46 +52,51 @@ class AudioRecorder(
   }
 
   fun prepareRecording(options: RecordingOptions?) {
-    if (options != null && !shouldCreateRecorder) {
-      // New options have been passed in so we rebuild the recorder
-      shouldCreateRecorder = this.options != options
+    recorder = options?.let { createRecorder(it) } ?: createRecorder(this.options)
+    try {
+      recorder?.prepare()
+      isPrepared = true
+    } catch (_: Exception) {
+      recorder?.release()
+      recorder = null
+      isPrepared = false
     }
-    if (shouldCreateRecorder) {
-      recorder = options?.let { createRecorder(it) } ?: createRecorder(this.options)
-    }
-    recorder.prepare()
-    isPrepared = true
   }
 
   fun record() {
     if (isPaused) {
-      recorder.resume()
+      recorder?.resume()
     } else {
-      recorder.start()
+      recorder?.start()
     }
+    startTime = System.currentTimeMillis()
     isRecording = true
     isPaused = false
-    uptime = SystemClock.uptimeMillis()
   }
 
   fun pauseRecording() {
-    recorder.pause()
+    recorder?.pause()
     durationAlreadyRecorded = getAudioRecorderDurationMillis()
     isRecording = false
     isPaused = true
   }
 
   fun stopRecording(): Bundle {
-    recorder.stop()
-    reset()
+    try {
+      recorder?.stop()
+    } finally {
+      reset()
+    }
     return getAudioRecorderStatus()
   }
 
   private fun reset() {
+    recorder?.release()
+    recorder = null
     isRecording = false
     isPaused = false
     durationAlreadyRecorded = 0
-    shouldCreateRecorder = true
+    startTime = 0L
     isPrepared = false
   }
 
@@ -109,11 +110,8 @@ class AudioRecorder(
     }
 
   private fun setRecordingOptions(recorder: MediaRecorder, options: RecordingOptions) {
-    if (!hasRecordingPermissions()) {
-      return
-    }
     with(recorder) {
-      setAudioSource(MediaRecorder.AudioSource.MIC)
+      setAudioSource(MediaRecorder.AudioSource.DEFAULT)
       if (options.outputFormat != null) {
         setOutputFormat(options.outputFormat.toMediaOutputFormat())
       } else {
@@ -149,39 +147,28 @@ class AudioRecorder(
       setOnErrorListener(this@AudioRecorder)
       setOnInfoListener(this@AudioRecorder)
       setOutputFile(filePath)
-      uri = filePath
       isPrepared = false
     }
   }
 
-  override fun sharedObjectDidRelease() {
-    super.sharedObjectDidRelease()
+  override fun deallocate() {
     recorder.release()
   }
 
-  fun getAudioRecorderStatus() = if (hasRecordingPermissions()) {
-    Bundle().apply {
-      putBoolean("canRecord", isPrepared)
-      putBoolean("isRecording", isRecording)
-      putLong("durationMillis", getAudioRecorderDurationMillis())
-      if (meteringEnabled) {
-        putInt("metering", getAudioRecorderLevels())
-      }
-      putString("url", uri)
+  fun getAudioRecorderStatus() = Bundle().apply {
+    putBoolean("canRecord", isPrepared)
+    putBoolean("isRecording", isRecording)
+    putLong("durationMillis", getAudioRecorderDurationMillis())
+    if (meteringEnabled) {
+      putInt("metering", getAudioRecorderLevels())
     }
-  } else {
-    Bundle().apply {
-      putBoolean("canRecord", false)
-      putBoolean("isRecording", false)
-      putLong("durationMillis", 0)
-      putString("url", null)
-    }
+    putString("url", uri)
   }
 
   private fun getAudioRecorderDurationMillis(): Long {
     var duration = durationAlreadyRecorded
-    if (isRecording && uptime > 0) {
-      duration += SystemClock.uptimeMillis() - uptime
+    if (isRecording) {
+      duration += System.currentTimeMillis() - startTime
     }
     return duration
   }
@@ -206,14 +193,14 @@ class AudioRecorder(
   override fun onInfo(mr: MediaRecorder?, what: Int, extra: Int) {
     when (what) {
       MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED -> {
-        recorder.stop()
+        recorder?.stop()
         emit(
-          "onRecordingStatusUpdate",
+          RECORDING_STATUS_UPDATE,
           mapOf(
             "isFinished" to true,
             "hasError" to true,
             "error" to null,
-            "url" to Uri.fromFile(filePath?.let { File(it) }).toString()
+            "url" to Uri.parse(filePath).toString()
           )
         )
       }
@@ -231,14 +218,14 @@ class AudioRecorder(
       // getRoutedDevice() is the most reliable way to return the actual mic input, however it
       // only returns a valid device when actively recording, and may throw otherwise.
       // https://developer.android.com/reference/android/media/MediaRecorder#getRoutedDevice()
-      deviceInfo = recorder.routedDevice
+      deviceInfo = recorder.getRoutedDevice()
     } catch (e: java.lang.Exception) {
       // no-op
     }
 
     // If no routed device is found try preferred device
     if (deviceInfo == null) {
-      deviceInfo = recorder.preferredDevice
+      deviceInfo = recorder?.preferredDevice
     }
 
     if (deviceInfo == null) {
@@ -248,7 +235,7 @@ class AudioRecorder(
         val type = availableDeviceInfo.type
         if (type == AudioDeviceInfo.TYPE_BUILTIN_MIC) {
           deviceInfo = availableDeviceInfo
-          recorder.setPreferredDevice(deviceInfo)
+          recorder?.setPreferredDevice(deviceInfo)
           break
         }
       }
@@ -260,9 +247,6 @@ class AudioRecorder(
 
     return getMapFromDeviceInfo(deviceInfo)
   }
-
-  private fun hasRecordingPermissions() =
-    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
   fun getAvailableInputs(audioManager: AudioManager) =
     audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS).mapNotNull { deviceInfo ->
@@ -295,8 +279,8 @@ class AudioRecorder(
       }
     }
 
-    val success = recorder.setPreferredDevice(deviceInfo)
-    if (!success) {
+    val success = recorder?.setPreferredDevice(deviceInfo)
+    if (success == false) {
       throw PreferredInputNotFoundException()
     }
   }
@@ -305,8 +289,7 @@ class AudioRecorder(
     val id = uid.toInt()
     val audioDevices: Array<AudioDeviceInfo> = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
     for (device in audioDevices) {
-      val deviceId = device.id
-      if (deviceId == id) {
+      if (device.id == id) {
         return device
       }
     }

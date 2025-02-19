@@ -276,8 +276,7 @@ public final class DevLauncherAppController: NSObject, InternalAppControllerInte
       config: configuration,
       database: self.database,
       directory: self.updatesDirectory!,
-      completionQueue: self.controllerQueue,
-      logger: self.logger
+      completionQueue: self.controllerQueue
     )
     launcher.launchUpdate(withSelectionPolicy: self.selectionPolicy()) { error, success in
       if !success {
@@ -302,8 +301,7 @@ public final class DevLauncherAppController: NSObject, InternalAppControllerInte
         database: database,
         directory: updatesDirectory,
         selectionPolicy: selectionPolicy(),
-        launchedUpdate: launchedUpdate,
-        logger: self.logger
+        launchedUpdate: launchedUpdate
       )
     }
   }
@@ -345,6 +343,10 @@ public final class DevLauncherAppController: NSObject, InternalAppControllerInte
 
   public func setExtraParam(key: String, value: String?, success successBlockArg: @escaping () -> Void, error errorBlockArg: @escaping (ExpoModulesCore.Exception) -> Void) {
     errorBlockArg(NotAvailableInDevClientException("Updates.setExtraParamAsync()"))
+  }
+
+  public func setUpdateURLAndRequestHeadersOverride(_ configOverride: UpdatesConfigOverride?) throws {
+    throw NotAvailableInDevClientException("Updates.setUpdateURLAndRequestHeadersOverride() is not supported in development builds.")
   }
 }
 

@@ -10,12 +10,10 @@ import ExpoModulesCore
 /**
  Class that implements logging for expo-updates in its own os.log category
  */
-@objc(EXUpdatesLogger)
-@objcMembers
-public final class UpdatesLogger: NSObject {
+public final class UpdatesLogger {
   static let EXPO_UPDATES_LOG_CATEGORY = "expo-updates"
 
-  public override init() {}
+  public init() {}
 
   private let logger = Logger(logHandlers: [
     createOSLogHandler(category: UpdatesLogger.EXPO_UPDATES_LOG_CATEGORY),

@@ -6,8 +6,8 @@ buildscript {
     minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '29')
     compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
     targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
-    kotlinVersion = findProperty('android.kotlinVersion') ?: '2.0.21'
-    ndkVersion = "27.1.12297006"
+    kotlinVersion = findProperty('android.kotlinVersion') ?: '1.9.24'
+    ndkVersion = "26.1.10909125"
   }
   repositories {
     google()
@@ -15,11 +15,8 @@ buildscript {
   }
   dependencies {
     classpath("com.android.tools.build:gradle")
-
     classpath("com.facebook.react:react-native-gradle-plugin")
-
     classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
-
     classpath("com.diffplug.spotless:spotless-plugin-gradle:6.23.3")
   }
 }
@@ -94,4 +91,5 @@ subprojects {
   }
 }
 
+apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"

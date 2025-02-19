@@ -4,7 +4,6 @@ import expo.modules.plugin.configuration.ExpoAutolinkingConfig
 import expo.modules.plugin.gradle.afterAndroidApplicationProject
 import expo.modules.plugin.gradle.applyAarProject
 import expo.modules.plugin.gradle.applyPlugin
-import expo.modules.plugin.gradle.beforeProject
 import expo.modules.plugin.gradle.beforeRootProject
 import expo.modules.plugin.gradle.linkAarProject
 import expo.modules.plugin.gradle.linkBuildDependence
@@ -13,22 +12,11 @@ import expo.modules.plugin.gradle.linkPlugin
 import expo.modules.plugin.gradle.linkProject
 import expo.modules.plugin.text.Colors
 import expo.modules.plugin.text.Emojis
+import expo.modules.plugin.text.withColor
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
-import org.gradle.internal.extensions.core.extra
 
-class SettingsManager(
-  val settings: Settings,
-  searchPaths: List<String>? = null,
-  ignorePaths: List<String>? = null,
-  exclude: List<String>? = null
-) {
-  private val autolinkingOptions = AutolinkingOptions(
-    searchPaths,
-    ignorePaths,
-    exclude
-  )
-
+class SettingsManager(val settings: Settings) {
   /**
    * Resolved configuration from `expo-modules-autolinking`.
    */
@@ -36,7 +24,6 @@ class SettingsManager(
     val command = AutolinkigCommandBuilder()
       .command("resolve")
       .useJson()
-      .useAutolinkingOptions(autolinkingOptions)
       .build()
 
     val result = settings.providers.exec { env ->
@@ -57,11 +44,6 @@ class SettingsManager(
         .forEach(project::applyAarProject)
     }
 
-    // Defines the required features for the core module
-    settings.gradle.beforeProject("expo-modules-core") { project ->
-      project.extra.set("coreFeatures", config.coreFeatures)
-    }
-
     settings.gradle.beforeRootProject { rootProject: Project ->
       config.allPlugins.forEach(rootProject::linkBuildDependence)
       config.extraDependencies.forEach { mavenConfig ->
@@ -75,12 +57,12 @@ class SettingsManager(
         .allPlugins
         .filter { it.applyToRootProject }
         .forEach { plugin ->
-          androidApplication.logger.quiet(" ${Emojis.INFORMATION}  ${Colors.YELLOW}Applying gradle plugin${Colors.RESET} '${Colors.GREEN}${plugin.id}${Colors.RESET}'")
+          androidApplication.logger.quiet(" ${Emojis.INFORMATION}  ${"Applying gradle plugin".withColor(Colors.YELLOW)} '${plugin.id.withColor(Colors.GREEN)}'")
           androidApplication.applyPlugin(plugin)
         }
     }
 
-    settings.gradle.extensions.create("expoGradle", ExpoGradleExtension::class.java, config, autolinkingOptions)
+    settings.gradle.extensions.create("expoGradle", ExpoGradleExtension::class.java, config)
   }
 
   /**

@@ -66,7 +66,6 @@ export default class VideoPlayerWeb extends globalThis.expo.SharedObject {
         this._mountedVideos.forEach((video) => {
             video.playbackRate = value;
         });
-        this._playbackRate = value;
     }
     get playbackRate() {
         return this._playbackRate;

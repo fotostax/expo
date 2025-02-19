@@ -61,119 +61,123 @@ int EXGLContext::uploadTextureToOpenGL(jsi::Runtime &runtime, AHardwareBuffer *h
           &planes
       );
 
-      if (lock_result != 0) {
+    if (lock_result != 0) {
           EXGLSysLog("Failed to lock AHardwareBuffer");
           AHardwareBuffer_release(hardwareBuffer);
           return 0;
-      }
-      void* yPlane = planes.planes[0].data;
-      void* uPlane = planes.planes[1].data;
-      void* vPlane = planes.planes[2].data;
+    }
+    void* yPlane = planes.planes[0].data;
+    void* uPlane = planes.planes[1].data;
+    void* vPlane = planes.planes[2].data;
 
-      int yStride     = planes.planes[0].rowStride;
-      int uStride     = planes.planes[1].rowStride;
-      int vStride     = planes.planes[2].rowStride;
-      int pixelStride = planes.planes[1].pixelStride; 
+    int yStride     = planes.planes[0].rowStride;
+    int uStride     = planes.planes[1].rowStride;
+    int vStride     = planes.planes[2].rowStride;
+    int pixelStride = planes.planes[1].pixelStride; 
 
-      auto uPlaneObjId = createObject();
-      auto vPlaneObjId = createObject();
+    auto uPlaneObjId = createObject();
+    auto vPlaneObjId = createObject();
 
-      std::vector<uint8_t> yVec(height * width);
-      for (int row = 0; row < height; ++row) {
-          std::memcpy(
-              yVec.data() + (row * width),
-              static_cast<uint8_t*>(yPlane) + (row * yStride),
-              width
-          );
-      }
-      std::vector<uint8_t> uVec((height / 2) * (width / 2));
-      std::vector<uint8_t> vVec((height / 2) * (width / 2));
+    std::vector<uint8_t> yVec(height * width);
+    for (int row = 0; row < height; ++row) {
+        std::memcpy(
+            yVec.data() + (row * width),
+            static_cast<uint8_t*>(yPlane) + (row * yStride),
+            width
+        );
+    }
+    std::vector<uint8_t> uVec((height / 2) * (width / 2));
+    std::vector<uint8_t> vVec((height / 2) * (width / 2));
 
-      auto* srcU = static_cast<uint8_t*>(uPlane);
-      auto* srcV = static_cast<uint8_t*>(vPlane);
+    auto* srcU = static_cast<uint8_t*>(uPlane);
+    auto* srcV = static_cast<uint8_t*>(vPlane);
 
-      for (int row = 0; row < (height / 2); ++row) {
-          for (int col = 0; col < (width / 2); ++col) {
-              int dstIndex = row * (width / 2) + col;
-              uVec[dstIndex] = srcU[row * uStride + col * pixelStride];
-              vVec[dstIndex] = srcV[row * vStride + col * pixelStride];
-          }
-      }
+    for (int row = 0; row < (height / 2); ++row) {
+        for (int col = 0; col < (width / 2); ++col) {
+            int dstIndex = row * (width / 2) + col;
+            uVec[dstIndex] = srcU[row * uStride + col * pixelStride];
+            vVec[dstIndex] = srcV[row * vStride + col * pixelStride];
+        }
+    }
 
-      // Done reading from CPU memory
-      AHardwareBuffer_unlock(hardwareBuffer, nullptr);
-      AHardwareBuffer_release(hardwareBuffer);
+    // Done reading from CPU memory
+    AHardwareBuffer_unlock(hardwareBuffer, nullptr);
+    AHardwareBuffer_release(hardwareBuffer);
+       // Flip U and V
+    gl_cpp::flipPixels(yVec.data(), width, height);
+    gl_cpp::flipPixels(uVec.data(), width / 2, height / 2);
+    gl_cpp::flipPixels(vVec.data(), width / 2, height / 2);
 
-      // 3. Queue the OpenGL upload
-      addToNextBatch([=, yVec{std::move(yVec)}, uVec{std::move(uVec)}, vVec{std::move(vVec)}] {
-          glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-          GLuint textureY, textureU, textureV;
-          glGenTextures(1, &textureY);
-          glGenTextures(1, &textureU);
-          glGenTextures(1, &textureV);
+    // 3. Queue the OpenGL upload
+    addToNextBatch([=, yVec{std::move(yVec)}, uVec{std::move(uVec)}, vVec{std::move(vVec)}] {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        GLuint textureY, textureU, textureV;
+        glGenTextures(1, &textureY);
+        glGenTextures(1, &textureU);
+        glGenTextures(1, &textureV);
 
-          // -- Upload Y-plane
-          glActiveTexture(GL_TEXTURE0);
-          glBindTexture(GL_TEXTURE_2D, textureY);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-          glTexImage2D(
-              GL_TEXTURE_2D,
-              0,
-              GL_LUMINANCE,
-              width,
-              height,
-              0,
-              GL_LUMINANCE,
-              GL_UNSIGNED_BYTE,
-              yVec.data()
-          );
+        // -- Upload Y-plane
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureY);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_LUMINANCE,
+            width,
+            height,
+            0,
+            GL_LUMINANCE,
+            GL_UNSIGNED_BYTE,
+            yVec.data()
+        );
 
-          // -- Upload U-plane
-          glActiveTexture(GL_TEXTURE1);
-          glBindTexture(GL_TEXTURE_2D, textureU);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-          glTexImage2D(
-              GL_TEXTURE_2D,
-              0,
-              GL_LUMINANCE,
-              width / 2,
-              height / 2,
-              0,
-              GL_LUMINANCE,
-              GL_UNSIGNED_BYTE,
-              uVec.data()
-          );
+        // -- Upload U-plane
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, textureU);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_LUMINANCE,
+            width / 2,
+            height / 2,
+            0,
+            GL_LUMINANCE,
+            GL_UNSIGNED_BYTE,
+            uVec.data()
+        );
 
-          // -- Upload V-plane
-          glActiveTexture(GL_TEXTURE2);
-          glBindTexture(GL_TEXTURE_2D, textureV);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-          glTexImage2D(
-              GL_TEXTURE_2D,
-              0,
-              GL_LUMINANCE,
-              width / 2,
-              height / 2,
-              0,
-              GL_LUMINANCE,
-              GL_UNSIGNED_BYTE,
-              vVec.data()
-          );
+        // -- Upload V-plane
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, textureV);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_LUMINANCE,
+            width / 2,
+            height / 2,
+            0,
+            GL_LUMINANCE,
+            GL_UNSIGNED_BYTE,
+            vVec.data()
+        );
 
-          // Map object IDs
-          mapObject(exglObjId, textureY);
-          mapObject(uPlaneObjId, textureU);
-          mapObject(vPlaneObjId, textureV);
-    });
+        // Map object IDs
+        mapObject(exglObjId, textureY);
+        mapObject(uPlaneObjId, textureU);
+        mapObject(vPlaneObjId, textureV);
+  });
 }
  else {
         void *bufferData = nullptr;

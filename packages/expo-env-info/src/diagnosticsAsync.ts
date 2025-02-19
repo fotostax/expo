@@ -17,7 +17,6 @@ function getEnvironmentInfoAsync(): Promise<string> {
       npmPackages: [
         'expo',
         'expo-router',
-        'expo-updates',
         'react',
         'react-dom',
         'react-native',

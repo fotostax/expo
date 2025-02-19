@@ -7,9 +7,10 @@ import tippy, { roundArrow } from 'tippy.js';
 
 import {
   cleanCopyValue,
+  getRootCodeBlockProps,
   getCodeData,
+  parseValue,
   getCollapseHeight,
-  getCodeBlockDataFromChildren,
 } from '~/common/code-utilities';
 import { useCodeBlockSettingsContext } from '~/providers/CodeBlockSettingsProvider';
 import { Snippet } from '~/ui/components/Snippet/Snippet';
@@ -21,7 +22,7 @@ import { SettingsAction } from '~/ui/components/Snippet/actions/SettingsAction';
 import { CODE } from '~/ui/components/Text';
 import { TextTheme } from '~/ui/components/Text/types';
 
-// @ts-expect-error Jest ESM issue https://github.com/facebook/jest/issues/9430
+// @ts-ignore Jest ESM issue https://github.com/facebook/jest/issues/9430
 const { default: testTippy } = tippy;
 
 const attributes = {
@@ -37,21 +38,17 @@ export function Code({ className, children, title }: CodeProps) {
   const contentRef = useRef<HTMLPreElement>(null);
   const { preferredTheme, wordWrap } = useCodeBlockSettingsContext();
 
-  const {
-    language,
-    value,
-    params,
-    title: blockTitle,
-  } = getCodeBlockDataFromChildren(children, className);
-  const codeBlockTitle = blockTitle ?? title;
+  const rootProps = getRootCodeBlockProps(children, className);
+  const codeBlockData = parseValue(rootProps?.children?.toString() ?? '');
+  const codeBlockTitle = codeBlockData?.title ?? title;
 
   const [isExpanded, setExpanded] = useState(false);
   const [collapseBound, setCollapseBound] = useState<number | undefined>(undefined);
   const [blockHeight, setBlockHeight] = useState<number | undefined>(undefined);
 
-  const collapseHeight = getCollapseHeight(params);
+  const collapseHeight = getCollapseHeight(codeBlockData.params);
   const showExpand = !isExpanded && blockHeight && collapseBound && blockHeight > collapseBound;
-  const highlightedHtml = getCodeData(value, language);
+  const highlightedHtml = getCodeData(codeBlockData.value, rootProps.className);
 
   useEffect(() => {
     const tippyFunc = testTippy || tippy;
@@ -96,7 +93,7 @@ export function Code({ className, children, title }: CodeProps) {
   return codeBlockTitle ? (
     <Snippet>
       <SnippetHeader title={codeBlockTitle} Icon={getIconForFile(codeBlockTitle)}>
-        <CopyAction text={cleanCopyValue(value)} />
+        <CopyAction text={cleanCopyValue(codeBlockData.value)} />
         <SettingsAction />
       </SnippetHeader>
       <SnippetContent className="p-0">

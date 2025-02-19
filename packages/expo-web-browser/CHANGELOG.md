@@ -8,11 +8,7 @@
 
 ### 🐛 Bug fixes
 
-- [iOS] Fix an issue where the app will crash when using the popover presentation style on iPad. ([#33996](https://github.com/expo/expo/pull/33996) by [@jblarriviere](https://github.com/jblarriviere))
-
 ### 💡 Others
-
-- [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
 
 ## 14.0.1 — 2024-11-14
 

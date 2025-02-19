@@ -42,7 +42,7 @@ object DevMenuReactHost {
     } else {
       HermesInstance()
     }
-    val jsMainModuleName = "packages/expo-dev-menu/app/index"
+    val jsMainModuleName = "index"
     val defaultReactHostDelegate =
       DefaultReactHostDelegate(
         jsMainModulePath = jsMainModuleName,

@@ -3,8 +3,7 @@ import {
   Appearance,
   StatusBar as NativeStatusBar,
   useColorScheme,
-  type ColorSchemeName,
-  type ColorValue,
+  ColorSchemeName,
 } from 'react-native';
 
 // @docsMissing
@@ -119,9 +118,7 @@ export function setStatusBarStyle(style: StatusBarStyle, animated?: boolean) {
  * @param hidden If the status bar should be hidden.
  * @param animation Animation to use when toggling hidden, defaults to `'none'`.
  */
-export function setStatusBarHidden(hidden: boolean, animation?: StatusBarAnimation) {
-  NativeStatusBar.setHidden(hidden, animation);
-}
+export const setStatusBarHidden = NativeStatusBar.setHidden;
 
 // @needsAudit
 /**
@@ -130,9 +127,7 @@ export function setStatusBarHidden(hidden: boolean, animation?: StatusBarAnimati
  * @param animated `true` to animate the background color change, `false` to change immediately.
  * @platform android
  */
-export function setStatusBarBackgroundColor(backgroundColor: ColorValue, animated?: boolean) {
-  NativeStatusBar.setBackgroundColor(backgroundColor, animated);
-}
+export const setStatusBarBackgroundColor = NativeStatusBar.setBackgroundColor;
 
 // @needsAudit
 /**
@@ -140,9 +135,8 @@ export function setStatusBarBackgroundColor(backgroundColor: ColorValue, animate
  * @param visible If the network activity indicator should be visible.
  * @platform ios
  */
-export function setStatusBarNetworkActivityIndicatorVisible(visible: boolean) {
-  NativeStatusBar.setNetworkActivityIndicatorVisible(visible);
-}
+export const setStatusBarNetworkActivityIndicatorVisible =
+  NativeStatusBar.setNetworkActivityIndicatorVisible;
 
 // @needsAudit
 /**
@@ -151,9 +145,7 @@ export function setStatusBarNetworkActivityIndicatorVisible(visible: boolean) {
  * rendered under the status bar. This is always `true` on iOS and cannot be changed.
  * @platform android
  */
-export function setStatusBarTranslucent(translucent: boolean) {
-  NativeStatusBar.setTranslucent(translucent);
-}
+export const setStatusBarTranslucent = NativeStatusBar.setTranslucent;
 
 function styleToBarStyle(
   style: StatusBarStyle = 'auto',

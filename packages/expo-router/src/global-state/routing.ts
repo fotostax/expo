@@ -130,13 +130,17 @@ export type LinkToOptions = {
   relativeToDirectory?: boolean;
 
   /**
-   *
+   * Include the anchor when navigating to a new navigator
    */
   withAnchor?: boolean;
 };
 
-export function linkTo(this: RouterStore, href: string, options: LinkToOptions = {}) {
-  if (emitDomLinkEvent(href, options)) {
+export function linkTo(
+  this: RouterStore,
+  href: string,
+  { event, relativeToDirectory, withAnchor }: LinkToOptions = {}
+) {
+  if (emitDomLinkEvent(href, { event, relativeToDirectory, withAnchor })) {
     return;
   }
 
@@ -169,7 +173,7 @@ export function linkTo(this: RouterStore, href: string, options: LinkToOptions =
 
   const rootState = navigationRef.getRootState();
 
-  href = resolveHrefStringWithSegments(href, this.routeInfo, options);
+  href = resolveHrefStringWithSegments(href, this.routeInfo, relativeToDirectory);
 
   const state = this.linking.getStateFromPath!(href, this.linking.config);
 
@@ -178,9 +182,7 @@ export function linkTo(this: RouterStore, href: string, options: LinkToOptions =
     return;
   }
 
-  return navigationRef.dispatch(
-    getNavigateAction(state, rootState, options.event, options.withAnchor)
-  );
+  return navigationRef.dispatch(getNavigateAction(state, rootState, event, withAnchor));
 }
 
 function getNavigateAction(
@@ -211,7 +213,7 @@ function getNavigateAction(
 
     actionStateRoute = actionState.routes[actionState.routes.length - 1];
 
-    const childState = actionStateRoute.state;
+    const childState: any = actionStateRoute.state;
     const nextNavigationState = stateRoute.state;
 
     const dynamicName = matchDynamicName(actionStateRoute.name);
@@ -245,6 +247,7 @@ function getNavigateAction(
     payload.screen = actionStateRoute.name;
     // Merge the params, ensuring that we create a new object
     payload.params = { ...params };
+
     // Params don't include the screen, thats a separate attribute
     delete payload.params['screen'];
 

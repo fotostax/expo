@@ -9,16 +9,6 @@ extension ExpoSwiftUI {
   struct UIViewHost: UIViewRepresentable {
     let view: UIView
 
-    #if os(macOS)
-    func makeNSView(context: Context) -> NSView {
-      return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        // Nothing to do here
-    }
-    #endif
-
     func makeUIView(context: Context) -> UIView {
       return view
     }

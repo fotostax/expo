@@ -69,14 +69,14 @@ public final class FileDownloader {
   private var config: UpdatesConfig!
   private var logger: UpdatesLogger!
 
-  public convenience init(config: UpdatesConfig, logger: UpdatesLogger) {
-    self.init(config: config, urlSessionConfiguration: URLSessionConfiguration.default, logger: logger)
+  public convenience init(config: UpdatesConfig) {
+    self.init(config: config, urlSessionConfiguration: URLSessionConfiguration.default)
   }
 
-  required init(config: UpdatesConfig, urlSessionConfiguration: URLSessionConfiguration, logger: UpdatesLogger) {
+  required init(config: UpdatesConfig, urlSessionConfiguration: URLSessionConfiguration) {
     self.sessionConfiguration = urlSessionConfiguration
     self.config = config
-    self.logger = logger
+    self.logger = UpdatesLogger()
     self.session = URLSession(configuration: sessionConfiguration)
   }
 
@@ -216,6 +216,30 @@ public final class FileDownloader {
       }
     } catch {
       logger.error(cause: UpdatesError.fileDownloaderExtraParamFailure(cause: error))
+    }
+
+    return extraHeaders
+  }
+
+   /**
+   * Get extra headers to pass into `downloadAsset:`
+   */
+  static func extraHeadersForRemoteAssetRequest(
+    launchedUpdate: Update?,
+    embeddedUpdate: Update?,
+    requestedUpdate: Update?
+  ) -> [String: Any] {
+    var extraHeaders: [String: Any] = [:]
+    if let launchedUpdate {
+      extraHeaders["Expo-Current-Update-ID"] = launchedUpdate.updateId.uuidString.lowercased()
+    }
+
+    if let embeddedUpdate {
+      extraHeaders["Expo-Embedded-Update-ID"] = embeddedUpdate.updateId.uuidString.lowercased()
+    }
+
+    if let requestedUpdate {
+      extraHeaders["Expo-Requested-Update-ID"] = requestedUpdate.updateId.uuidString.lowercased()
     }
 
     return extraHeaders

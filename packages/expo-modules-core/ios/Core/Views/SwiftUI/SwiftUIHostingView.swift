@@ -7,6 +7,7 @@ import SwiftUI
  */
 internal protocol AnyExpoSwiftUIHostingView {
   func updateProps(_ rawProps: [String: Any])
+  func getContentView() -> any ExpoSwiftUI.View
 }
 
 extension ExpoSwiftUI {
@@ -21,11 +22,7 @@ extension ExpoSwiftUI {
      It's an environment object that is observed by the content view.
      */
     private let props: Props
-
-    /**
-     Additiional utilities for controlling shadow node behavior.
-     */
-    private let shadowNodeProxy: ShadowNodeProxy = ShadowNodeProxy()
+    private let contentView: any ExpoSwiftUI.View
 
     /**
      View controller that embeds the content view into the UIKit view hierarchy.
@@ -36,17 +33,12 @@ extension ExpoSwiftUI {
      Initializes a SwiftUI hosting view with the given SwiftUI view type.
      */
     init(viewType: ContentView.Type, props: Props, appContext: AppContext) {
-      let rootView = ContentView().environmentObject(props).environmentObject(shadowNodeProxy)
+      let rootView = ContentView().environmentObject(props)
 
       self.props = props
       self.hostingController = UIHostingController(rootView: rootView)
 
       super.init(appContext: appContext)
-
-      shadowNodeProxy.setViewSize = { size in
-        self.setViewSize(size)
-      }
-      shadowNodeProxy.objectWillChange.send()
 
       #if os(iOS) || os(tvOS)
       // Hosting controller has white background by default,
@@ -78,6 +70,13 @@ extension ExpoSwiftUI {
     }
 
     /**
+     Returns inner SwiftUI view.
+     */
+    public func getContentView() -> any ExpoSwiftUI.View {
+      return contentView
+    }
+
+    /**
      Returns a bool value whether the view supports prop with the given name.
      */
     public override func supportsProp(withName name: String) -> Bool {
@@ -99,7 +98,6 @@ extension ExpoSwiftUI {
       children.insert(child, at: index)
 
       props.children = children
-      props.objectWillChange.send()
     }
 
     /**
@@ -111,7 +109,6 @@ extension ExpoSwiftUI {
 
       if let children = props.children {
         props.children = children.filter({ $0.view != childComponentView })
-        props.objectWillChange.send()
       }
     }
 #endif // RCT_NEW_ARCH_ENABLED

@@ -12,9 +12,7 @@ export function Switch({ value = false, size = 'md', onChange, disabled }: Props
   const shouldReduceMotion = useReducedMotion();
 
   function onClick(value: boolean) {
-    if (disabled || !onChange) {
-      return;
-    }
+    if (disabled || !onChange) return;
     onChange(value);
   }
 
@@ -32,9 +30,7 @@ export function Switch({ value = false, size = 'md', onChange, disabled }: Props
       aria-label="Switch"
       aria-checked={value}
       data-value={value}
-      onClick={() => {
-        onClick(!value);
-      }}>
+      onClick={() => onClick(!value)}>
       <motion.div
         className={mergeClasses(
           'm-px rounded-full bg-palette-white shadow-xs dark:bg-palette-gray11',

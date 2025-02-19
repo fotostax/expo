@@ -4,6 +4,7 @@ package host.exp.exponent
 import android.app.IntentService
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
 import host.exp.exponent.di.NativeModuleDepsProvider
 import host.exp.exponent.experience.ExperienceActivity
 import host.exp.exponent.kernel.Kernel
@@ -12,10 +13,13 @@ import javax.inject.Inject
 
 private const val ACTION_RELOAD_EXPERIENCE = "host.exp.exponent.action.RELOAD_EXPERIENCE"
 private const val ACTION_STAY_AWAKE = "host.exp.exponent.action.STAY_AWAKE"
+private const val STAY_AWAKE_MS = (1000 * 60).toLong()
 
 class ExponentIntentService : IntentService("ExponentIntentService") {
   @Inject
   lateinit var kernel: Kernel
+
+  private val handler = Handler()
 
   override fun onCreate() {
     super.onCreate()
@@ -34,6 +38,7 @@ class ExponentIntentService : IntentService("ExponentIntentService") {
         isUserAction = true
         handleActionReloadExperience(intent.getStringExtra(KernelConstants.MANIFEST_URL_KEY)!!)
       }
+      ACTION_STAY_AWAKE -> handleActionStayAwake()
     }
     if (isUserAction) {
       val kernelActivityContext = kernel.activityContext
@@ -45,7 +50,19 @@ class ExponentIntentService : IntentService("ExponentIntentService") {
 
   private fun handleActionReloadExperience(manifestUrl: String) {
     kernel.reloadVisibleExperience(manifestUrl)
+
+    // Application can't close system dialogs on Android 31 or higher.
+    // See https://developer.android.com/about/versions/12/behavior-changes-all#close-system-dialogs
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
+      val intent = Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS)
+      sendBroadcast(intent)
+    }
+
     stopSelf()
+  }
+
+  private fun handleActionStayAwake() {
+    handler.postDelayed({ stopSelf() }, STAY_AWAKE_MS)
   }
 
   companion object {

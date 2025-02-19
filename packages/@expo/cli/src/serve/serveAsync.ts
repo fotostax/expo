@@ -8,7 +8,6 @@ import send from 'send';
 import * as Log from '../log';
 import { directoryExistsAsync, fileExistsAsync } from '../utils/dir';
 import { CommandError } from '../utils/errors';
-import { findUpProjectRootOrAssert } from '../utils/findUp';
 import { setNodeEnv } from '../utils/nodeEnv';
 import { resolvePortAsync } from '../utils/port';
 
@@ -20,9 +19,7 @@ type Options = {
 const debug = require('debug')('expo:serve') as typeof console.log;
 
 // Start a basic http server
-export async function serveAsync(inputDir: string, options: Options) {
-  const projectRoot = findUpProjectRootOrAssert(inputDir);
-
+export async function serveAsync(projectRoot: string, options: Options) {
   setNodeEnv('production');
   require('@expo/env').load(projectRoot);
 
@@ -36,7 +33,7 @@ export async function serveAsync(inputDir: string, options: Options) {
   }
   options.port = port;
 
-  const serverDist = options.isDefaultDirectory ? path.join(inputDir, 'dist') : inputDir;
+  const serverDist = options.isDefaultDirectory ? path.join(projectRoot, 'dist') : projectRoot;
   //  TODO: `.expo/server/ios`, `.expo/server/android`, etc.
 
   if (!(await directoryExistsAsync(serverDist))) {

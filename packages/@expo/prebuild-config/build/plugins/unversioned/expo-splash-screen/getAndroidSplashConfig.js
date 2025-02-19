@@ -19,9 +19,9 @@ function getAndroidSplashConfig(config, props) {
       mdpi: splash.mdpi ?? splash.image,
       backgroundColor: splash.backgroundColor,
       resizeMode: splash.resizeMode ?? defaultResizeMode,
+      image: splash.image,
       imageWidth: splash.imageWidth ?? 100,
-      dark: splash.dark,
-      drawable: splash.drawable
+      dark: splash.dark
     };
   }
   if (config.android?.splash) {
@@ -47,6 +47,7 @@ function getAndroidSplashConfig(config, props) {
       xhdpi: splash.image,
       hdpi: splash.image,
       mdpi: splash.image,
+      image: splash.image,
       backgroundColor: splash.backgroundColor,
       resizeMode: splash.resizeMode ?? defaultResizeMode,
       imageWidth: 200,
@@ -65,9 +66,9 @@ function getAndroidDarkSplashConfig(config, props) {
       xhdpi: splash.xhdpi ?? splash.image,
       hdpi: splash.hdpi ?? splash.image,
       mdpi: splash.mdpi ?? splash.image,
+      image: splash.image,
       backgroundColor: splash.backgroundColor,
-      resizeMode: lightTheme?.resizeMode ?? defaultResizeMode,
-      drawable: props.drawable
+      resizeMode: lightTheme?.resizeMode ?? defaultResizeMode
     };
   }
 
@@ -82,6 +83,7 @@ function getAndroidDarkSplashConfig(config, props) {
       xhdpi: splash.xhdpi ?? splash.image,
       hdpi: splash.hdpi ?? splash.image,
       mdpi: splash.mdpi ?? splash.image,
+      image: splash.image,
       backgroundColor: splash.backgroundColor,
       // Can't support dark resizeMode because the resize mode is hardcoded into the MainActivity.java
       resizeMode: lightTheme?.resizeMode ?? defaultResizeMode

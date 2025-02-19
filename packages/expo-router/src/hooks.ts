@@ -128,10 +128,6 @@ export function useUnstableGlobalHref(): string {
  * ```
  */
 export function useSegments<TSegments extends Route = Route>(): RouteSegments<TSegments>;
-
-/**
- *  @hidden
- */
 export function useSegments<TSegments extends RouteSegments<Route>>(): TSegments;
 export function useSegments() {
   return useStoreRouteInfo().segments;
@@ -144,31 +140,19 @@ export function useSegments() {
  * @example
  * ```tsx app/profile/[user].tsx
  * import { Text } from 'react-native';
- * import { usePathname } from 'expo-router';
+ * import { useSegments } from 'expo-router';
  *
  * export default function Route() {
- *   // pathname = "/profile/baconbrix"
- *   const pathname = usePathname();
+ *   // segments = ["profile", "[user]"]
+ *   const segments = useSegments();
  *
- *   return <Text>User: {user}</Text>;
+ *   return <Text>Hello</Text>;
  * }
  * ```
  */
 export function usePathname(): string {
   return useStoreRouteInfo().pathname;
 }
-
-/**
- * @hidden
- */
-export function useGlobalSearchParams<
-  TParams extends UnknownOutputParams = UnknownOutputParams,
->(): TParams;
-
-/**
- * @hidden
- */
-export function useGlobalSearchParams<TRoute extends Route>(): RouteParams<TRoute>;
 
 /**
  * Returns URL parameters for globally selected route, including dynamic path segments.
@@ -197,24 +181,16 @@ export function useGlobalSearchParams<TRoute extends Route>(): RouteParams<TRout
  * ```
  */
 export function useGlobalSearchParams<
+  TParams extends UnknownOutputParams = UnknownOutputParams,
+>(): TParams;
+export function useGlobalSearchParams<TRoute extends Route>(): RouteParams<TRoute>;
+export function useGlobalSearchParams<
   TRoute extends Route,
   TParams extends UnknownOutputParams = UnknownOutputParams,
 >(): RouteParams<TRoute> & TParams;
 export function useGlobalSearchParams() {
   return useStoreRouteInfo().params;
 }
-
-/**
- * @hidden
- */
-export function useLocalSearchParams<
-  TParams extends UnknownOutputParams = UnknownOutputParams,
->(): TParams;
-
-/**
- * @hidden
- */
-export function useLocalSearchParams<TRoute extends Route>(): RouteParams<TRoute>;
 
 /**
  * Returns the URL parameters for the contextually focused route. Useful for stacks where you may push a new screen
@@ -239,6 +215,10 @@ export function useLocalSearchParams<TRoute extends Route>(): RouteParams<TRoute
  *  return <Text>User: {user}</Text>;
  * }
  */
+export function useLocalSearchParams<
+  TParams extends UnknownOutputParams = UnknownOutputParams,
+>(): TParams;
+export function useLocalSearchParams<TRoute extends Route>(): RouteParams<TRoute>;
 export function useLocalSearchParams<
   TRoute extends Route,
   TParams extends UnknownOutputParams = UnknownOutputParams,

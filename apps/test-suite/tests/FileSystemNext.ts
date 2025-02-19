@@ -205,6 +205,19 @@ export async function test({ describe, expect, it, ...t }) {
         expect(folder.exists).toBe(false);
       });
 
+      it('Deletes a folder containing another folder', () => {
+        const folder = new Directory(testDirectory, 'newFolder2');
+        folder.create();
+
+        const child = new Directory(folder, 'child');
+        child.create();
+
+        expect(folder.exists).toBe(true);
+
+        folder.delete();
+        expect(folder.exists).toBe(false);
+      });
+
       describe('When copying a file', () => {
         it("Throws an error when it doesn't exist", () => {
           const src = new File(testDirectory, 'file.txt');
@@ -690,7 +703,7 @@ export async function test({ describe, expect, it, ...t }) {
       src.write('abcde');
       const blob = src.blob();
 
-      const response = await fetch('https://httpbin.test.k6.io/anything', {
+      const response = await fetch('https://httpbin.org/anything', {
         method: 'POST',
         body: blob,
       });
@@ -708,7 +721,7 @@ export async function test({ describe, expect, it, ...t }) {
 
       formData.append('data', blob);
 
-      const response = await fetch('https://httpbin.test.k6.io/anything', {
+      const response = await fetch('https://httpbin.org/anything', {
         method: 'POST',
         body: formData,
       });

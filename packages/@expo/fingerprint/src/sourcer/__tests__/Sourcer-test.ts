@@ -6,7 +6,6 @@ import { getHashSourcesAsync } from '../Sourcer';
 jest.mock('@expo/spawn-async');
 jest.mock('fs');
 jest.mock('fs/promises');
-jest.mock('../../utils/SpawnIPC');
 
 describe(getHashSourcesAsync, () => {
   it('should include `extraSources` from input parameter', async () => {

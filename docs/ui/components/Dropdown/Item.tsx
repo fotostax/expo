@@ -6,7 +6,7 @@ import { A, CALLOUT, FOOTNOTE } from '../Text';
 
 type Props = Omit<DropdownMenu.DropdownMenuItemProps, 'onClick'> & {
   label: string;
-  description?: ReactNode;
+  description?: React.ReactNode;
   href?: string;
   Icon?: ComponentType<HTMLAttributes<SVGSVGElement>>;
   rightSlot?: ReactNode;

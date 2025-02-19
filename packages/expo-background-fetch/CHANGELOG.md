@@ -10,9 +10,6 @@
 
 ### 💡 Others
 
-- [Android]: aligned the executeTask method signature after adding package expo-background-task ([#33438](https://github.com/expo/expo/pull/33438) by [@chrfalch](https://github.com/chrfalch))
-- [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
-
 ## 13.0.3 — 2024-11-13
 
 ### 🐛 Bug fixes

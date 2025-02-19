@@ -7,19 +7,12 @@
 ### 🎉 New features
 
 - [Android] Add support for the `Google Code Scanner`, similar to the `DataScannerViewController` used on iOS. ([#33347](https://github.com/expo/expo/pull/33347) by [@alanjhughes](https://github.com/alanjhughes))
-- Add support for pausing and resuming a video recording. ([#34002](https://github.com/expo/expo/pull/34002) by [@alanjhughes](https://github.com/alanjhughes))
 
 ### 🐛 Bug fixes
 
 - Fix `zoom` on Android and adjust the magnitude on iOS. ([#33319](https://github.com/expo/expo/pull/33319) by [@alanjhughes](https://github.com/alanjhughes))
-- [iOS] Fix setting `videoQuality` prop. ([#34082](https://github.com/expo/expo/pull/34082) by [@alanjhughes](https://github.com/alanjhughes))
-- [Android] Fix an issue where the camera image is pixelated when using the gl integration. ([#34174](https://github.com/expo/expo/pull/34174) by [@alanjhughes](https://github.com/alanjhughes))
-- [Android] Fix setting the camera preview provider. ([#34302](https://github.com/expo/expo/pull/34302) by [@alanjhughes](https://github.com/alanjhughes))
 
 ### 💡 Others
-
-- On `Android`, parse the `pictureSize` prop safely to prevent invalid values causing exceptions. ([#33566](https://github.com/expo/expo/pull/33566) by [@alanjhughes](https://github.com/alanjhughes))
-- [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
 
 ## 16.0.8 - 2024-11-29
 
