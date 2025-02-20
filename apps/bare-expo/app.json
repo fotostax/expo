@@ -104,7 +104,13 @@
       ],
       "./plugins/withAndroidNetworkSecurityConfig",
       "./plugins/withBenchmarkModules",
-      "react-native-vision-camera"
+      "react-native-vision-camera",
+      [
+        "react-native-fast-tflite",
+        {
+          "enableCoreMLDelegate": true
+        }
+      ]    
     ]
   }
 }
