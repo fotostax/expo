@@ -176,15 +176,15 @@ dependencies {
 
     if (isGifEnabled) {
         // For animated gif support
-        implementation("com.facebook.fresco:animated-gif:${reactAndroidLibs.versions.fresco.get()}")
+        implementation("com.facebook.fresco:animated-gif:${libs.versions.fresco.get()}")
     }
 
     if (isWebpEnabled) {
         // For webp support
-        implementation("com.facebook.fresco:webpsupport:${reactAndroidLibs.versions.fresco.get()}")
+        implementation("com.facebook.fresco:webpsupport:${libs.versions.fresco.get()}")
         if (isWebpAnimatedEnabled) {
             // Animated webp support
-            implementation("com.facebook.fresco:animated-webp:${reactAndroidLibs.versions.fresco.get()}")
+            implementation("com.facebook.fresco:animated-webp:${libs.versions.fresco.get()}")
         }
     }
 
@@ -203,7 +203,7 @@ dependencies {
 class ExecuteSetupAndroidProject implements Plugin<Project> {
     @Override
     void apply(Project target) {
-        target.exec {
+        target.providers.exec {
             def configuration = target.gradle.startParameter.taskNames.any {
                 it.toLowerCase().contains("release")
             } ? "release" : "debug"
