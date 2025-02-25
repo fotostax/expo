@@ -3,11 +3,12 @@
 #include <jni.h>
 #include <thread>
 #include <android/log.h>
-
+#include <android/hardware_buffer_jni.h>
 #include <jsi/jsi.h>
 #include "EXGLNativeApi.h"
 #include "EXPlatformUtils.h"
-
+#include <stdio.h>
+#include "EXGLImageUtils.h"
 extern "C" {
 
 // JNIEnv is valid only inside the same thread that it was passed from
@@ -89,4 +90,140 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextDrawEnded
   EXGLContextDrawEnded(exglCtxId);
 }
 
+#if __ANDROID_API__ >= 26
+JNIEXPORT jint JNICALL
+Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
+    JNIEnv *env,
+    jclass clazz,
+    jlong jsiPtr,
+    jint exglCtxId,
+    jlong hardwareBuffer) 
+{
+    if (hardwareBuffer == 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "HardwareBuffer pointer is null");
+        return 0;
+    }
+
+    // Cast jlong to AHardwareBuffer*
+    AHardwareBuffer *nativeBuffer = reinterpret_cast<AHardwareBuffer *>(hardwareBuffer);   
+
+    if (nativeBuffer == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Failed to cast jlong to AHardwareBuffer*");
+        return 0;
+    }
+    
+    AHardwareBuffer_acquire(nativeBuffer);
+
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(nativeBuffer, &desc);
+
+    int exlObj = EXGLContextUploadTexture(reinterpret_cast<void *>(jsiPtr), exglCtxId, nativeBuffer);
+    AHardwareBuffer_release(nativeBuffer);
+    return exlObj;
+}
+
+JNIEXPORT jlong JNICALL
+Java_expo_modules_gl_cpp_EXGL_EXGLContextCreateTestHardwareBuffer(
+    JNIEnv *env,
+    jclass clazz,
+    jint bufferFormat) // Pass format as a parameter
+{
+    // Create the AHardwareBuffer description
+    AHardwareBuffer_Desc desc = {};
+    desc.width = 256; 
+    desc.height = 256; 
+    desc.layers = 1; 
+    desc.format = (bufferFormat == 1) ? AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420 : AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+    desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY; 
+     __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", 
+                            "YUV format %d", AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420);
+    // Create the hardware buffer
+    AHardwareBuffer *hardwareBuffer = nullptr;
+    int result = AHardwareBuffer_allocate(&desc, &hardwareBuffer);
+    
+    if (result != 0 || hardwareBuffer == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", 
+                            "Failed to create AHardwareBuffer: %d", result);
+        return 0; // Return 0 to indicate failure
+    }
+
+    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Successfully created AHardwareBuffer");
+
+    // Acquire a reference to the buffer
+    AHardwareBuffer_acquire(hardwareBuffer); 
+
+    void *bufferData = nullptr;
+    int lock_result = AHardwareBuffer_lock(
+        hardwareBuffer, 
+        AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY, 
+        -1, 
+        nullptr, 
+        &bufferData
+    );
+
+    if (lock_result != 0 || !bufferData) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Failed to lock AHardwareBuffer");
+        AHardwareBuffer_release(hardwareBuffer);
+        return 0; 
+    }
+
+    if (desc.format == AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM) {
+        // Fill the buffer with a checkerboard pattern (RGBA)
+        uint32_t red = 0xFF0000FF;   // Red color (RGBA)
+        uint32_t white = 0xFFFFFFFF; // White color (RGBA)
+        uint32_t squareSize = 32;    // 32x32 squares
+
+        uint32_t *pixels = static_cast<uint32_t *>(bufferData);
+        for (int y = 0; y < desc.height; ++y) {
+            for (int x = 0; x < desc.width; ++x) {
+                bool isRedSquare = ((x / squareSize) % 2) == ((y / squareSize) % 2);
+                pixels[y * desc.width + x] = isRedSquare ? red : white;
+            }
+        }
+
+    } else if (desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
+        // Handle YUV 420f format
+        uint8_t *yPlane = reinterpret_cast<uint8_t *>(bufferData);
+        uint8_t *uPlane = yPlane + (desc.width * desc.height);
+        uint8_t *vPlane = uPlane + ((desc.width / 2) * (desc.height / 2));
+
+        // Fill the Y (brightness) plane with checkerboard pattern
+        for (int y = 0; y < desc.height; ++y) {
+            for (int x = 0; x < desc.width; ++x) {
+                bool isBright = ((x / 32) % 2) == ((y / 32) % 2);
+                yPlane[y * desc.width + x] = isBright ? 255 : 0; // Bright Y values
+            }
+        }
+
+        // Fill the U and V planes with uniform color
+        for (int y = 0; y < desc.height / 2; ++y) {
+            for (int x = 0; x < desc.width / 2; ++x) {
+                uPlane[y * (desc.width / 2) + x] = 128; // Default U component
+                vPlane[y * (desc.width / 2) + x] = 128; // Default V component
+            }
+        }
+    }
+
+    AHardwareBuffer_unlock(hardwareBuffer, nullptr);
+
+    uintptr_t pointer = reinterpret_cast<uintptr_t>(hardwareBuffer);
+    __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Pointer to be sent: %p", hardwareBuffer);
+    __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Pointer (64-bit unsigned): %llu", (unsigned long long) pointer);
+    
+    // Return the pointer as a jlong
+    return (jlong)pointer; 
+}
+
+#else
+
+JNIEXPORT void JNICALL
+Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
+    JNIEnv *env,
+    jclass clazz,
+    jint exglCtxId,
+    jobject hardwareBuffer
+    ) {
+    __android_log_print(ANDROID_LOG_ERROR, "GLContext", "AHardwareBuffer not supported on this API level.");
+}
+#endif
 }

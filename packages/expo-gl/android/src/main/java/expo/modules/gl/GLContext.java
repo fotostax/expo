@@ -1,6 +1,5 @@
 package expo.modules.gl;
 
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
@@ -11,7 +10,10 @@ import android.opengl.GLUtils;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
-
+import android.hardware.HardwareBuffer;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Color;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.lang.ref.WeakReference;
@@ -46,8 +48,9 @@ public class GLContext {
   private EGLContext mEGLContext;
   private EGLConfig mEGLConfig;
   private EGL10 mEGL;
-
+  private HardwareBuffer currentHB;
   private BlockingQueue<Runnable> mEventQueue = new LinkedBlockingQueue<>();
+  private JavaScriptContextProvider mJavaScriptContextProvider; // Declare as a property
 
   public GLContext(GLObjectManagerModule manager) {
     super();
@@ -81,15 +84,21 @@ public class GLContext {
     mGLThread.start();
     mEXGLCtxId = EXGLContextCreate();
 
-    // On JS thread, get JavaScriptCore context, create EXGL context, call JS callback
+   
+    // Initialize JavaScriptContextProvider once
+    if (mJavaScriptContextProvider == null) {
+      ModuleRegistry moduleRegistry = mManager.getAppContext().getLegacyModuleRegistry();
+      mJavaScriptContextProvider = moduleRegistry.getModule(JavaScriptContextProvider.class);
+    }
+
     final GLContext glContext = this;
     ModuleRegistry moduleRegistry = mManager.getAppContext().getLegacyModuleRegistry();
     final UIManager uiManager = moduleRegistry.getModule(UIManager.class);
-    final JavaScriptContextProvider jsContextProvider = moduleRegistry.getModule(JavaScriptContextProvider.class);
+
     uiManager.runOnClientCodeQueueThread(new Runnable() {
       @Override
       public void run() {
-        long jsContextRef = jsContextProvider.getJavaScriptContextRef();
+        long jsContextRef = mJavaScriptContextProvider.getJavaScriptContextRef();
         synchronized (uiManager) {
           if (jsContextRef != 0) {
             EXGLContextPrepare(jsContextRef, mEXGLCtxId, glContext);
@@ -337,7 +346,6 @@ public class GLContext {
     }
   }
 
-
   // All actual GL calls are made on this thread
 
   private class GLThread extends Thread {
@@ -461,4 +469,35 @@ public class GLContext {
     }
     return (Integer) value;
   }
+
+  public int  push_texture_from_native_buffer(long native_buffer_address){
+    long jsContextRef = mJavaScriptContextProvider.getJavaScriptContextRef();
+    int objVal = EXGLContextUploadTexture(jsContextRef,mEXGLCtxId,native_buffer_address);
+    return objVal;
+  }
+
+  public HardwareBuffer createTestHardwareBuffer() {
+          int width = 256;
+          int height = 256;
+          int format = HardwareBuffer.RGBA_8888;
+          int layers = 1; // Use 1 layer for a basic image
+          int usage = (int) HardwareBuffer.USAGE_CPU_READ_OFTEN | 
+                      (int) HardwareBuffer.USAGE_CPU_WRITE_OFTEN | 
+                      (int) HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE;
+
+          // Create a HardwareBuffer
+          HardwareBuffer hardwareBuffer = null;
+          try {
+              hardwareBuffer = HardwareBuffer.create(width, height, format, layers, usage);
+              if (hardwareBuffer != null) {
+                  Log.i("GLContext", "HardwareBuffer created successfully. Width: " + width + ", Height: " + height);
+              } else {
+                  Log.e("GLContext", "Failed to create HardwareBuffer");
+              }
+          } catch (Exception e) {
+              Log.e("GLContext", "Exception during HardwareBuffer creation: " + e.getMessage(), e);
+          }
+
+          return hardwareBuffer;
+      }
 }

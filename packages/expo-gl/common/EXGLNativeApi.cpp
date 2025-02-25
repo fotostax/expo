@@ -4,6 +4,7 @@
 
 using namespace expo::gl_cpp;
 
+
 EXGLContextId EXGLContextCreate() {
   return ContextCreate();
 }
@@ -17,6 +18,21 @@ void EXGLContextPrepare(
     exglCtx->prepareContext(*reinterpret_cast<jsi::Runtime *>(jsiPtr), flushMethod);
   }
 }
+
+EXGLObjectId EXGLContextUploadTexture(void *jsiPtr, EXGLContextId exglCtxId, AHardwareBuffer*  hardwareBuffer) {
+  // Get the context and lock it
+  EXGLObjectId textureId = 0;
+  auto [exglCtx, lock] = ContextGet(exglCtxId);
+
+  if (exglCtx) {
+    // Call uploadTextureToOpenGL and capture the texture ID
+  textureId = exglCtx->uploadTextureToOpenGL(*reinterpret_cast<jsi::Runtime *>(jsiPtr), hardwareBuffer);
+  } else {
+    __android_log_print(ANDROID_LOG_INFO, "EXGLNativeApi", "Context Upload Texture Failed.");
+  }
+  return textureId;
+}
+
 
 void EXGLContextPrepareWorklet(EXGLContextId exglCtxId) {
   auto [exglCtx, lock] = ContextGet(exglCtxId);

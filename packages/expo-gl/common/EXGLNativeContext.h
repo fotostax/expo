@@ -5,6 +5,7 @@
 #ifdef __ANDROID__
 #include <GLES3/gl3.h>
 #include <GLES3/gl3ext.h>
+
 #endif
 #ifdef __APPLE__
 #include <OpenGLES/EAGL.h>
@@ -26,6 +27,9 @@
 #include "EXJsiUtils.h"
 #include "EXPlatformUtils.h"
 #include "EXWebGLRenderer.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
 
 // Constants in WebGL that aren't in OpenGL ES
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
@@ -54,6 +58,8 @@ class EXGLContext {
   void maybeResolveWorkletContext(jsi::Runtime &runtime);
   void prepareWorkletContext();
 
+
+  int uploadTextureToOpenGL(jsi::Runtime &runtime,AHardwareBuffer *hardwareBuffer);
   // --- Queue handling --------------------------------------------------------
 
   // There are two threads: the input thread (henceforth "JS thread") feeds new GL
@@ -135,7 +141,12 @@ class EXGLContext {
 
   // OpenGLES state
   bool needsRedraw = false;
+  
   GLint defaultFramebuffer = 0;
+
+  // PreCompiled Program
+  //GLint defaultProgram = 0;
+
   bool unpackFLipY = false;
 };
 

@@ -1,5 +1,13 @@
 #include "EXGLNativeContext.h"
 #include "EXPlatformUtils.h"
+#include <GLES/gl.h> // OpenGL ES 1.0 headers
+#include <cstring> // For memcpy
+#include <android/bitmap.h> // For Android Bitmap API
+#include <cstdint> // for uint32_t
+#include "EXWebGLMethods.h"
+#include "EXWebGLMethodsHelpers.h"
+#include "EXGLImageUtils.h"
+//#include "EXWebGLConstants.def"
 
 namespace expo {
 namespace gl_cpp {
@@ -18,6 +26,218 @@ void EXGLContext::prepareContext(jsi::Runtime &runtime, std::function<void(void)
     EXGLSysLog("Failed to setup EXGLContext [%s]", err.what());
   }
 }
+
+
+static void checkGLError(const char* msg) {
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        EXGLSysLog("OpenGL Error %d after %s", err, msg);
+    }
+}
+int EXGLContext::uploadTextureToOpenGL(jsi::Runtime &runtime, AHardwareBuffer *hardwareBuffer) {
+    auto exglObjId = createObject();
+
+    // Acquire hardware buffer
+    AHardwareBuffer_acquire(hardwareBuffer);
+    AHardwareBuffer_Desc desc = {};
+    AHardwareBuffer_describe(hardwareBuffer, &desc);
+
+    if (desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM && desc.format != AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
+        EXGLSysLog("Unsupported hardware buffer format %d", desc.format);
+        AHardwareBuffer_release(hardwareBuffer);
+        return 0;
+    }
+
+    int width = desc.width;
+    int height = desc.height;
+
+   if (desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
+      AHardwareBuffer_Planes planes = {};
+      int32_t lock_result = AHardwareBuffer_lockPlanes(
+          hardwareBuffer,
+          AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
+          -1,
+          nullptr,
+          &planes
+      );
+
+    if (lock_result != 0) {
+          EXGLSysLog("Failed to lock AHardwareBuffer");
+          AHardwareBuffer_release(hardwareBuffer);
+          return 0;
+    }
+    void* yPlane = planes.planes[0].data;
+    void* uPlane = planes.planes[1].data;
+    void* vPlane = planes.planes[2].data;
+
+    int yStride     = planes.planes[0].rowStride;
+    int uStride     = planes.planes[1].rowStride;
+    int vStride     = planes.planes[2].rowStride;
+    int pixelStride = planes.planes[1].pixelStride; 
+
+    auto uPlaneObjId = createObject();
+    auto vPlaneObjId = createObject();
+
+    std::vector<uint8_t> yVec(height * width);
+    for (int row = 0; row < height; ++row) {
+        std::memcpy(
+            yVec.data() + (row * width),
+            static_cast<uint8_t*>(yPlane) + (row * yStride),
+            width
+        );
+    }
+    std::vector<uint8_t> uVec((height / 2) * (width / 2));
+    std::vector<uint8_t> vVec((height / 2) * (width / 2));
+
+    auto* srcU = static_cast<uint8_t*>(uPlane);
+    auto* srcV = static_cast<uint8_t*>(vPlane);
+
+    for (int row = 0; row < (height / 2); ++row) {
+        for (int col = 0; col < (width / 2); ++col) {
+            int dstIndex = row * (width / 2) + col;
+            uVec[dstIndex] = srcU[row * uStride + col * pixelStride];
+            vVec[dstIndex] = srcV[row * vStride + col * pixelStride];
+        }
+    }
+
+    // Done reading from CPU memory
+    AHardwareBuffer_unlock(hardwareBuffer, nullptr);
+    AHardwareBuffer_release(hardwareBuffer);
+       // Flip U and V
+    gl_cpp::flipPixels(yVec.data(), width, height);
+    gl_cpp::flipPixels(uVec.data(), width / 2, height / 2);
+    gl_cpp::flipPixels(vVec.data(), width / 2, height / 2);
+
+    // 3. Queue the OpenGL upload
+    addToNextBatch([=, yVec{std::move(yVec)}, uVec{std::move(uVec)}, vVec{std::move(vVec)}] {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        GLuint textureY, textureU, textureV;
+        glGenTextures(1, &textureY);
+        glGenTextures(1, &textureU);
+        glGenTextures(1, &textureV);
+
+        // -- Upload Y-plane
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureY);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_LUMINANCE,
+            width,
+            height,
+            0,
+            GL_LUMINANCE,
+            GL_UNSIGNED_BYTE,
+            yVec.data()
+        );
+
+        // -- Upload U-plane
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, textureU);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_LUMINANCE,
+            width / 2,
+            height / 2,
+            0,
+            GL_LUMINANCE,
+            GL_UNSIGNED_BYTE,
+            uVec.data()
+        );
+
+        // -- Upload V-plane
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, textureV);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_LUMINANCE,
+            width / 2,
+            height / 2,
+            0,
+            GL_LUMINANCE,
+            GL_UNSIGNED_BYTE,
+            vVec.data()
+        );
+
+        // Map object IDs
+        mapObject(exglObjId, textureY);
+        mapObject(uPlaneObjId, textureU);
+        mapObject(vPlaneObjId, textureV);
+  });
+}
+ else {
+        void *bufferData = nullptr;
+        int32_t lock_result = AHardwareBuffer_lock(
+            hardwareBuffer,
+            AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
+            -1,
+            nullptr,
+            &bufferData
+        );
+
+        if (lock_result != 0 || !bufferData) {
+            EXGLSysLog("Failed to lock AHardwareBuffer");
+            AHardwareBuffer_release(hardwareBuffer);
+            return 0;
+        }
+        EXGLSysLog("Locked Hardware Buffer");
+        addToNextBatch([=] {
+            assert(objects.find(exglObjId) == objects.end());
+
+            GLuint buffer;
+            glGenTextures(1, &buffer);
+            mapObject(exglObjId, buffer);
+
+            glBindTexture(GL_TEXTURE_2D, buffer);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+            glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                GL_RGBA,
+                width,
+                height,
+                0,
+                GL_RGBA,
+                GL_UNSIGNED_BYTE,
+                bufferData
+            );
+
+            AHardwareBuffer_unlock(hardwareBuffer, nullptr);
+            AHardwareBuffer_release(hardwareBuffer);
+        });
+    }
+
+    jsi::Value id = jsi::Value(static_cast<double>(exglObjId));
+    jsi::Object webglObject = runtime.global()
+        .getProperty(runtime, jsi::PropNameID::forUtf8(runtime, getConstructorName(EXWebGLClass::WebGLTexture)))
+        .asObject(runtime)
+        .asFunction(runtime)
+        .callAsConstructor(runtime, {})
+        .asObject(runtime);
+
+    webglObject.setProperty(runtime, "id", id);
+
+    return static_cast<int>(exglObjId);
+}
+
 
 void EXGLContext::maybeResolveWorkletContext(jsi::Runtime &runtime) {
   jsi::Value workletRuntimeValue = runtime.global().getProperty(runtime, "_WORKLET_RUNTIME");
@@ -115,6 +335,9 @@ void EXGLContext::mapObject(EXGLObjectId exglObjId, GLuint glObj) noexcept {
 
 GLuint EXGLContext::lookupObject(EXGLObjectId exglObjId) noexcept {
   auto iter = objects.find(exglObjId);
+  if(iter == objects.end()){
+      EXGLSysLog("lookup for exglObjId %d failed.", exglObjId);
+  }
   return iter == objects.end() ? 0 : iter->second;
 }
 
@@ -137,6 +360,8 @@ void EXGLContext::tryRegisterOnJSRuntimeDestroy(jsi::Runtime &runtime) {
 glesContext EXGLContext::prepareOpenGLESContext() {
   glesContext result;
   // Clear everything to initial values
+
+  
   addBlockingToNextBatch([&] {
     std::string version = reinterpret_cast<const char *>(glGetString(GL_VERSION));
     double glesVersion = strtod(version.substr(10).c_str(), 0);
