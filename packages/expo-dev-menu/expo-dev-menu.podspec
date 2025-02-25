@@ -60,6 +60,7 @@ Pod::Spec.new do |s|
       '"${PODS_CONFIGURATION_BUILD_DIR}/React-jserrorhandler/React_jserrorhandler.framework/Headers"',
       '"${PODS_CONFIGURATION_BUILD_DIR}/React-nativeconfig/React_nativeconfig.framework/Headers"',
       '"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimescheduler/React_runtimescheduler.framework/Headers"',
+      '"${PODS_CONFIGURATION_BUILD_DIR}/React-performancetimeline/React_performancetimeline.framework/Headers"',
     ])
   end
   s.pod_target_xcconfig = {
@@ -116,6 +117,9 @@ Pod::Spec.new do |s|
     main.dependency 'ExpoModulesCore'
     main.dependency 'expo-dev-menu-interface'
     main.dependency "expo-dev-menu/Vendored"
+    if reactNativeTargetVersion >= 77
+      main.dependency 'ReactAppDependencyProvider'
+    end
   end
 
   s.subspec 'ReactNativeCompatibles' do |ss|

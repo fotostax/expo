@@ -29,6 +29,7 @@ function getExpoDependencyChunks({
     ['@expo/cli', 'expo', 'expo-asset', 'expo-modules-autolinking'],
     ['expo-manifests'],
     ['@expo/prebuild-config', '@expo/metro-config', 'expo-constants'],
+    ['@expo/image-utils'],
     [
       'babel-preset-expo',
       'expo-application',
@@ -50,14 +51,20 @@ function getExpoDependencyChunks({
     ...(includeTV
       ? [
           [
+            'expo-audio',
             'expo-av',
             'expo-blur',
+            'expo-crypto',
             'expo-image',
             'expo-linear-gradient',
+            'expo-linking',
             'expo-localization',
-            'expo-crypto',
+            'expo-media-library',
             'expo-network',
             'expo-secure-store',
+            'expo-symbols',
+            'expo-system-ui',
+            'expo-ui',
             'expo-video',
           ],
         ]
@@ -309,10 +316,10 @@ async function preparePackageJson(
 
   const extraDevDependencies = configureE2E
     ? {
-        '@config-plugins/detox': '^5.0.1',
+        '@config-plugins/detox': '^9.0.0',
         '@types/express': '^4.17.17',
         '@types/jest': '^29.4.0',
-        detox: '^20.4.0',
+        detox: '^20.33.0',
         express: '^4.18.2',
         'form-data': '^4.0.0',
         jest: '^29.3.1',
@@ -362,8 +369,8 @@ async function preparePackageJson(
       ...packageJson,
       dependencies: {
         ...packageJson.dependencies,
-        'react-native': 'npm:react-native-tvos@~0.76.0-0rc4',
-        '@react-native-tvos/config-tv': '^0.0.11',
+        'react-native': 'npm:react-native-tvos@~0.77.0-0',
+        '@react-native-tvos/config-tv': '^0.1.1',
       },
       expo: {
         install: {
@@ -455,7 +462,15 @@ function transformAppJsonForE2E(
   runtimeVersion: string,
   isTV: boolean
 ) {
-  const plugins: any[] = ['expo-updates', '@config-plugins/detox'];
+  const plugins: any[] = [
+    'expo-updates',
+    [
+      '@config-plugins/detox',
+      {
+        subdomains: Array.from(new Set(['10.0.2.2', 'localhost', process.env.UPDATES_HOST])),
+      },
+    ],
+  ];
   if (isTV) {
     plugins.push([
       '@react-native-tvos/config-tv',
@@ -474,6 +489,7 @@ function transformAppJsonForE2E(
       owner: 'expo-ci',
       runtimeVersion,
       plugins,
+      newArchEnabled: false,
       android: { ...appJson.expo.android, package: 'dev.expo.updatese2e' },
       ios: { ...appJson.expo.ios, bundleIdentifier: 'dev.expo.updatese2e' },
       updates: {
@@ -516,6 +532,30 @@ export function transformAppJsonForE2EWithFingerprint(
   };
 }
 
+export function transformAppJsonForE2EWithBrickingMeasuresDisabled(
+  appJson: any,
+  projectName: string,
+  runtimeVersion: string,
+  isTV: boolean
+) {
+  const transformedForE2E = transformAppJsonForE2EWithFallbackToCacheTimeout(
+    appJson,
+    projectName,
+    runtimeVersion,
+    isTV
+  );
+  return {
+    ...transformedForE2E,
+    expo: {
+      ...transformedForE2E.expo,
+      updates: {
+        ...transformedForE2E.expo.updates,
+        disableAntiBrickingMeasures: true,
+      },
+    },
+  };
+}
+
 /**
  * Modifies app.json in the E2E test app to add the properties we need, plus a fallback to cache timeout for testing startup procedure
  */
@@ -546,7 +586,15 @@ export function transformAppJsonForUpdatesDisabledE2E(
   projectName: string,
   runtimeVersion: string
 ) {
-  const plugins: any[] = ['expo-updates', '@config-plugins/detox'];
+  const plugins: any[] = [
+    'expo-updates',
+    [
+      '@config-plugins/detox',
+      {
+        subdomains: Array.from(new Set(['10.0.2.2', 'localhost', process.env.UPDATES_HOST])),
+      },
+    ],
+  ];
   return {
     ...appJson,
     expo: {
@@ -555,6 +603,7 @@ export function transformAppJsonForUpdatesDisabledE2E(
       owner: 'expo-ci',
       runtimeVersion,
       plugins,
+      newArchEnabled: false,
       android: { ...appJson.expo.android, package: 'dev.expo.updatese2e' },
       ios: { ...appJson.expo.ios, bundleIdentifier: 'dev.expo.updatese2e' },
       extra: {
@@ -739,7 +788,7 @@ export async function initAsync(
   // enable proguard on Android
   await fs.appendFile(
     path.join(projectRoot, 'android', 'gradle.properties'),
-    '\nandroid.enableProguardInReleaseBuilds=true\nandroid.kotlinVersion=1.8.20\nEXPO_UPDATES_NATIVE_DEBUG=true',
+    '\nandroid.enableProguardInReleaseBuilds=true\nEXPO_UPDATES_NATIVE_DEBUG=true',
     'utf-8'
   );
 
@@ -932,6 +981,29 @@ export async function setupUpdatesStartupE2EAppAsync(
   // Copy Detox test file to e2e/tests directory
   await fs.copyFile(
     path.resolve(dirName, '..', 'fixtures', 'Updates-startup.e2e.ts'),
+    path.join(projectRoot, 'e2e', 'tests', 'Updates.e2e.ts')
+  );
+}
+
+export async function setupUpdatesBrickingMeasuresDisabledE2EAppAsync(
+  projectRoot: string,
+  { localCliBin, repoRoot }: { localCliBin: string; repoRoot: string }
+) {
+  await copyCommonFixturesToProject(
+    projectRoot,
+    ['tsconfig.json', '.detoxrc.json', 'eas.json', 'eas-hooks', 'e2e', 'includedAssets', 'scripts'],
+    { appJsFileName: 'App.tsx', repoRoot, isTV: false }
+  );
+
+  // install extra fonts package
+  await spawnAsync(localCliBin, ['install', '@expo-google-fonts/inter'], {
+    cwd: projectRoot,
+    stdio: 'inherit',
+  });
+
+  // Copy Detox test file to e2e/tests directory
+  await fs.copyFile(
+    path.resolve(dirName, '..', 'fixtures', 'Updates-bricking-measures-disabled.e2e.ts'),
     path.join(projectRoot, 'e2e', 'tests', 'Updates.e2e.ts')
   );
 }

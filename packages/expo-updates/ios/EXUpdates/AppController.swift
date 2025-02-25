@@ -147,6 +147,7 @@ public protocol InternalAppControllerInterface: AppControllerInterface {
   var updatesDirectory: URL? { get }
 
   var eventManager: UpdatesEventManager { get }
+  func onEventListenerStartObserving()
 
   func getConstantsForModule() -> UpdatesModuleConstants
   func requestRelaunch(
@@ -171,6 +172,7 @@ public protocol InternalAppControllerInterface: AppControllerInterface {
     success successBlockArg: @escaping () -> Void,
     error errorBlockArg: @escaping (_ error: Exception) -> Void
   )
+  func setUpdateURLAndRequestHeadersOverride(_ configOverride: UpdatesConfigOverride?) throws
 }
 
 @objc(EXUpdatesAppControllerDelegate)
@@ -266,7 +268,7 @@ public class AppController: NSObject {
       let updatesDatabase = UpdatesDatabase()
       do {
         let directory = try initializeUpdatesDirectory()
-        try initializeUpdatesDatabase(updatesDatabase: updatesDatabase, inUpdatesDirectory: directory)
+        try initializeUpdatesDatabase(updatesDatabase: updatesDatabase, inUpdatesDirectory: directory, logger: logger)
         _sharedInstance = EnabledAppController(config: config, database: updatesDatabase, updatesDirectory: directory)
       } catch {
         let cause = UpdatesError.appControllerInitializationError(cause: error)
@@ -306,12 +308,14 @@ public class AppController: NSObject {
       config = try? UpdatesConfig.configWithExpoPlist(mergingOtherDictionary: nil)
     }
 
+    let logger = UpdatesLogger()
+
     var updatesDirectory: URL?
     let updatesDatabase = UpdatesDatabase()
     var directoryDatabaseException: Error?
     do {
       updatesDirectory = try initializeUpdatesDirectory()
-      try initializeUpdatesDatabase(updatesDatabase: updatesDatabase, inUpdatesDirectory: updatesDirectory!)
+      try initializeUpdatesDatabase(updatesDatabase: updatesDatabase, inUpdatesDirectory: updatesDirectory!, logger: logger)
     } catch {
       directoryDatabaseException = error
     }
@@ -330,12 +334,12 @@ public class AppController: NSObject {
     return try UpdatesUtils.initializeUpdatesDirectory()
   }
 
-  private static func initializeUpdatesDatabase(updatesDatabase: UpdatesDatabase, inUpdatesDirectory updatesDirectory: URL) throws {
+  private static func initializeUpdatesDatabase(updatesDatabase: UpdatesDatabase, inUpdatesDirectory updatesDirectory: URL, logger: UpdatesLogger) throws {
     var dbError: Error?
     let semaphore = DispatchSemaphore(value: 0)
     updatesDatabase.databaseQueue.async {
       do {
-        try updatesDatabase.openDatabase(inDirectory: updatesDirectory)
+        try updatesDatabase.openDatabase(inDirectory: updatesDirectory, logger: logger)
       } catch {
         dbError = error
       }
@@ -349,19 +353,13 @@ public class AppController: NSObject {
     }
   }
 
-  /**
-   For `UpdatesModule` to set the `shouldEmitJsEvents` property
-   */
-  internal static var shouldEmitJsEvents: Bool {
-    get { _sharedInstance?.eventManager.shouldEmitJsEvents ?? false }
-    set { _sharedInstance?.eventManager.shouldEmitJsEvents = newValue }
+  internal static func setUpdatesEventManagerObserver(_ observer: UpdatesEventManagerObserver) {
+    _sharedInstance?.eventManager.observer = observer
+    _sharedInstance?.onEventListenerStartObserving()
   }
 
-  /**
-   Binds the `AppContext` instance from `UpdatesModule`.
-   */
-  internal static func bindAppContext(_ appContext: AppContext?) {
-    _sharedInstance?.eventManager.appContext = appContext
+  internal static func removeUpdatesEventManagerObserver() {
+    _sharedInstance?.eventManager.observer = nil
   }
 }
 

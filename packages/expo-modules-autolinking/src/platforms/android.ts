@@ -1,5 +1,5 @@
 import glob from 'fast-glob';
-import fs from 'fs-extra';
+import fs from 'fs';
 import path from 'path';
 
 import type { ExtraDependencies, ModuleDescriptorAndroid, PackageRevision } from '../types';
@@ -16,7 +16,11 @@ export async function generatePackageListAsync(
   namespace: string
 ): Promise<void> {
   const generatedFileContent = await generatePackageListFileContentAsync(modules, namespace);
-  await fs.outputFile(targetPath, generatedFileContent);
+  const parentPath = path.dirname(targetPath);
+  if (!fs.existsSync(parentPath)) {
+    await fs.promises.mkdir(parentPath, { recursive: true });
+  }
+  await fs.promises.writeFile(targetPath, generatedFileContent, 'utf8');
 }
 
 async function findGradleFilesAsync(revision: PackageRevision): Promise<string[]> {
@@ -51,10 +55,11 @@ export async function resolveModuleAsync(
   }
 
   const plugins = (revision.config?.androidGradlePlugins() ?? []).map(
-    ({ id, group, sourceDir }) => ({
+    ({ id, group, sourceDir, applyToRootProject }) => ({
       id,
       group,
       sourceDir: path.join(revision.path, sourceDir),
+      applyToRootProject: applyToRootProject ?? true,
     })
   );
 
@@ -85,12 +90,17 @@ export async function resolveModuleAsync(
     // Filter out projects that are already linked by plugins
     .filter(({ sourceDir }) => !plugins.some((plugin) => plugin.sourceDir === sourceDir));
 
+  const coreFeatures = revision.config?.coreFeatures() ?? [];
+  const publication = revision.config?.androidPublication();
+
   return {
     packageName,
     projects,
     ...(plugins.length > 0 ? { plugins } : {}),
     modules: revision.config?.androidModules() ?? [],
     ...(aarProjects.length > 0 ? { aarProjects } : {}),
+    ...(coreFeatures.length > 0 ? { coreFeatures } : {}),
+    ...(publication ? { publication } : {}),
   };
 }
 
@@ -99,7 +109,7 @@ export async function resolveExtraBuildDependenciesAsync(
 ): Promise<ExtraDependencies | null> {
   const propsFile = path.join(projectNativeRoot, ANDROID_PROPERTIES_FILE);
   try {
-    const contents = await fs.readFile(propsFile, 'utf8');
+    const contents = await fs.promises.readFile(propsFile, 'utf8');
     const extraMavenReposString = searchGradlePropertyFirst(contents, ANDROID_EXTRA_BUILD_DEPS_KEY);
     if (extraMavenReposString) {
       const extraMavenRepos = JSON.parse(extraMavenReposString);
@@ -177,7 +187,7 @@ async function findAndroidPackagesAsync(modules: ModuleDescriptorAndroid[]): Pro
       });
 
       for (const file of files) {
-        const fileContent = await fs.readFile(path.join(sourceDir, file), 'utf8');
+        const fileContent = await fs.promises.readFile(path.join(sourceDir, file), 'utf8');
 
         const packageRegex = (() => {
           if (process.env.EXPO_SHOULD_USE_LEGACY_PACKAGE_INTERFACE) {

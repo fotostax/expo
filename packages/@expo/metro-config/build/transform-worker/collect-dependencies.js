@@ -42,7 +42,11 @@ const t = __importStar(require("@babel/types"));
 const node_assert_1 = __importDefault(require("node:assert"));
 const crypto = __importStar(require("node:crypto"));
 const debug = require('debug')('expo:metro:collect-dependencies');
-const MAGIC_IMPORT_COMMENT = '@metro-ignore';
+const MAGIC_IMPORT_COMMENTS = [
+    '@metro-ignore',
+    // Add support for Webpack ignore comment which is used in many different React libraries.
+    'webpackIgnore: true',
+];
 // asserts non-null
 function nullthrows(x, message) {
     (0, node_assert_1.default)(x != null, message);
@@ -253,9 +257,11 @@ function processResolveWeakCall(path, state) {
         optional: isOptionalDependency(name, path, state),
         exportNames: ['*'],
     }, path);
-    path.replaceWith(makeResolveWeakTemplate({
-        MODULE_ID: createModuleIDExpression(dependency, state),
-    }));
+    if (state.collectOnly !== true) {
+        path.replaceWith(makeResolveWeakTemplate({
+            MODULE_ID: createModuleIDExpression(dependency, state),
+        }));
+    }
 }
 function getExportNamesFromPath(path) {
     if (path.node.source) {
@@ -308,10 +314,10 @@ function hasMagicImportComment(path) {
     // Get first argument of import()
     const [firstArg] = path.node.arguments;
     // Check comments before the argument
-    return !!(firstArg?.leadingComments?.some((comment) => comment.value.includes(MAGIC_IMPORT_COMMENT)) ||
-        path.node.leadingComments?.some((comment) => comment.value.includes(MAGIC_IMPORT_COMMENT)) ||
+    return !!MAGIC_IMPORT_COMMENTS.some((magicComment) => firstArg?.leadingComments?.some((comment) => comment.value.includes(magicComment)) ||
+        path.node.leadingComments?.some((comment) => comment.value.includes(magicComment)) ||
         // Get the inner comments between import and its argument
-        path.node.innerComments?.some((comment) => comment.value.includes(MAGIC_IMPORT_COMMENT)));
+        path.node.innerComments?.some((comment) => comment.value.includes(magicComment)));
 }
 function processImportCall(path, state, options) {
     // Check both leading and inner comments

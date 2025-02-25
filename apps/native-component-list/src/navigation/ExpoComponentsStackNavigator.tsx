@@ -8,10 +8,13 @@ import { optionalRequire } from './routeBuilder';
 import { TabBackground } from '../components/TabBackground';
 import TabIcon from '../components/TabIcon';
 import { Layout } from '../constants';
+import { CameraScreens } from '../screens/Camera/CameraScreen';
 import ExpoComponents from '../screens/ExpoComponentsScreen';
+import { MapsScreens } from '../screens/ExpoMaps/MapsScreen';
 import { ImageScreens } from '../screens/Image/ImageScreen';
+import { UIScreens } from '../screens/UI/UIScreen';
 import { VideoScreens } from '../screens/Video/VideoScreen';
-import { ScreenConfig } from '../types/ScreenConfig';
+import { type ScreenApiItem, type ScreenConfig } from '../types/ScreenConfig';
 
 const Stack = createStackNavigator();
 
@@ -21,12 +24,6 @@ export const Screens: ScreenConfig[] = [
       return optionalRequire(() => require('../screens/DrawerLayoutAndroidScreen'));
     },
     name: 'DrawerLayoutAndroid',
-  },
-  {
-    getComponent() {
-      return optionalRequire(() => require('../screens/BarCodeScannerScreen'));
-    },
-    name: 'BarCodeScanner',
   },
   {
     getComponent() {
@@ -55,27 +52,9 @@ export const Screens: ScreenConfig[] = [
   },
   {
     getComponent() {
-      return optionalRequire(() => require('../screens/Camera/CameraScreenLegacy'));
-    },
-    name: 'Camera (legacy)',
-  },
-  {
-    getComponent() {
       return optionalRequire(() => require('../screens/Camera/CameraScreen'));
     },
     name: 'Camera',
-  },
-  {
-    getComponent() {
-      return optionalRequire(() => require('../screens/Camera/CameraScreenBarcode'));
-    },
-    name: 'Camera (barcode)',
-  },
-  {
-    getComponent() {
-      return optionalRequire(() => require('../screens/Camera/CameraScreenBarcodeFromURL'));
-    },
-    name: 'Camera (barcode from URL)',
   },
   {
     getComponent() {
@@ -142,13 +121,6 @@ export const Screens: ScreenConfig[] = [
       return optionalRequire(() => require('../screens/ActivityIndicatorScreen'));
     },
     name: 'ActivityIndicator',
-  },
-  {
-    getComponent() {
-      return optionalRequire(() => require('../screens/QRCodeScreen'));
-    },
-    name: 'QRCode',
-    options: { title: 'QR Code' },
   },
   {
     getComponent() {
@@ -390,7 +362,7 @@ export const Screens: ScreenConfig[] = [
   },
   {
     getComponent() {
-      return optionalRequire(() => require('../screens/ExpoMaps/ExpoMapsScreen'));
+      return optionalRequire(() => require('../screens/ExpoMaps/MapsScreen'));
     },
     name: 'ExpoMaps',
   },
@@ -399,12 +371,20 @@ export const Screens: ScreenConfig[] = [
       return optionalRequire(() => require('../screens/Audio/AV/VideoScreen'));
     },
     name: 'Video (expo-av)',
+    route: 'video-expo-av',
   },
   {
     getComponent() {
       return optionalRequire(() => require('../screens/Video/VideoScreen'));
     },
     name: 'Video (expo-video)',
+    route: 'video-expo-video',
+  },
+  {
+    getComponent() {
+      return optionalRequire(() => require('../screens/UI/UIScreen'));
+    },
+    name: 'Expo UI',
   },
   {
     getComponent() {
@@ -449,9 +429,24 @@ export const Screens: ScreenConfig[] = [
     },
     name: 'LivePhoto',
   },
+  {
+    getComponent() {
+      return optionalRequire(() => require('../screens/MeshGradientScreen'));
+    },
+    name: 'MeshGradient',
+  },
+  ...CameraScreens,
   ...ImageScreens,
   ...VideoScreens,
+  ...UIScreens,
+  ...MapsScreens,
 ];
+
+export const screenApiItems: ScreenApiItem[] = Screens.map(({ name, route }) => ({
+  name,
+  route: '/components/' + (route ?? name.toLowerCase()),
+  isAvailable: true,
+}));
 
 function ExpoComponentsStackNavigator(props: { navigation: BottomTabNavigationProp<any> }) {
   const { theme } = useTheme();
@@ -459,9 +454,11 @@ function ExpoComponentsStackNavigator(props: { navigation: BottomTabNavigationPr
     <Stack.Navigator {...props} {...getStackNavWithConfig(props.navigation, theme)}>
       <Stack.Screen
         name="ExpoComponents"
-        options={{ title: Layout.isSmallDevice ? 'Expo SDK Components' : 'Components in Expo SDK' }}
-        component={ExpoComponents}
-      />
+        options={{
+          title: Layout.isSmallDevice ? 'Expo SDK Components' : 'Components in Expo SDK',
+        }}>
+        {() => <ExpoComponents apis={screenApiItems} />}
+      </Stack.Screen>
       {Screens.map(({ name, getComponent, options }) => (
         <Stack.Screen name={name} key={name} getComponent={getComponent} options={options ?? {}} />
       ))}

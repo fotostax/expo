@@ -67,9 +67,38 @@ function useFilterScreenChildren(children, { isCustomNavigator, contextKey, } = 
     }, [children]);
 }
 exports.useFilterScreenChildren = useFilterScreenChildren;
-/** Return a navigator that automatically injects matched routes and renders nothing when there are no children. Return type with children prop optional */
+/**
+ * Returns a navigator that automatically injects matched routes and renders nothing when there are no children.
+ * Return type with `children` prop optional.
+ *
+ * Enables use of other built-in React Navigation navigators and other navigators built with the React Navigation custom navigator API.
+ *
+ *  @example
+ * ```tsx app/_layout.tsx
+ * import { ParamListBase, TabNavigationState } from "@react-navigation/native";
+ * import {
+ *   createMaterialTopTabNavigator,
+ *   MaterialTopTabNavigationOptions,
+ *   MaterialTopTabNavigationEventMap,
+ * } from "@react-navigation/material-top-tabs";
+ * import { withLayoutContext } from "expo-router";
+ *
+ * const MaterialTopTabs = createMaterialTopTabNavigator();
+ *
+ * const ExpoRouterMaterialTopTabs = withLayoutContext<
+ *   MaterialTopTabNavigationOptions,
+ *   typeof MaterialTopTabs.Navigator,
+ *   TabNavigationState<ParamListBase>,
+ *   MaterialTopTabNavigationEventMap
+ * >(MaterialTopTabs.Navigator);
+
+ * export default function TabLayout() {
+ *   return <ExpoRouterMaterialTopTabs />;
+ * }
+ * ```
+ */
 function withLayoutContext(Nav, processor) {
-    const Navigator = (0, react_1.forwardRef)(({ children: userDefinedChildren, ...props }, ref) => {
+    return Object.assign((0, react_1.forwardRef)(({ children: userDefinedChildren, ...props }, ref) => {
         const contextKey = (0, Route_1.useContextKey)();
         const { screens } = useFilterScreenChildren(userDefinedChildren, {
             contextKey,
@@ -80,13 +109,10 @@ function withLayoutContext(Nav, processor) {
         if (!sorted.length) {
             return null;
         }
-        // @ts-expect-error
         return <Nav {...props} id={contextKey} ref={ref} children={sorted}/>;
+    }), {
+        Screen: Screen_1.Screen,
     });
-    // @ts-expect-error
-    Navigator.Screen = Screen_1.Screen;
-    // @ts-expect-error
-    return Navigator;
 }
 exports.withLayoutContext = withLayoutContext;
 //# sourceMappingURL=withLayoutContext.js.map

@@ -6,9 +6,9 @@ import com.facebook.react.bridge.DefaultJSExceptionHandler
 import com.facebook.react.bridge.ReactMarker
 import com.facebook.react.bridge.ReactMarker.MarkerListener
 import com.facebook.react.bridge.ReactMarkerConstants
-import com.facebook.react.config.ReactFeatureFlags
 import com.facebook.react.devsupport.ReleaseDevSupportManager
 import com.facebook.react.devsupport.interfaces.DevSupportManager
+import expo.modules.rncompatibility.IReactNativeFeatureFlagsProvider
 import expo.modules.updates.logging.UpdatesErrorCode
 import expo.modules.updates.logging.UpdatesLogger
 import java.lang.ref.WeakReference
@@ -27,7 +27,8 @@ import java.lang.ref.WeakReference
  * and so there is no more need to trigger the error recovery pipeline.
  */
 class ErrorRecovery(
-  private val logger: UpdatesLogger
+  private val logger: UpdatesLogger,
+  private val reactNativeFeatureFlagsProvider: IReactNativeFeatureFlagsProvider
 ) {
   internal val handlerThread = HandlerThread("expo-updates-error-recovery")
   internal lateinit var handler: Handler
@@ -97,7 +98,7 @@ class ErrorRecovery(
   }
 
   private fun registerErrorHandler(devSupportManager: DevSupportManager) {
-    if (ReactFeatureFlags.enableBridgelessArchitecture) {
+    if (reactNativeFeatureFlagsProvider.enableBridgelessArchitecture) {
       registerErrorHandlerImplBridgeless()
     } else {
       registerErrorHandlerImplBridge(devSupportManager)
@@ -120,7 +121,7 @@ class ErrorRecovery(
       }
     }
     val devSupportManagerClass = devSupportManager.javaClass
-    previousExceptionHandler = devSupportManagerClass.getDeclaredField("mDefaultJSExceptionHandler").let { field ->
+    previousExceptionHandler = devSupportManagerClass.getDeclaredField("defaultJSExceptionHandler").let { field ->
       field.isAccessible = true
       val previousValue = field[devSupportManager]
       field[devSupportManager] = defaultJSExceptionHandler
@@ -130,7 +131,7 @@ class ErrorRecovery(
   }
 
   private fun unregisterErrorHandler() {
-    if (ReactFeatureFlags.enableBridgelessArchitecture) {
+    if (reactNativeFeatureFlagsProvider.enableBridgelessArchitecture) {
       unregisterErrorHandlerImplBridgeless()
     } else {
       unregisterErrorHandlerImplBridge()
@@ -152,7 +153,7 @@ class ErrorRecovery(
       }
 
       val devSupportManagerClass = devSupportManager.javaClass
-      devSupportManagerClass.getDeclaredField("mDefaultJSExceptionHandler").let { field ->
+      devSupportManagerClass.getDeclaredField("defaultJSExceptionHandler").let { field ->
         field.isAccessible = true
         field[devSupportManager] = previousExceptionHandler
       }

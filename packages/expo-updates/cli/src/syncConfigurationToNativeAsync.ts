@@ -1,7 +1,7 @@
 import { getConfig } from '@expo/config';
 import { XML, AndroidConfig, IOSConfig } from '@expo/config-plugins';
 import plist from '@expo/plist';
-import fs from 'fs-extra';
+import fs from 'fs';
 import path from 'path';
 
 import { Workflow } from '../../utils/build/workflow';
@@ -20,6 +20,7 @@ export async function syncConfigurationToNativeAsync(
 ): Promise<void> {
   if (options.workflow !== 'generic') {
     // not applicable to managed workflow
+    return;
   }
 
   switch (options.platform) {
@@ -36,7 +37,7 @@ async function syncConfigurationToNativeAndroidAsync(
   options: SyncConfigurationToNativeOptions
 ): Promise<void> {
   const { exp } = getConfig(options.projectRoot, {
-    isPublicConfig: true,
+    isPublicConfig: false, // This must be false or it will drop codesigning config
     skipSDKVersionRequirement: true,
   });
 
@@ -83,7 +84,7 @@ async function syncConfigurationToNativeIosAsync(
   options: SyncConfigurationToNativeOptions
 ): Promise<void> {
   const { exp } = getConfig(options.projectRoot, {
-    isPublicConfig: true,
+    isPublicConfig: false, // This must be false or it will drop codesigning config
     skipSDKVersionRequirement: true,
   });
 
@@ -110,8 +111,8 @@ async function writeExpoPlistAsync(
 }
 
 async function readPlistAsync(plistPath: string): Promise<object | null> {
-  if (await fs.pathExists(plistPath)) {
-    const expoPlistContent = await fs.readFile(plistPath, 'utf8');
+  if (fs.existsSync(plistPath)) {
+    const expoPlistContent = await fs.promises.readFile(plistPath, 'utf8');
     try {
       return plist.parse(expoPlistContent);
     } catch (err: any) {
@@ -128,6 +129,6 @@ async function writePlistAsync(
   plistObject: IOSConfig.ExpoPlist | IOSConfig.InfoPlist
 ): Promise<void> {
   const contents = plist.build(plistObject);
-  await fs.mkdirp(path.dirname(plistPath));
-  await fs.writeFile(plistPath, contents);
+  await fs.promises.mkdir(path.dirname(plistPath), { recursive: true });
+  await fs.promises.writeFile(plistPath, contents, 'utf8');
 }

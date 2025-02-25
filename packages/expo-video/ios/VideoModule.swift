@@ -10,6 +10,18 @@ public final class VideoModule: Module {
       return AVPictureInPictureController.isPictureInPictureSupported()
     }
 
+    Function("getCurrentVideoCacheSize") {
+      VideoCacheManager.shared.getCacheDirectorySize()
+    }
+
+    AsyncFunction("setVideoCacheSizeAsync") { size in
+      try VideoCacheManager.shared.setMaxCacheSize(newSize: size)
+    }
+
+    AsyncFunction("clearVideoCacheAsync") {
+      return try await VideoCacheManager.shared.clearAllCache()
+    }
+
     View(VideoView.self) {
       Events(
         "onPictureInPictureStart",
@@ -235,6 +247,32 @@ public final class VideoModule: Module {
         player.bufferOptions = bufferOptions
       }
 
+      Property("audioMixingMode") { player -> AudioMixingMode in
+        return player.audioMixingMode
+      }
+      .set { player, audioMixingMode in
+        player.audioMixingMode = audioMixingMode
+      }
+
+      Property("availableVideoTracks") { player -> [VideoTrack] in
+        return player.availableVideoTracks
+      }
+
+      Property("videoTrack") { player -> VideoTrack? in
+        return player.currentVideoTrack
+      }
+
+      Property("availableSubtitleTracks") { player -> [SubtitleTrack] in
+        return player.subtitles.availableSubtitleTracks
+      }
+
+      Property("subtitleTrack") { player -> SubtitleTrack? in
+        return player.subtitles.currentSubtitleTrack
+      }
+      .set { player, subtitleTrack in
+        player.subtitles.selectSubtitleTrack(subtitleTrack: subtitleTrack)
+      }
+
       Function("play") { player in
         player.pointer.play()
       }
@@ -269,7 +307,7 @@ public final class VideoModule: Module {
         player.pointer.seek(to: CMTime.zero)
       }
 
-      AsyncFunction("generateThumbnailsAsync") { (player: VideoPlayer, times: [CMTime]?) -> [VideoThumbnail] in
+      AsyncFunction("generateThumbnailsAsync") { (player: VideoPlayer, times: [CMTime]?, options: VideoThumbnailOptions?) -> [VideoThumbnail] in
         guard let times, !times.isEmpty else {
           return []
         }
@@ -277,7 +315,11 @@ public final class VideoModule: Module {
           // TODO: We should throw here as nothing is playing
           return []
         }
-        return try await generateThumbnails(asset: asset, times: times)
+        return try await generateThumbnails(
+          asset: asset,
+          times: times,
+          options: options ?? .default
+        )
       }
     }
 

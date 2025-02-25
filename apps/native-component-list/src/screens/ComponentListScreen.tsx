@@ -1,11 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  Link,
-  NavigationAction,
-  StackActions,
-  useLinkBuilder,
-  useLinkProps,
-} from '@react-navigation/native';
+import { Link, NavigationAction, useLinkBuilder, useLinkProps } from '@react-navigation/native';
 import React from 'react';
 import {
   FlatList,
@@ -23,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface ListElement {
+  screenName?: string;
   name: string;
   route?: string;
   isAvailable?: boolean;
@@ -37,19 +32,14 @@ interface Props {
 function LinkButton({
   href,
   children,
-  screenName,
   ...rest
 }: Omit<React.ComponentProps<typeof Link>, 'action'> & {
   href: string;
   disabled?: boolean;
   children?: React.ReactNode;
-  screenName?: string;
 }) {
   const { buildAction } = useLinkBuilder();
-  let action: NavigationAction = buildAction(href);
-  if (screenName) {
-    action = StackActions.push(screenName);
-  }
+  const action: NavigationAction = buildAction(href);
 
   const { onPress, ...props } = useLinkProps({ href, action });
 
@@ -98,12 +88,11 @@ export default function ComponentListScreen(props: Props) {
   const { bottom, right } = useSafeAreaInsets();
 
   const renderExampleSection: ListRenderItem<ListElement> = ({ item }) => {
-    const { route, name: exampleName, isAvailable } = item;
+    const { route, screenName, name: exampleName, isAvailable } = item;
     return (
       <LinkButton
         disabled={!isAvailable}
-        href={route ?? exampleName}
-        screenName={exampleName}
+        href={route ?? screenName ?? exampleName}
         style={[styles.rowTouchable]}>
         <View
           pointerEvents="none"

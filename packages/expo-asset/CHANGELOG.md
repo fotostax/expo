@@ -4,9 +4,44 @@
 
 ### 🛠 Breaking changes
 
-- Bumped iOS and tvOS deployment target to 15.1. ([#30840](https://github.com/expo/expo/pull/30840) by [@tsapeta](https://github.com/tsapeta))
+- Bump minimum macOS version to 11.0. ([#34980](https://github.com/expo/expo/pull/34980) by [@gabrieldonadel](https://github.com/gabrieldonadel))
 
 ### 🎉 New features
+
+- Add RSC support. ([#34213](https://github.com/expo/expo/pull/34213) by [@EvanBacon](https://github.com/EvanBacon))
+
+### 🐛 Bug fixes
+
+- [macOS] Add macOS platform support ([#33505](https://github.com/expo/expo/pull/33505) by [@hassankhan](https://github.com/hassankhan))
+
+### 💡 Others
+
+- Deprecate `expo-asset/tools/hashAssetFiles` in favor of built-in hashing support in `expo/metro-config`. ([#34208](https://github.com/expo/expo/pull/34208) by [@EvanBacon](https://github.com/EvanBacon))
+- [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
+
+## 11.0.4 - 2025-02-19
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.3 - 2025-01-31
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.2 - 2025-01-10
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.1 — 2024-11-10
+
+### 🐛 Bug fixes
+
+- Add support for simplified object asset format. ([#32728](https://github.com/expo/expo/pull/32728) by [@EvanBacon](https://github.com/EvanBacon))
+
+## 11.0.0 — 2024-10-22
+
+### 🛠 Breaking changes
+
+- Bumped iOS and tvOS deployment target to 15.1. ([#30840](https://github.com/expo/expo/pull/30840) by [@tsapeta](https://github.com/tsapeta))
 
 ### 🐛 Bug fixes
 

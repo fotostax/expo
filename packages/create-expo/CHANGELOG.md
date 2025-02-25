@@ -6,7 +6,45 @@
 
 ### 🎉 New features
 
+- Support GitHub shorthand for templates ([#33383](https://github.com/expo/expo/pull/33383) by [@satya164](https://github.com/satya164))
+
 ### 🐛 Bug fixes
+
+### 💡 Others
+
+## 3.1.6 - 2025-02-14
+
+_This version does not introduce any user-facing changes._
+
+## 3.1.5 - 2025-01-10
+
+_This version does not introduce any user-facing changes._
+
+## 3.1.4 - 2025-01-08
+
+_This version does not introduce any user-facing changes._
+
+## 3.1.3 - 2024-11-29
+
+### 🐛 Bug fixes
+
+- Support making templates for React Native macOS, and rename project name inside `contents.xcworkspacedata` files ([#30309](https://github.com/expo/expo/pull/30309) by [@shirakaba](https://github.com/shirakaba))
+
+## 3.1.2 — 2024-11-14
+
+_This version does not introduce any user-facing changes._
+
+## 3.1.1 — 2024-11-11
+
+_This version does not introduce any user-facing changes._
+
+## 3.1.0 — 2024-11-04
+
+### 🎉 New features
+
+- Add log hint for `--template` and `--example` arguments. ([#32519](https://github.com/expo/expo/pull/32519) by [@kitten](https://github.com/kitten))
+
+## 3.0.1 — 2024-10-22
 
 ### 💡 Others
 
@@ -23,6 +61,7 @@
 ### 🎉 New features
 
 ### 🐛 Bug fixes
+
 - Update list of available templates ([#29955](https://github.com/expo/expo/pull/29955) by [@kadikraman](https://github.com/kadikraman))
 
 ### 💡 Others

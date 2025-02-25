@@ -72,7 +72,36 @@ export function useFilterScreenChildren(
   }, [children]);
 }
 
-/** Return a navigator that automatically injects matched routes and renders nothing when there are no children. Return type with children prop optional */
+/**
+ * Returns a navigator that automatically injects matched routes and renders nothing when there are no children.
+ * Return type with `children` prop optional.
+ * 
+ * Enables use of other built-in React Navigation navigators and other navigators built with the React Navigation custom navigator API.
+ *
+ *  @example
+ * ```tsx app/_layout.tsx
+ * import { ParamListBase, TabNavigationState } from "@react-navigation/native";
+ * import {
+ *   createMaterialTopTabNavigator,
+ *   MaterialTopTabNavigationOptions,
+ *   MaterialTopTabNavigationEventMap,
+ * } from "@react-navigation/material-top-tabs";
+ * import { withLayoutContext } from "expo-router";
+ * 
+ * const MaterialTopTabs = createMaterialTopTabNavigator();
+ * 
+ * const ExpoRouterMaterialTopTabs = withLayoutContext<
+ *   MaterialTopTabNavigationOptions,
+ *   typeof MaterialTopTabs.Navigator,
+ *   TabNavigationState<ParamListBase>,
+ *   MaterialTopTabNavigationEventMap
+ * >(MaterialTopTabs.Navigator);
+
+ * export default function TabLayout() {
+ *   return <ExpoRouterMaterialTopTabs />;
+ * }
+ * ```
+ */
 export function withLayoutContext<
   TOptions extends object,
   T extends ComponentType<any>,
@@ -83,16 +112,9 @@ export function withLayoutContext<
   processor?: (
     options: ScreenProps<TOptions, TState, TEventMap>[]
   ) => ScreenProps<TOptions, TState, TEventMap>[]
-): ForwardRefExoticComponent<
-  PropsWithoutRef<PickPartial<ComponentProps<T>, 'children'>> & RefAttributes<unknown>
-> & {
-  Screen: (props: ScreenProps<TOptions, TState, TEventMap>) => null;
-} {
-  const Navigator = forwardRef(
-    (
-      { children: userDefinedChildren, ...props }: PickPartial<ComponentProps<T>, 'children'>,
-      ref
-    ) => {
+) {
+  return Object.assign(
+    forwardRef(({ children: userDefinedChildren, ...props }: any, ref) => {
       const contextKey = useContextKey();
 
       const { screens } = useFilterScreenChildren(userDefinedChildren, {
@@ -108,13 +130,14 @@ export function withLayoutContext<
         return null;
       }
 
-      // @ts-expect-error
       return <Nav {...props} id={contextKey} ref={ref} children={sorted} />;
+    }),
+    {
+      Screen,
     }
-  );
-
-  // @ts-expect-error
-  Navigator.Screen = Screen;
-  // @ts-expect-error
-  return Navigator;
+  ) as ForwardRefExoticComponent<
+    PropsWithoutRef<PickPartial<ComponentProps<T>, 'children'>> & RefAttributes<unknown>
+  > & {
+    Screen: (props: ScreenProps<TOptions, TState, TEventMap>) => null;
+  };
 }

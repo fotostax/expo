@@ -1,6 +1,8 @@
 import ExpoSQLite from './ExpoSQLite';
+import { flattenOpenOptions } from './NativeDatabase';
 import { SQLiteStatement, } from './SQLiteStatement';
 import { createDatabasePath } from './pathUtils';
+let memoWarnCRSQLiteDeprecation = false;
 /**
  * A SQLite database.
  */
@@ -280,6 +282,16 @@ export class SQLiteDatabase {
         }
         return allRows;
     }
+    /**
+     * Synchronize the local database with the remote libSQL server.
+     * This method is only available from libSQL integration.
+     */
+    syncLibSQL() {
+        if (typeof this.nativeDatabase.syncLibSQL !== 'function') {
+            throw new Error('syncLibSQL is not supported in the current environment');
+        }
+        return this.nativeDatabase.syncLibSQL();
+    }
 }
 /**
  * The default directory for SQLite databases.
@@ -296,7 +308,8 @@ export async function openDatabaseAsync(databaseName, options, directory) {
     const openOptions = options ?? {};
     const databasePath = createDatabasePath(databaseName, directory);
     await ExpoSQLite.ensureDatabasePathExistsAsync(databasePath);
-    const nativeDatabase = new ExpoSQLite.NativeDatabase(databasePath, openOptions);
+    maybeWarnCRSQLiteDeprecation(options);
+    const nativeDatabase = new ExpoSQLite.NativeDatabase(databasePath, flattenOpenOptions(openOptions));
     await nativeDatabase.initAsync();
     return new SQLiteDatabase(databasePath, openOptions, nativeDatabase);
 }
@@ -313,7 +326,8 @@ export function openDatabaseSync(databaseName, options, directory) {
     const openOptions = options ?? {};
     const databasePath = createDatabasePath(databaseName, directory);
     ExpoSQLite.ensureDatabasePathExistsSync(databasePath);
-    const nativeDatabase = new ExpoSQLite.NativeDatabase(databasePath, openOptions);
+    maybeWarnCRSQLiteDeprecation(options);
+    const nativeDatabase = new ExpoSQLite.NativeDatabase(databasePath, flattenOpenOptions(openOptions));
     nativeDatabase.initSync();
     return new SQLiteDatabase(databasePath, openOptions, nativeDatabase);
 }
@@ -325,7 +339,8 @@ export function openDatabaseSync(databaseName, options, directory) {
  */
 export async function deserializeDatabaseAsync(serializedData, options) {
     const openOptions = options ?? {};
-    const nativeDatabase = new ExpoSQLite.NativeDatabase(':memory:', openOptions, serializedData);
+    maybeWarnCRSQLiteDeprecation(options);
+    const nativeDatabase = new ExpoSQLite.NativeDatabase(':memory:', flattenOpenOptions(openOptions), serializedData);
     await nativeDatabase.initAsync();
     return new SQLiteDatabase(':memory:', openOptions, nativeDatabase);
 }
@@ -339,7 +354,8 @@ export async function deserializeDatabaseAsync(serializedData, options) {
  */
 export function deserializeDatabaseSync(serializedData, options) {
     const openOptions = options ?? {};
-    const nativeDatabase = new ExpoSQLite.NativeDatabase(':memory:', openOptions, serializedData);
+    maybeWarnCRSQLiteDeprecation(options);
+    const nativeDatabase = new ExpoSQLite.NativeDatabase(':memory:', flattenOpenOptions(openOptions), serializedData);
     nativeDatabase.initSync();
     return new SQLiteDatabase(':memory:', openOptions, nativeDatabase);
 }
@@ -382,9 +398,19 @@ export function addDatabaseChangeListener(listener) {
 class Transaction extends SQLiteDatabase {
     static async createAsync(db) {
         const options = { ...db.options, useNewConnection: true };
-        const nativeDatabase = new ExpoSQLite.NativeDatabase(db.databasePath, options);
+        maybeWarnCRSQLiteDeprecation(options);
+        const nativeDatabase = new ExpoSQLite.NativeDatabase(db.databasePath, flattenOpenOptions(options));
         await nativeDatabase.initAsync();
         return new Transaction(db.databasePath, options, nativeDatabase);
     }
+}
+// TODO(kudo,20241017) - Remove `enableCRSQLite` in SDK 53.
+function maybeWarnCRSQLiteDeprecation(openOptions) {
+    const enableCRSQLite = openOptions?.enableCRSQLite === true;
+    if (!enableCRSQLite || __DEV__ !== true || memoWarnCRSQLiteDeprecation) {
+        return;
+    }
+    console.warn('CR-SQLite is no longer actively maintained. The experimental `enableCRSQLite` option is deprecated and will be removed in SDK 53.');
+    memoWarnCRSQLiteDeprecation = true;
 }
 //# sourceMappingURL=SQLiteDatabase.js.map
