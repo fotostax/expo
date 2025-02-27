@@ -15,10 +15,6 @@ module.exports = function (api) {
 
   return {
     presets: ['babel-preset-expo'],
-    plugins: [
-      ['babel-plugin-module-resolver', moduleResolverConfig],
-      ['react-native-worklets-core/plugin'],
-      ['react-native-reanimated/plugin', { processNestedWorklets: true }],
-    ],
+    plugins: [['babel-plugin-module-resolver', moduleResolverConfig]],
   };
 };

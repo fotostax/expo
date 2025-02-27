@@ -6,8 +6,7 @@ const monorepoRoot = path.join(__dirname, '../..');
 const config = getDefaultConfig(__dirname);
 
 config.resolver.assetExts.push(
-  'kml', // See: ../native-component-list/assets/expo-maps/sample_kml.kml
-  'tflite'
+  'kml' // See: ../native-component-list/assets/expo-maps/sample_kml.kml
 );
 
 config.resolver.blockList = [

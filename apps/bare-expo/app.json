@@ -14,16 +14,10 @@
     "facebookDisplayName": "Expo APIs",
     "privacy": "unlisted",
     "version": "1.0.0",
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
+    "platforms": ["ios", "android", "web"],
     "userInterfaceStyle": "automatic",
     "android": {
-      "scheme": [
-        "com.googleusercontent.apps.29635966244-knmlpr1upnv6rs4bumqea7hpit4o7kg2"
-      ],
+      "scheme": ["com.googleusercontent.apps.29635966244-knmlpr1upnv6rs4bumqea7hpit4o7kg2"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000020"
@@ -39,9 +33,7 @@
       "supportsTablet": true,
       "requireFullScreen": false,
       "entitlements": {
-        "com.apple.security.application-groups": [
-          "group.dev.expo.Payments"
-        ]
+        "com.apple.security.application-groups": ["group.dev.expo.Payments"]
       }
     },
     "web": {
@@ -66,9 +58,7 @@
       [
         "expo-font",
         {
-          "fonts": [
-            "./assets/icomoon.ttf"
-          ]
+          "fonts": ["./assets/icomoon.ttf"]
         }
       ],
       [
@@ -83,9 +73,7 @@
         {
           "icon": "./assets/ic_stat_notifications.png",
           "color": "#4630EB",
-          "sounds": [
-            "./assets/notification.wav"
-          ]
+          "sounds": ["./assets/notification.wav"]
         }
       ],
       [
@@ -103,14 +91,7 @@
         }
       ],
       "./plugins/withAndroidNetworkSecurityConfig",
-      "./plugins/withBenchmarkModules",
-      "react-native-vision-camera",
-      [
-        "react-native-fast-tflite",
-        {
-          "enableCoreMLDelegate": true
-        }
-      ]    
+      "./plugins/withBenchmarkModules"
     ]
   }
 }
