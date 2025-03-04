@@ -99,28 +99,49 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
     jint exglCtxId,
     jlong hardwareBuffer) 
 {
-    if (hardwareBuffer == 0) {
-        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "HardwareBuffer pointer is null");
-        return 0;
+    try {
+        if (hardwareBuffer == 0) {
+            __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Error: HardwareBuffer pointer is null");
+            return 0;
+        }
+
+        // Cast jlong to AHardwareBuffer*
+        AHardwareBuffer *nativeBuffer = reinterpret_cast<AHardwareBuffer *>(hardwareBuffer);   
+
+        if (nativeBuffer == nullptr) {
+            __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Error: Failed to cast jlong to AHardwareBuffer*");
+            return 0;
+        }
+
+        // Acquire buffer reference
+        AHardwareBuffer_acquire(nativeBuffer);
+
+        // Describe buffer
+        AHardwareBuffer_Desc desc;
+        AHardwareBuffer_describe(nativeBuffer, &desc);
+
+        __android_log_print(ANDROID_LOG_INFO, "EXGLJni", 
+                            "Uploading texture: Width=%d, Height=%d, Format=%d, Layers=%d", 
+                            desc.width, desc.height, desc.format, desc.layers);
+
+        // Call EXGL function
+        int exlObj = EXGLContextUploadTexture(reinterpret_cast<void *>(jsiPtr), exglCtxId, nativeBuffer);
+
+        // Release the buffer after usage
+        AHardwareBuffer_release(nativeBuffer);
+
+        return exlObj;
+    } 
+    catch (const std::exception& e) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Exception: %s", e.what());
+    }
+    catch (...) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Unknown error occurred in EXGLContextUploadTexture");
     }
 
-    // Cast jlong to AHardwareBuffer*
-    AHardwareBuffer *nativeBuffer = reinterpret_cast<AHardwareBuffer *>(hardwareBuffer);   
-
-    if (nativeBuffer == nullptr) {
-        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Failed to cast jlong to AHardwareBuffer*");
-        return 0;
-    }
-    
-    AHardwareBuffer_acquire(nativeBuffer);
-
-    AHardwareBuffer_Desc desc;
-    AHardwareBuffer_describe(nativeBuffer, &desc);
-
-    int exlObj = EXGLContextUploadTexture(reinterpret_cast<void *>(jsiPtr), exglCtxId, nativeBuffer);
-    AHardwareBuffer_release(nativeBuffer);
-    return exlObj;
+    return 0;  // Return 0 in case of an error
 }
+
 
 JNIEXPORT jlong JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextCreateTestHardwareBuffer(
