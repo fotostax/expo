@@ -470,11 +470,36 @@ public class GLContext {
     return (Integer) value;
   }
 
-  public int  push_texture_from_native_buffer(long native_buffer_address){
-    long jsContextRef = mJavaScriptContextProvider.getJavaScriptContextRef();
-    int objVal = EXGLContextUploadTexture(jsContextRef,mEXGLCtxId,native_buffer_address);
-    return objVal;
+  public int push_texture_from_native_buffer(long native_buffer_address) {
+      try {
+          if (native_buffer_address == 0) {
+              Log.e("EXGL", "Error: Native buffer address is null");
+              return 0;
+          }
+
+          long jsContextRef = mJavaScriptContextProvider.getJavaScriptContextRef();
+
+          if (jsContextRef == 0) {
+              Log.e("EXGL", "Error: JavaScript context reference is null");
+              return 0;
+          }
+
+          int objVal = EXGLContextUploadTexture(jsContextRef, mEXGLCtxId, native_buffer_address);
+
+          if (objVal == 0) {
+              Log.e("EXGL", "Error: Failed to upload texture from native buffer.");
+          }
+
+          return objVal;
+      } catch (Exception e) {
+          Log.e("EXGL", "Exception in push_texture_from_native_buffer: " + e.getMessage(), e);
+      } catch (Error e) {
+          Log.e("EXGL", "Fatal Error in push_texture_from_native_buffer: " + e.getMessage(), e);
+      }
+
+      return 0; // Return 0 in case of failure
   }
+
 
   public HardwareBuffer createTestHardwareBuffer() {
           int width = 256;
