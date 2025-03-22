@@ -138,7 +138,6 @@ export class GLView extends React.Component<GLViewProps> {
   }
 
   static async createTextureFromTexturePointer(exglCtxId: number, pointer: bigint): Promise<any> {
-    'worklet'
     const pointerBigInt = BigInt(pointer) & BigInt('0xFFFFFFFFFFFFFFFF'); // Mask lower 64 bits
     const pointerString = pointerBigInt.toString(16); // Convert to hex string
     return await ExponentGLObjectManager.uploadAHardwareBufferAsync(exglCtxId, pointerString);
