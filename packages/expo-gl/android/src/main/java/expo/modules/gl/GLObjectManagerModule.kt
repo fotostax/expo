@@ -102,7 +102,7 @@ AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: Str
     // Optionally log the error
     Log.e("GLObjectManagerModule", "Error in uploadAHardwareBufferAsync", e)
     // Reject the promise so JS can handle it
-    promise.reject("E_UPLOAD_TEXTURE", e)
+    promise.reject("E_UPLOAD_TEXTURE", e.message, e)
   }
 }
 
