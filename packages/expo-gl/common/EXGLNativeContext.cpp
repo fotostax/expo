@@ -35,240 +35,250 @@ static void checkGLError(const char* msg) {
     }
 }
 
-int EXGLContext::uploadTextureToOpenGL(jsi::Runtime &runtime, AHardwareBuffer *hardwareBuffer) {
-  // Check for a null pointer up front
-  if (hardwareBuffer == nullptr) {
-    EXGLSysLog("Null pointer exception: hardwareBuffer is null");
+int EXGLContext::uploadTextureToOpenGL(
+  jsi::Runtime &runtime,
+  AHardwareBuffer *hardwareBuffer
+) {
+// Check for null pointer
+if (!hardwareBuffer) {
+  EXGLSysLog("Null pointer exception: hardwareBuffer is null");
+  return 0;
+}
+
+// Create a new WebGL texture object ID in EXGL
+int exglObjId = createObject();
+
+try {
+  // We do NOT acquire or release the buffer here.
+  // The calling code should do that before/after calling us.
+
+  // Describe the buffer
+  AHardwareBuffer_Desc desc = {};
+  AHardwareBuffer_describe(hardwareBuffer, &desc);
+
+  // Validate format
+  if (desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM &&
+      desc.format != AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
+    EXGLSysLog("Unsupported hardware buffer format %d", desc.format);
     return 0;
   }
 
-  int exglObjId = createObject();
+  int width = static_cast<int>(desc.width);
+  int height = static_cast<int>(desc.height);
 
-  try {
-    // Acquire hardware buffer
-    AHardwareBuffer_acquire(hardwareBuffer);
-    AHardwareBuffer_Desc desc = {};
-    AHardwareBuffer_describe(hardwareBuffer, &desc);
-
-    if (desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM &&
-        desc.format != AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
-      EXGLSysLog("Unsupported hardware buffer format %d", desc.format);
-      AHardwareBuffer_release(hardwareBuffer);
+  if (desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
+    // --- YUV path ---
+    AHardwareBuffer_Planes planes;
+    int32_t lockResult = AHardwareBuffer_lockPlanes(
+        hardwareBuffer,
+        AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
+        -1,  // fence
+        nullptr,  // rect
+        &planes
+    );
+    if (lockResult != 0) {
+      EXGLSysLog("Failed to lockPlanes() for YUV hardware buffer");
       return 0;
     }
 
-    int width = desc.width;
-    int height = desc.height;
+    void* yPlane = planes.planes[0].data;
+    void* uPlane = planes.planes[1].data;
+    void* vPlane = planes.planes[2].data;
 
-    if (desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
-      AHardwareBuffer_Planes planes = {};
-      int32_t lock_result = AHardwareBuffer_lockPlanes(
-          hardwareBuffer,
-          AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
-          -1,
-          nullptr,
-          &planes
+    int yStride     = planes.planes[0].rowStride;
+    int uStride     = planes.planes[1].rowStride;
+    int vStride     = planes.planes[2].rowStride;
+    int pixelStride = planes.planes[1].pixelStride;
+
+    // Create new EXGL object IDs for the U/V textures
+    int uPlaneObjId = createObject();
+    int vPlaneObjId = createObject();
+
+    // Copy the Y plane into a std::vector
+    std::vector<uint8_t> yVec(height * width);
+    for (int row = 0; row < height; ++row) {
+      std::memcpy(
+          yVec.data() + (row * width),
+          static_cast<uint8_t*>(yPlane) + (row * yStride),
+          width
       );
-
-      if (lock_result != 0) {
-        EXGLSysLog("Failed to lock AHardwareBuffer");
-        AHardwareBuffer_release(hardwareBuffer);
-        return 0;
-      }
-
-      void* yPlane = planes.planes[0].data;
-      void* uPlane = planes.planes[1].data;
-      void* vPlane = planes.planes[2].data;
-
-      int yStride     = planes.planes[0].rowStride;
-      int uStride     = planes.planes[1].rowStride;
-      int vStride     = planes.planes[2].rowStride;
-      int pixelStride = planes.planes[1].pixelStride; 
-
-      int uPlaneObjId = createObject();
-      int vPlaneObjId = createObject();
-
-      std::vector<uint8_t> yVec(height * width);
-      for (int row = 0; row < height; ++row) {
-        std::memcpy(
-            yVec.data() + (row * width),
-            static_cast<uint8_t*>(yPlane) + (row * yStride),
-            width
-        );
-      }
-
-      std::vector<uint8_t> uVec((height / 2) * (width / 2));
-      std::vector<uint8_t> vVec((height / 2) * (width / 2));
-
-      auto* srcU = static_cast<uint8_t*>(uPlane);
-      auto* srcV = static_cast<uint8_t*>(vPlane);
-
-      for (int row = 0; row < (height / 2); ++row) {
-        for (int col = 0; col < (width / 2); ++col) {
-          int dstIndex = row * (width / 2) + col;
-          uVec[dstIndex] = srcU[row * uStride + col * pixelStride];
-          vVec[dstIndex] = srcV[row * vStride + col * pixelStride];
-        }
-      }
-
-      // Unlock but DO NOT release (JS still needs the buffer)
-      AHardwareBuffer_unlock(hardwareBuffer, nullptr);
-
-      // Flip U and V planes
-      gl_cpp::flipPixels(yVec.data(), width, height);
-      gl_cpp::flipPixels(uVec.data(), width / 2, height / 2);
-      gl_cpp::flipPixels(vVec.data(), width / 2, height / 2);
-
-      // Queue the OpenGL upload in a lambda wrapped with try-catch
-      addToNextBatch([=, yVec{std::move(yVec)}, uVec{std::move(uVec)}, vVec{std::move(vVec)}] {
-        try {
-          glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-          GLuint textureY, textureU, textureV;
-          glGenTextures(1, &textureY);
-          glGenTextures(1, &textureU);
-          glGenTextures(1, &textureV);
-
-          // Upload Y-plane
-          glActiveTexture(GL_TEXTURE0);
-          glBindTexture(GL_TEXTURE_2D, textureY);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-          glTexImage2D(
-              GL_TEXTURE_2D,
-              0,
-              GL_LUMINANCE,
-              width,
-              height,
-              0,
-              GL_LUMINANCE,
-              GL_UNSIGNED_BYTE,
-              yVec.data()
-          );
-
-          // Upload U-plane
-          glActiveTexture(GL_TEXTURE1);
-          glBindTexture(GL_TEXTURE_2D, textureU);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-          glTexImage2D(
-              GL_TEXTURE_2D,
-              0,
-              GL_LUMINANCE,
-              width / 2,
-              height / 2,
-              0,
-              GL_LUMINANCE,
-              GL_UNSIGNED_BYTE,
-              uVec.data()
-          );
-
-          // Upload V-plane
-          glActiveTexture(GL_TEXTURE2);
-          glBindTexture(GL_TEXTURE_2D, textureV);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-          glTexImage2D(
-              GL_TEXTURE_2D,
-              0,
-              GL_LUMINANCE,
-              width / 2,
-              height / 2,
-              0,
-              GL_LUMINANCE,
-              GL_UNSIGNED_BYTE,
-              vVec.data()
-          );
-
-          // Map object IDs for later reference
-          mapObject(exglObjId, textureY);
-          mapObject(uPlaneObjId, textureU);
-          mapObject(vPlaneObjId, textureV);
-        } catch (const std::exception& e) {
-          EXGLSysLog("Exception during OpenGL texture upload: %s", e.what());
-        } catch (...) {
-          EXGLSysLog("Unknown exception during OpenGL texture upload.");
-        }
-      });
-    } else {
-      // Handle non-YUV hardware buffer format
-      void *bufferData = nullptr;
-      int32_t lock_result = AHardwareBuffer_lock(
-          hardwareBuffer,
-          AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
-          -1,
-          nullptr,
-          &bufferData
-      );
-
-      if (lock_result != 0 || !bufferData) {
-        EXGLSysLog("Failed to lock AHardwareBuffer");
-        AHardwareBuffer_release(hardwareBuffer);
-        return 0;
-      }
-
-      EXGLSysLog("Locked Hardware Buffer");
-      addToNextBatch([=] {
-        try {
-          GLuint buffer;
-          glGenTextures(1, &buffer);
-          mapObject(exglObjId, buffer);
-
-          glBindTexture(GL_TEXTURE_2D, buffer);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-          glTexImage2D(
-              GL_TEXTURE_2D,
-              0,
-              GL_RGBA,
-              width,
-              height,
-              0,
-              GL_RGBA,
-              GL_UNSIGNED_BYTE,
-              bufferData
-          );
-
-          AHardwareBuffer_unlock(hardwareBuffer, nullptr);
-        } catch (const std::exception& e) {
-          EXGLSysLog("Exception during OpenGL texture upload: %s", e.what());
-        } catch (...) {
-          EXGLSysLog("Unknown exception during OpenGL texture upload.");
-        }
-      });
     }
 
-    // Create the JS WebGL texture object and assign the texture id
-    jsi::Value id = jsi::Value(static_cast<double>(exglObjId));
-    jsi::Object webglObject = runtime.global()
-        .getProperty(runtime, jsi::PropNameID::forUtf8(runtime, getConstructorName(EXWebGLClass::WebGLTexture)))
-        .asObject(runtime)
-        .asFunction(runtime)
-        .callAsConstructor(runtime, {})
-        .asObject(runtime);
+    // Copy the U and V planes
+    std::vector<uint8_t> uVec((height / 2) * (width / 2));
+    std::vector<uint8_t> vVec((height / 2) * (width / 2));
 
-    webglObject.setProperty(runtime, "id", id);
-    return static_cast<int>(exglObjId);
+    auto* srcU = static_cast<uint8_t*>(uPlane);
+    auto* srcV = static_cast<uint8_t*>(vPlane);
 
-  } catch (const std::exception &e) {
-    EXGLSysLog("Exception in uploadTextureToOpenGL: %s", e.what());
-    AHardwareBuffer_release(hardwareBuffer);
-    return 0;
-  } catch (...) {
-    EXGLSysLog("Unknown exception in uploadTextureToOpenGL");
-    AHardwareBuffer_release(hardwareBuffer);
-    return 0;
+    for (int row = 0; row < (height / 2); ++row) {
+      for (int col = 0; col < (width / 2); ++col) {
+        int dstIndex = row * (width / 2) + col;
+        uVec[dstIndex] = srcU[row * uStride + col * pixelStride];
+        vVec[dstIndex] = srcV[row * vStride + col * pixelStride];
+      }
+    }
+
+    // Unlock the buffer now that CPU copy is done
+    AHardwareBuffer_unlock(hardwareBuffer, nullptr);
+
+    // Flip Y/U/V images in CPU memory so they render in correct orientation
+    gl_cpp::flipPixels(yVec.data(), width, height);
+    gl_cpp::flipPixels(uVec.data(), width / 2, height / 2);
+    gl_cpp::flipPixels(vVec.data(), width / 2, height / 2);
+
+    // Schedule GL upload on our queued thread
+    addToNextBatch([=, 
+       yVec{std::move(yVec)},
+       uVec{std::move(uVec)},
+       vVec{std::move(vVec)}] {
+      try {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+        GLuint textureY, textureU, textureV;
+        glGenTextures(1, &textureY);
+        glGenTextures(1, &textureU);
+        glGenTextures(1, &textureV);
+
+        // Upload Y-plane
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureY);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_LUMINANCE,
+            width,
+            height,
+            0,
+            GL_LUMINANCE,
+            GL_UNSIGNED_BYTE,
+            yVec.data()
+        );
+
+        // Upload U-plane
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, textureU);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_LUMINANCE,
+            width / 2,
+            height / 2,
+            0,
+            GL_LUMINANCE,
+            GL_UNSIGNED_BYTE,
+            uVec.data()
+        );
+
+        // Upload V-plane
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, textureV);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_LUMINANCE,
+            width / 2,
+            height / 2,
+            0,
+            GL_LUMINANCE,
+            GL_UNSIGNED_BYTE,
+            vVec.data()
+        );
+
+        // Register the Y/U/V textures with the EXGL object IDs
+        mapObject(exglObjId, textureY);
+        mapObject(uPlaneObjId, textureU);
+        mapObject(vPlaneObjId, textureV);
+      } catch (const std::exception &e) {
+        EXGLSysLog("Exception during YUV OpenGL texture upload: %s", e.what());
+      } catch (...) {
+        EXGLSysLog("Unknown exception during YUV OpenGL texture upload.");
+      }
+    });
+
+  } else {
+    // --- RGBA path ---
+    void *bufferData = nullptr;
+    int32_t lockResult = AHardwareBuffer_lock(
+        hardwareBuffer,
+        AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
+        -1,    // fence
+        nullptr,
+        &bufferData
+    );
+    if (lockResult != 0 || !bufferData) {
+      EXGLSysLog("Failed to lock AHardwareBuffer (RGBA path)");
+      return 0;
+    }
+
+    addToNextBatch([=] {
+      try {
+        GLuint texId;
+        glGenTextures(1, &texId);
+        mapObject(exglObjId, texId);
+
+        glBindTexture(GL_TEXTURE_2D, texId);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RGBA,
+            width,
+            height,
+            0,
+            GL_RGBA,
+            GL_UNSIGNED_BYTE,
+            bufferData
+        );
+
+        // Unlock after copying to GL
+        AHardwareBuffer_unlock(hardwareBuffer, nullptr);
+      } catch (const std::exception &e) {
+        EXGLSysLog("Exception during RGBA texture upload: %s", e.what());
+      } catch (...) {
+        EXGLSysLog("Unknown exception during RGBA OpenGL texture upload.");
+      }
+    });
   }
-}
 
+  // Create the JS-side WebGLTexture object
+  jsi::Value idValue(static_cast<double>(exglObjId));
+  jsi::Object webglObject = runtime.global()
+    .getProperty(runtime, jsi::PropNameID::forUtf8(runtime, getConstructorName(EXWebGLClass::WebGLTexture)))
+    .asObject(runtime)
+    .asFunction(runtime)
+    .callAsConstructor(runtime, {})
+    .asObject(runtime);
+
+  // Attach the internal EXGL object ID
+  webglObject.setProperty(runtime, "id", idValue);
+
+  return exglObjId;
+
+} catch (const std::exception &e) {
+  EXGLSysLog("Exception in uploadTextureToOpenGL: %s", e.what());
+  return 0; // No call to release() here
+} catch (...) {
+  EXGLSysLog("Unknown exception in uploadTextureToOpenGL");
+  return 0; // No call to release() here
+}
+}
 
 void EXGLContext::maybeResolveWorkletContext(jsi::Runtime &runtime) {
   jsi::Value workletRuntimeValue = runtime.global().getProperty(runtime, "_WORKLET_RUNTIME");
