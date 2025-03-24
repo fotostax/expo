@@ -87,14 +87,24 @@ class GLObjectManagerModule : Module() {
       true
     }
 
-    AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: String, promise: Promise ->
-      val context = mGLContextMap[exglCtxId]
-        ?: throw InvalidGLContextException()
-      // Convert the hex string back to a ULong, then to a signed jlong
-      val pointer = pointerString.toULong(16).toLong()
-      val exglObjId = context.push_texture_from_native_buffer(pointer)
-      promise.resolve(exglObjId)
-    }
+AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: String, promise: Promise ->
+  try {
+    val context = mGLContextMap[exglCtxId]
+      ?: throw InvalidGLContextException()
+    
+    // Convert the hex string back to a ULong, then to a signed jlong
+    val pointer = pointerString.toULong(16).toLong()
+
+    val exglObjId = context.push_texture_from_native_buffer(pointer)
+    promise.resolve(exglObjId)
+
+  } catch (e: Throwable) {
+    // Optionally log the error
+    Log.e("GLObjectManagerModule", "Error in uploadAHardwareBufferAsync", e)
+    // Reject the promise so JS can handle it
+    promise.reject("E_UPLOAD_TEXTURE", e)
+  }
+}
 
     AsyncFunction("createAHardwareBufferAsync") {option: Int,promise: Promise ->
       // Call the JNI method to create a hardware buffer
