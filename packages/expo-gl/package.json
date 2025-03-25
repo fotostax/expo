@@ -40,6 +40,7 @@
     "invariant": "^2.2.4"
   },
   "devDependencies": {
+    "react-native-vision-camera": "^4.6.4",
     "@types/invariant": "^2.2.33",
     "@types/offscreencanvas": "2019.6.4",
     "@types/webgl2": "^0.0.6",
@@ -48,9 +49,11 @@
   },
   "peerDependencies": {
     "expo": "*",
-    "react": "*",
     "react-native": "*",
-    "react-native-web": "*"
+    "react-native-web": "*",
+    "react": "*",
+    "react-native-vision-camera": "*",
+    "react-native-worklets-core": "*"
   },
   "peerDependenciesMeta": {
     "react-native-web": {

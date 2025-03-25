@@ -32,6 +32,7 @@ target_include_directories(
     ${PACKAGE_NAME} PRIVATE "${COMMON_DIR}")
 
 find_package(ReactAndroid REQUIRED CONFIG)
+
 find_package(react-native-vision-camera REQUIRED CONFIG)
 
 find_library(LOG_LIB log)
@@ -47,7 +48,7 @@ target_compile_options(
             -Wno-unused-parameter
             -Wshorten-64-to-32
             -Wstrict-prototypes)
-            
+
 target_link_libraries(
     ${PACKAGE_NAME}
     ReactAndroid::jsi
