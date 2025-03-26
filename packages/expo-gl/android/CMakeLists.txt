@@ -10,6 +10,11 @@ set(PACKAGE_NAME "expo-gl")
 set(BUILD_DIR ${CMAKE_SOURCE_DIR}/build)
 set(COMMON_DIR ${CMAKE_SOURCE_DIR}/../common)
 
+find_package(ReactAndroid REQUIRED CONFIG)
+
+# Use find_package for react-native-vision-camera; its path is provided by build.gradle arguments.
+find_package(VisionCamera REQUIRED)
+
 add_library(
     ${PACKAGE_NAME} SHARED
     ${COMMON_DIR}/EXGLNativeApi.cpp
@@ -28,12 +33,14 @@ add_library(
     ${COMMON_DIR}/EXTypedArrayApi.h
     ./src/main/cpp/EXGLJniApi.cpp)
 
+# Specifies a path to native header files.
+#include_directories(
+#            ../node_modules/react-native-vision-camera/android/src/main/cpp/frameprocessors
+#            ../node_modules/react-native-vision-camera/android/src/main/cpp/frameprocessors/java-bindings
+#)
+
 target_include_directories(
     ${PACKAGE_NAME} PRIVATE "${COMMON_DIR}")
-
-find_package(ReactAndroid REQUIRED CONFIG)
-
-find_package(react-native-vision-camera REQUIRED CONFIG)
 
 find_library(LOG_LIB log)
 find_library(GLES_LIB GLESv3)

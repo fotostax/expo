@@ -59,4 +59,5 @@ android {
 dependencies {
   compileOnly 'com.facebook.soloader:soloader:0.8.2'
   compileOnly 'com.facebook.react:react-android'
+  implementation project(':react-native-vision-camera')
 }

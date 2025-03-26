@@ -37,22 +37,21 @@
     "preset": "expo-module-scripts"
   },
   "dependencies": {
-    "invariant": "^2.2.4"
-  },
+    "invariant": "^2.2.4"},
   "devDependencies": {
-    "react-native-vision-camera": "^4.6.4",
     "@types/invariant": "^2.2.33",
     "@types/offscreencanvas": "2019.6.4",
     "@types/webgl2": "^0.0.6",
     "expo-module-scripts": "^4.0.0",
+    "react-native-vision-camera": "^4.6.4",
     "react-test-renderer": "19.0.0"
   },
   "peerDependencies": {
     "expo": "*",
-    "react-native": "*",
-    "react-native-web": "*",
     "react": "*",
+    "react-native": "*",
     "react-native-vision-camera": "*",
+    "react-native-web": "*",
     "react-native-worklets-core": "*"
   },
   "peerDependenciesMeta": {
