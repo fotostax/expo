@@ -13,7 +13,7 @@ set(COMMON_DIR ${CMAKE_SOURCE_DIR}/../common)
 find_package(ReactAndroid REQUIRED CONFIG)
 
 # Use find_package for react-native-vision-camera; its path is provided by build.gradle arguments.
-find_package(VisionCamera REQUIRED)
+find_package(react-native-vision-camera REQUIRED CONFIG)
 
 add_library(
     ${PACKAGE_NAME} SHARED
