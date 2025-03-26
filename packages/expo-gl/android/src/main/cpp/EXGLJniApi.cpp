@@ -9,6 +9,7 @@
 #include "EXPlatformUtils.h"
 #include <stdio.h>
 #include "EXGLImageUtils.h"
+#include "frameprocessors/FrameHostObject.h"
 extern "C" {
 
 // JNIEnv is valid only inside the same thread that it was passed from
