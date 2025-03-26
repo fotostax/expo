@@ -15,6 +15,10 @@ find_package(ReactAndroid REQUIRED CONFIG)
 # Use find_package for react-native-vision-camera; its path is provided by build.gradle arguments.
 find_package(react-native-vision-camera REQUIRED CONFIG)
 
+get_target_property(INCLUDE_DIRS react-native-vision-camera::VisionCamera INTERFACE_INCLUDE_DIRECTORIES)
+message("Include directories for VisionCamera: ${INCLUDE_DIRS}")
+
+
 add_library(
     ${PACKAGE_NAME} SHARED
     ${COMMON_DIR}/EXGLNativeApi.cpp
