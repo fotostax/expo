@@ -1,8 +1,8 @@
 diff --git a/packages/expo-gl/android/CMakeLists.txt b/packages/expo-gl/android/CMakeLists.txt
-index 015c1c0bc0..e4e48a947d 100644
+index 015c1c0bc0..78eed484c5 100644
 --- a/packages/expo-gl/android/CMakeLists.txt
 +++ b/packages/expo-gl/android/CMakeLists.txt
-@@ -5,7 +5,7 @@ project(expo-gl)
+@@ -5,11 +5,22 @@ project(expo-gl)
  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
  set(CMAKE_VERBOSE_MAKEFILE ON)
  set(CMAKE_CXX_STANDARD 20)
@@ -11,11 +11,68 @@ index 015c1c0bc0..e4e48a947d 100644
  set(PACKAGE_NAME "expo-gl")
  set(BUILD_DIR ${CMAKE_SOURCE_DIR}/build)
  set(COMMON_DIR ${CMAKE_SOURCE_DIR}/../common)
+ 
++find_package(ReactAndroid REQUIRED CONFIG)
++
++find_package(fbjni REQUIRED CONFIG)
++
++# Use find_package for react-native-vision-camera; its path is provided by build.gradle arguments.
++find_package(react-native-vision-camera REQUIRED CONFIG)
++
++get_target_property(INCLUDE_DIRS react-native-vision-camera::VisionCamera INTERFACE_INCLUDE_DIRECTORIES)
++message("Include directories for VisionCamera: ${INCLUDE_DIRS}")
++
++
+ add_library(
+     ${PACKAGE_NAME} SHARED
+     ${COMMON_DIR}/EXGLNativeApi.cpp
+@@ -28,11 +39,15 @@ add_library(
+     ${COMMON_DIR}/EXTypedArrayApi.h
+     ./src/main/cpp/EXGLJniApi.cpp)
+ 
++# Specifies a path to native header files.
++#include_directories(
++#            ../node_modules/react-native-vision-camera/android/src/main/cpp/frameprocessors
++#            ../node_modules/react-native-vision-camera/android/src/main/cpp/frameprocessors/java-bindings
++#)
++
+ target_include_directories(
+     ${PACKAGE_NAME} PRIVATE "${COMMON_DIR}")
+ 
+-find_package(ReactAndroid REQUIRED CONFIG)
+-
+ find_library(LOG_LIB log)
+ find_library(GLES_LIB GLESv3)
+ 
+@@ -46,4 +61,12 @@ target_compile_options(
+             -Wno-unused-parameter
+             -Wshorten-64-to-32
+             -Wstrict-prototypes)
+-target_link_libraries(${PACKAGE_NAME} ReactAndroid::jsi ${LOG_LIB} ${GLES_LIB} android)
++
++target_link_libraries(
++    ${PACKAGE_NAME}
++    ReactAndroid::jsi
++    ${LOG_LIB}
++    ${GLES_LIB}
++    android
++    fbjni::fbjni
++    react-native-vision-camera::VisionCamera)
+diff --git a/packages/expo-gl/android/build.gradle b/packages/expo-gl/android/build.gradle
+index 6e5e438eb3..cb0197a984 100644
+--- a/packages/expo-gl/android/build.gradle
++++ b/packages/expo-gl/android/build.gradle
+@@ -59,4 +59,5 @@ android {
+ dependencies {
+   compileOnly 'com.facebook.soloader:soloader:0.8.2'
+   compileOnly 'com.facebook.react:react-android'
++  implementation project(':react-native-vision-camera')
+ }
 diff --git a/packages/expo-gl/android/src/main/cpp/EXGLJniApi.cpp b/packages/expo-gl/android/src/main/cpp/EXGLJniApi.cpp
-index f0f5f84821..d95cbd5efa 100644
+index f0f5f84821..4def263e12 100644
 --- a/packages/expo-gl/android/src/main/cpp/EXGLJniApi.cpp
 +++ b/packages/expo-gl/android/src/main/cpp/EXGLJniApi.cpp
-@@ -3,11 +3,12 @@
+@@ -3,10 +3,13 @@
  #include <jni.h>
  #include <thread>
  #include <android/log.h>
@@ -24,13 +81,13 @@ index f0f5f84821..d95cbd5efa 100644
  #include <jsi/jsi.h>
  #include "EXGLNativeApi.h"
  #include "EXPlatformUtils.h"
--
 +#include <stdio.h>
 +#include "EXGLImageUtils.h"
++#include "react-native-vision-camera/FrameHostObject.h"
+ 
  extern "C" {
  
- // JNIEnv is valid only inside the same thread that it was passed from
-@@ -89,4 +90,161 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextDrawEnded
+@@ -89,4 +92,163 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextDrawEnded
    EXGLContextDrawEnded(exglCtxId);
  }
  
@@ -41,51 +98,65 @@ index f0f5f84821..d95cbd5efa 100644
 +    jclass clazz,
 +    jlong jsiPtr,
 +    jint exglCtxId,
-+    jlong hardwareBuffer) 
++    jlong hardwareBuffer)
 +{
++    // Check if we actually got a valid pointer
++    if (hardwareBuffer == 0) {
++        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Error: hardwareBuffer handle is zero");
++        return 0;
++    }
++
++    // Reinterpret the jlong to AHardwareBuffer*
++    AHardwareBuffer *nativeBuffer = reinterpret_cast<AHardwareBuffer *>(hardwareBuffer);
++    if (!nativeBuffer) {
++        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
++                            "Error: Failed to reinterpret jlong to AHardwareBuffer*");
++        return 0;
++    }
++
++    // Acquire the buffer once here
++    AHardwareBuffer_acquire(nativeBuffer);
++
++    int textureId = 0;
 +    try {
-+        if (hardwareBuffer == 0) {
-+            __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Error: HardwareBuffer pointer is null");
-+            return 0;
-+        }
-+
-+        // Cast jlong to AHardwareBuffer*
-+        AHardwareBuffer *nativeBuffer = reinterpret_cast<AHardwareBuffer *>(hardwareBuffer);   
-+
-+        if (nativeBuffer == nullptr) {
-+            __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Error: Failed to cast jlong to AHardwareBuffer*");
-+            return 0;
-+        }
-+
-+        // Acquire buffer reference
-+        AHardwareBuffer_acquire(nativeBuffer);
-+
-+        // Describe buffer
++        // Describe it for logging
 +        AHardwareBuffer_Desc desc;
 +        AHardwareBuffer_describe(nativeBuffer, &desc);
-+
-+        __android_log_print(ANDROID_LOG_INFO, "EXGLJni", 
-+                            "Uploading texture: Width=%d, Height=%d, Format=%d, Layers=%d", 
++        __android_log_print(ANDROID_LOG_INFO, "EXGLJni",
++                            "Uploading texture: Width=%u, Height=%u, Format=%u, Layers=%u",
 +                            desc.width, desc.height, desc.format, desc.layers);
 +
-+        // Call EXGL function
-+        int exlObj = EXGLContextUploadTexture(reinterpret_cast<void *>(jsiPtr), exglCtxId, nativeBuffer);
-+
-+        // Release the buffer after usage
-+        AHardwareBuffer_release(nativeBuffer);
-+
-+        return exlObj;
-+    } 
-+    catch (const std::exception& e) {
-+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Exception: %s", e.what());
++        // Call the actual texture upload function
++        textureId = EXGLContextUploadTexture(
++            reinterpret_cast<void *>(jsiPtr),
++            exglCtxId,
++            nativeBuffer
++        );
++    } catch (const std::exception &e) {
++        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
++                            "Exception: %s", e.what());
++    } catch (...) {
++        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
++                            "Unknown error occurred in EXGLContextUploadTexture");
 +    }
-+    catch (...) {
-+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Unknown error occurred in EXGLContextUploadTexture");
-+    }
 +
-+    return 0;  // Return 0 in case of an error
++    // Release the buffer reference after usage
++    AHardwareBuffer_release(nativeBuffer);
++
++    return textureId;
 +}
-+
++#else
++JNIEXPORT void JNICALL
++Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
++    JNIEnv *env,
++    jclass clazz,
++    jint exglCtxId,
++    jobject hardwareBuffer
++) {
++    __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
++                        "AHardwareBuffer not supported on this API level.");
++}
++#endif
 +
 +JNIEXPORT jlong JNICALL
 +Java_expo_modules_gl_cpp_EXGL_EXGLContextCreateTestHardwareBuffer(
@@ -177,20 +248,8 @@ index f0f5f84821..d95cbd5efa 100644
 +    
 +    // Return the pointer as a jlong
 +    return (jlong)pointer; 
-+}
-+
-+#else
-+
-+JNIEXPORT void JNICALL
-+Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
-+    JNIEnv *env,
-+    jclass clazz,
-+    jint exglCtxId,
-+    jobject hardwareBuffer
-+    ) {
-+    __android_log_print(ANDROID_LOG_ERROR, "GLContext", "AHardwareBuffer not supported on this API level.");
  }
-+#endif
++
 +}
 \ No newline at end of file
 diff --git a/packages/expo-gl/android/src/main/java/expo/modules/gl/GLContext.java b/packages/expo-gl/android/src/main/java/expo/modules/gl/GLContext.java
@@ -322,7 +381,7 @@ index d1c990f841..5017497869 100644
 +      }
  }
 diff --git a/packages/expo-gl/android/src/main/java/expo/modules/gl/GLObjectManagerModule.kt b/packages/expo-gl/android/src/main/java/expo/modules/gl/GLObjectManagerModule.kt
-index ebc8392228..e9d9eed085 100644
+index ebc8392228..871ed96c62 100644
 --- a/packages/expo-gl/android/src/main/java/expo/modules/gl/GLObjectManagerModule.kt
 +++ b/packages/expo-gl/android/src/main/java/expo/modules/gl/GLObjectManagerModule.kt
 @@ -11,16 +11,22 @@ import expo.modules.kotlin.exception.Exceptions
@@ -359,7 +418,7 @@ index ebc8392228..e9d9eed085 100644
        }
      }
  
-@@ -73,9 +81,37 @@ class GLObjectManagerModule : Module() {
+@@ -73,9 +81,47 @@ class GLObjectManagerModule : Module() {
        val glContext = getContextWithId(exglCtxId)
          ?: return@AsyncFunction false
  
@@ -369,14 +428,24 @@ index ebc8392228..e9d9eed085 100644
        true
      }
 +
-+    AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: String, promise: Promise ->
-+      val context = mGLContextMap[exglCtxId]
-+        ?: throw InvalidGLContextException()
-+      // Convert the hex string back to a ULong, then to a signed jlong
-+      val pointer = pointerString.toULong(16).toLong()
-+      val exglObjId = context.push_texture_from_native_buffer(pointer)
-+      promise.resolve(exglObjId)
-+    }
++AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: String, promise: Promise ->
++  try {
++    val context = mGLContextMap[exglCtxId]
++      ?: throw InvalidGLContextException()
++    
++    // Convert the hex string back to a ULong, then to a signed jlong
++    val pointer = pointerString.toULong(16).toLong()
++
++    val exglObjId = context.push_texture_from_native_buffer(pointer)
++    promise.resolve(exglObjId)
++
++  } catch (e: Throwable) {
++    // Optionally log the error
++    Log.e("GLObjectManagerModule", "Error in uploadAHardwareBufferAsync", e)
++    // Reject the promise so JS can handle it
++    promise.reject("E_UPLOAD_TEXTURE", e.message, e)
++  }
++}
 +
 +    AsyncFunction("createAHardwareBufferAsync") {option: Int,promise: Promise ->
 +      // Call the JNI method to create a hardware buffer
@@ -397,7 +466,7 @@ index ebc8392228..e9d9eed085 100644
    }
  
    private fun getContextWithId(exglCtxId: Int): GLContext? {
-@@ -83,10 +119,12 @@ class GLObjectManagerModule : Module() {
+@@ -83,10 +129,12 @@ class GLObjectManagerModule : Module() {
    }
  
    fun saveContext(glContext: GLContext) {
@@ -562,7 +631,7 @@ index 230ea99c2b..3d94f9cea6 100644
  } // namespace gl_cpp
  } // namespace expo
 diff --git a/packages/expo-gl/common/EXGLNativeApi.cpp b/packages/expo-gl/common/EXGLNativeApi.cpp
-index cf0599f882..d5703872b7 100644
+index cf0599f882..f37d19b3f4 100644
 --- a/packages/expo-gl/common/EXGLNativeApi.cpp
 +++ b/packages/expo-gl/common/EXGLNativeApi.cpp
 @@ -4,6 +4,7 @@
@@ -573,22 +642,34 @@ index cf0599f882..d5703872b7 100644
  EXGLContextId EXGLContextCreate() {
    return ContextCreate();
  }
-@@ -18,6 +19,21 @@ void EXGLContextPrepare(
+@@ -18,6 +19,33 @@ void EXGLContextPrepare(
    }
  }
  
-+EXGLObjectId EXGLContextUploadTexture(void *jsiPtr, EXGLContextId exglCtxId, AHardwareBuffer*  hardwareBuffer) {
-+  // Get the context and lock it
-+  EXGLObjectId textureId = 0;
-+  auto [exglCtx, lock] = ContextGet(exglCtxId);
++EXGLObjectId EXGLContextUploadTexture(
++  void* jsiPtr,
++  EXGLContextId exglCtxId,
++  AHardwareBuffer* hardwareBuffer
++) {
++EXGLObjectId textureId = 0;
 +
-+  if (exglCtx) {
-+    // Call uploadTextureToOpenGL and capture the texture ID
-+  textureId = exglCtx->uploadTextureToOpenGL(*reinterpret_cast<jsi::Runtime *>(jsiPtr), hardwareBuffer);
-+  } else {
-+    __android_log_print(ANDROID_LOG_INFO, "EXGLNativeApi", "Context Upload Texture Failed.");
-+  }
-+  return textureId;
++// Look up the EXGL context
++auto [exglCtx, lock] = ContextGet(exglCtxId);
++if (!exglCtx) {
++  __android_log_print(ANDROID_LOG_INFO, "EXGLNativeApi",
++                      "Context %d not found or already destroyed",
++                      exglCtxId);
++  return 0;
++}
++
++// Simply call into the context method.
++// Do NOT acquire or release the buffer here.
++textureId = exglCtx->uploadTextureToOpenGL(
++    *reinterpret_cast<jsi::Runtime*>(jsiPtr),
++    hardwareBuffer
++);
++
++return textureId;
 +}
 +
 +
@@ -620,7 +701,7 @@ index 8af1d2e95f..37f1099b69 100644
  void EXGLContextFlush(EXGLContextId exglCtxId);
  
 diff --git a/packages/expo-gl/common/EXGLNativeContext.cpp b/packages/expo-gl/common/EXGLNativeContext.cpp
-index 3b2bbca951..d0c759848a 100644
+index 3b2bbca951..9ded22990d 100644
 --- a/packages/expo-gl/common/EXGLNativeContext.cpp
 +++ b/packages/expo-gl/common/EXGLNativeContext.cpp
 @@ -1,5 +1,13 @@
@@ -637,7 +718,7 @@ index 3b2bbca951..d0c759848a 100644
  
  namespace expo {
  namespace gl_cpp {
-@@ -19,6 +27,249 @@ void EXGLContext::prepareContext(jsi::Runtime &runtime, std::function<void(void)
+@@ -19,6 +27,259 @@ void EXGLContext::prepareContext(jsi::Runtime &runtime, std::function<void(void)
    }
  }
  
@@ -649,245 +730,255 @@ index 3b2bbca951..d0c759848a 100644
 +    }
 +}
 +
-+int EXGLContext::uploadTextureToOpenGL(jsi::Runtime &runtime, AHardwareBuffer *hardwareBuffer) {
-+  // Check for a null pointer up front
-+  if (hardwareBuffer == nullptr) {
-+    EXGLSysLog("Null pointer exception: hardwareBuffer is null");
++int EXGLContext::uploadTextureToOpenGL(
++  jsi::Runtime &runtime,
++  AHardwareBuffer *hardwareBuffer
++) {
++// Check for null pointer
++if (!hardwareBuffer) {
++  EXGLSysLog("Null pointer exception: hardwareBuffer is null");
++  return 0;
++}
++
++// Create a new WebGL texture object ID in EXGL
++int exglObjId = createObject();
++
++try {
++  // We do NOT acquire or release the buffer here.
++  // The calling code should do that before/after calling us.
++
++  // Describe the buffer
++  AHardwareBuffer_Desc desc = {};
++  AHardwareBuffer_describe(hardwareBuffer, &desc);
++
++  // Validate format
++  if (desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM &&
++      desc.format != AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
++    EXGLSysLog("Unsupported hardware buffer format %d", desc.format);
 +    return 0;
 +  }
 +
-+  int exglObjId = createObject();
++  int width = static_cast<int>(desc.width);
++  int height = static_cast<int>(desc.height);
 +
-+  try {
-+    // Acquire hardware buffer
-+    AHardwareBuffer_acquire(hardwareBuffer);
-+    AHardwareBuffer_Desc desc = {};
-+    AHardwareBuffer_describe(hardwareBuffer, &desc);
-+
-+    if (desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM &&
-+        desc.format != AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
-+      EXGLSysLog("Unsupported hardware buffer format %d", desc.format);
-+      AHardwareBuffer_release(hardwareBuffer);
++  if (desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
++    // --- YUV path ---
++    AHardwareBuffer_Planes planes;
++    int32_t lockResult = AHardwareBuffer_lockPlanes(
++        hardwareBuffer,
++        AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
++        -1,  // fence
++        nullptr,  // rect
++        &planes
++    );
++    if (lockResult != 0) {
++      EXGLSysLog("Failed to lockPlanes() for YUV hardware buffer");
 +      return 0;
 +    }
 +
-+    int width = desc.width;
-+    int height = desc.height;
++    void* yPlane = planes.planes[0].data;
++    void* uPlane = planes.planes[1].data;
++    void* vPlane = planes.planes[2].data;
 +
-+    if (desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
-+      AHardwareBuffer_Planes planes = {};
-+      int32_t lock_result = AHardwareBuffer_lockPlanes(
-+          hardwareBuffer,
-+          AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
-+          -1,
-+          nullptr,
-+          &planes
++    int yStride     = planes.planes[0].rowStride;
++    int uStride     = planes.planes[1].rowStride;
++    int vStride     = planes.planes[2].rowStride;
++    int pixelStride = planes.planes[1].pixelStride;
++
++    // Create new EXGL object IDs for the U/V textures
++    int uPlaneObjId = createObject();
++    int vPlaneObjId = createObject();
++
++    // Copy the Y plane into a std::vector
++    std::vector<uint8_t> yVec(height * width);
++    for (int row = 0; row < height; ++row) {
++      std::memcpy(
++          yVec.data() + (row * width),
++          static_cast<uint8_t*>(yPlane) + (row * yStride),
++          width
 +      );
-+
-+      if (lock_result != 0) {
-+        EXGLSysLog("Failed to lock AHardwareBuffer");
-+        AHardwareBuffer_release(hardwareBuffer);
-+        return 0;
-+      }
-+
-+      void* yPlane = planes.planes[0].data;
-+      void* uPlane = planes.planes[1].data;
-+      void* vPlane = planes.planes[2].data;
-+
-+      int yStride     = planes.planes[0].rowStride;
-+      int uStride     = planes.planes[1].rowStride;
-+      int vStride     = planes.planes[2].rowStride;
-+      int pixelStride = planes.planes[1].pixelStride; 
-+
-+      int uPlaneObjId = createObject();
-+      int vPlaneObjId = createObject();
-+
-+      std::vector<uint8_t> yVec(height * width);
-+      for (int row = 0; row < height; ++row) {
-+        std::memcpy(
-+            yVec.data() + (row * width),
-+            static_cast<uint8_t*>(yPlane) + (row * yStride),
-+            width
-+        );
-+      }
-+
-+      std::vector<uint8_t> uVec((height / 2) * (width / 2));
-+      std::vector<uint8_t> vVec((height / 2) * (width / 2));
-+
-+      auto* srcU = static_cast<uint8_t*>(uPlane);
-+      auto* srcV = static_cast<uint8_t*>(vPlane);
-+
-+      for (int row = 0; row < (height / 2); ++row) {
-+        for (int col = 0; col < (width / 2); ++col) {
-+          int dstIndex = row * (width / 2) + col;
-+          uVec[dstIndex] = srcU[row * uStride + col * pixelStride];
-+          vVec[dstIndex] = srcV[row * vStride + col * pixelStride];
-+        }
-+      }
-+
-+      // Unlock but DO NOT release (JS still needs the buffer)
-+      AHardwareBuffer_unlock(hardwareBuffer, nullptr);
-+
-+      // Flip U and V planes
-+      gl_cpp::flipPixels(yVec.data(), width, height);
-+      gl_cpp::flipPixels(uVec.data(), width / 2, height / 2);
-+      gl_cpp::flipPixels(vVec.data(), width / 2, height / 2);
-+
-+      // Queue the OpenGL upload in a lambda wrapped with try-catch
-+      addToNextBatch([=, yVec{std::move(yVec)}, uVec{std::move(uVec)}, vVec{std::move(vVec)}] {
-+        try {
-+          glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-+          GLuint textureY, textureU, textureV;
-+          glGenTextures(1, &textureY);
-+          glGenTextures(1, &textureU);
-+          glGenTextures(1, &textureV);
-+
-+          // Upload Y-plane
-+          glActiveTexture(GL_TEXTURE0);
-+          glBindTexture(GL_TEXTURE_2D, textureY);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-+          glTexImage2D(
-+              GL_TEXTURE_2D,
-+              0,
-+              GL_LUMINANCE,
-+              width,
-+              height,
-+              0,
-+              GL_LUMINANCE,
-+              GL_UNSIGNED_BYTE,
-+              yVec.data()
-+          );
-+
-+          // Upload U-plane
-+          glActiveTexture(GL_TEXTURE1);
-+          glBindTexture(GL_TEXTURE_2D, textureU);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-+          glTexImage2D(
-+              GL_TEXTURE_2D,
-+              0,
-+              GL_LUMINANCE,
-+              width / 2,
-+              height / 2,
-+              0,
-+              GL_LUMINANCE,
-+              GL_UNSIGNED_BYTE,
-+              uVec.data()
-+          );
-+
-+          // Upload V-plane
-+          glActiveTexture(GL_TEXTURE2);
-+          glBindTexture(GL_TEXTURE_2D, textureV);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-+          glTexImage2D(
-+              GL_TEXTURE_2D,
-+              0,
-+              GL_LUMINANCE,
-+              width / 2,
-+              height / 2,
-+              0,
-+              GL_LUMINANCE,
-+              GL_UNSIGNED_BYTE,
-+              vVec.data()
-+          );
-+
-+          // Map object IDs for later reference
-+          mapObject(exglObjId, textureY);
-+          mapObject(uPlaneObjId, textureU);
-+          mapObject(vPlaneObjId, textureV);
-+        } catch (const std::exception& e) {
-+          EXGLSysLog("Exception during OpenGL texture upload: %s", e.what());
-+        } catch (...) {
-+          EXGLSysLog("Unknown exception during OpenGL texture upload.");
-+        }
-+      });
-+    } else {
-+      // Handle non-YUV hardware buffer format
-+      void *bufferData = nullptr;
-+      int32_t lock_result = AHardwareBuffer_lock(
-+          hardwareBuffer,
-+          AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
-+          -1,
-+          nullptr,
-+          &bufferData
-+      );
-+
-+      if (lock_result != 0 || !bufferData) {
-+        EXGLSysLog("Failed to lock AHardwareBuffer");
-+        AHardwareBuffer_release(hardwareBuffer);
-+        return 0;
-+      }
-+
-+      EXGLSysLog("Locked Hardware Buffer");
-+      addToNextBatch([=] {
-+        try {
-+          GLuint buffer;
-+          glGenTextures(1, &buffer);
-+          mapObject(exglObjId, buffer);
-+
-+          glBindTexture(GL_TEXTURE_2D, buffer);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-+
-+          glTexImage2D(
-+              GL_TEXTURE_2D,
-+              0,
-+              GL_RGBA,
-+              width,
-+              height,
-+              0,
-+              GL_RGBA,
-+              GL_UNSIGNED_BYTE,
-+              bufferData
-+          );
-+
-+          AHardwareBuffer_unlock(hardwareBuffer, nullptr);
-+        } catch (const std::exception& e) {
-+          EXGLSysLog("Exception during OpenGL texture upload: %s", e.what());
-+        } catch (...) {
-+          EXGLSysLog("Unknown exception during OpenGL texture upload.");
-+        }
-+      });
 +    }
 +
-+    // Create the JS WebGL texture object and assign the texture id
-+    jsi::Value id = jsi::Value(static_cast<double>(exglObjId));
-+    jsi::Object webglObject = runtime.global()
-+        .getProperty(runtime, jsi::PropNameID::forUtf8(runtime, getConstructorName(EXWebGLClass::WebGLTexture)))
-+        .asObject(runtime)
-+        .asFunction(runtime)
-+        .callAsConstructor(runtime, {})
-+        .asObject(runtime);
++    // Copy the U and V planes
++    std::vector<uint8_t> uVec((height / 2) * (width / 2));
++    std::vector<uint8_t> vVec((height / 2) * (width / 2));
 +
-+    webglObject.setProperty(runtime, "id", id);
-+    return static_cast<int>(exglObjId);
++    auto* srcU = static_cast<uint8_t*>(uPlane);
++    auto* srcV = static_cast<uint8_t*>(vPlane);
 +
-+  } catch (const std::exception &e) {
-+    EXGLSysLog("Exception in uploadTextureToOpenGL: %s", e.what());
-+    AHardwareBuffer_release(hardwareBuffer);
-+    return 0;
-+  } catch (...) {
-+    EXGLSysLog("Unknown exception in uploadTextureToOpenGL");
-+    AHardwareBuffer_release(hardwareBuffer);
-+    return 0;
++    for (int row = 0; row < (height / 2); ++row) {
++      for (int col = 0; col < (width / 2); ++col) {
++        int dstIndex = row * (width / 2) + col;
++        uVec[dstIndex] = srcU[row * uStride + col * pixelStride];
++        vVec[dstIndex] = srcV[row * vStride + col * pixelStride];
++      }
++    }
++
++    // Unlock the buffer now that CPU copy is done
++    AHardwareBuffer_unlock(hardwareBuffer, nullptr);
++
++    // Flip Y/U/V images in CPU memory so they render in correct orientation
++    gl_cpp::flipPixels(yVec.data(), width, height);
++    gl_cpp::flipPixels(uVec.data(), width / 2, height / 2);
++    gl_cpp::flipPixels(vVec.data(), width / 2, height / 2);
++
++    // Schedule GL upload on our queued thread
++    addToNextBatch([=, 
++       yVec{std::move(yVec)},
++       uVec{std::move(uVec)},
++       vVec{std::move(vVec)}] {
++      try {
++        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
++
++        GLuint textureY, textureU, textureV;
++        glGenTextures(1, &textureY);
++        glGenTextures(1, &textureU);
++        glGenTextures(1, &textureV);
++
++        // Upload Y-plane
++        glActiveTexture(GL_TEXTURE0);
++        glBindTexture(GL_TEXTURE_2D, textureY);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++        glTexImage2D(
++            GL_TEXTURE_2D,
++            0,
++            GL_LUMINANCE,
++            width,
++            height,
++            0,
++            GL_LUMINANCE,
++            GL_UNSIGNED_BYTE,
++            yVec.data()
++        );
++
++        // Upload U-plane
++        glActiveTexture(GL_TEXTURE1);
++        glBindTexture(GL_TEXTURE_2D, textureU);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++        glTexImage2D(
++            GL_TEXTURE_2D,
++            0,
++            GL_LUMINANCE,
++            width / 2,
++            height / 2,
++            0,
++            GL_LUMINANCE,
++            GL_UNSIGNED_BYTE,
++            uVec.data()
++        );
++
++        // Upload V-plane
++        glActiveTexture(GL_TEXTURE2);
++        glBindTexture(GL_TEXTURE_2D, textureV);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++        glTexImage2D(
++            GL_TEXTURE_2D,
++            0,
++            GL_LUMINANCE,
++            width / 2,
++            height / 2,
++            0,
++            GL_LUMINANCE,
++            GL_UNSIGNED_BYTE,
++            vVec.data()
++        );
++
++        // Register the Y/U/V textures with the EXGL object IDs
++        mapObject(exglObjId, textureY);
++        mapObject(uPlaneObjId, textureU);
++        mapObject(vPlaneObjId, textureV);
++      } catch (const std::exception &e) {
++        EXGLSysLog("Exception during YUV OpenGL texture upload: %s", e.what());
++      } catch (...) {
++        EXGLSysLog("Unknown exception during YUV OpenGL texture upload.");
++      }
++    });
++
++  } else {
++    // --- RGBA path ---
++    void *bufferData = nullptr;
++    int32_t lockResult = AHardwareBuffer_lock(
++        hardwareBuffer,
++        AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
++        -1,    // fence
++        nullptr,
++        &bufferData
++    );
++    if (lockResult != 0 || !bufferData) {
++      EXGLSysLog("Failed to lock AHardwareBuffer (RGBA path)");
++      return 0;
++    }
++
++    addToNextBatch([=] {
++      try {
++        GLuint texId;
++        glGenTextures(1, &texId);
++        mapObject(exglObjId, texId);
++
++        glBindTexture(GL_TEXTURE_2D, texId);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
++
++        glTexImage2D(
++            GL_TEXTURE_2D,
++            0,
++            GL_RGBA,
++            width,
++            height,
++            0,
++            GL_RGBA,
++            GL_UNSIGNED_BYTE,
++            bufferData
++        );
++
++        // Unlock after copying to GL
++        AHardwareBuffer_unlock(hardwareBuffer, nullptr);
++      } catch (const std::exception &e) {
++        EXGLSysLog("Exception during RGBA texture upload: %s", e.what());
++      } catch (...) {
++        EXGLSysLog("Unknown exception during RGBA OpenGL texture upload.");
++      }
++    });
 +  }
-+}
 +
++  // Create the JS-side WebGLTexture object
++  jsi::Value idValue(static_cast<double>(exglObjId));
++  jsi::Object webglObject = runtime.global()
++    .getProperty(runtime, jsi::PropNameID::forUtf8(runtime, getConstructorName(EXWebGLClass::WebGLTexture)))
++    .asObject(runtime)
++    .asFunction(runtime)
++    .callAsConstructor(runtime, {})
++    .asObject(runtime);
++
++  // Attach the internal EXGL object ID
++  webglObject.setProperty(runtime, "id", idValue);
++
++  return exglObjId;
++
++} catch (const std::exception &e) {
++  EXGLSysLog("Exception in uploadTextureToOpenGL: %s", e.what());
++  return 0; // No call to release() here
++} catch (...) {
++  EXGLSysLog("Unknown exception in uploadTextureToOpenGL");
++  return 0; // No call to release() here
++}
++}
 +
  void EXGLContext::maybeResolveWorkletContext(jsi::Runtime &runtime) {
    jsi::Value workletRuntimeValue = runtime.global().getProperty(runtime, "_WORKLET_RUNTIME");
    if (!workletRuntimeValue.isObject()) {
-@@ -115,6 +366,9 @@ void EXGLContext::mapObject(EXGLObjectId exglObjId, GLuint glObj) noexcept {
+@@ -115,6 +376,9 @@ void EXGLContext::mapObject(EXGLObjectId exglObjId, GLuint glObj) noexcept {
  
  GLuint EXGLContext::lookupObject(EXGLObjectId exglObjId) noexcept {
    auto iter = objects.find(exglObjId);
@@ -897,7 +988,7 @@ index 3b2bbca951..d0c759848a 100644
    return iter == objects.end() ? 0 : iter->second;
  }
  
-@@ -137,6 +391,8 @@ void EXGLContext::tryRegisterOnJSRuntimeDestroy(jsi::Runtime &runtime) {
+@@ -137,6 +401,8 @@ void EXGLContext::tryRegisterOnJSRuntimeDestroy(jsi::Runtime &runtime) {
  glesContext EXGLContext::prepareOpenGLESContext() {
    glesContext result;
    // Clear everything to initial values
@@ -950,8 +1041,38 @@ index 39bfd18bc9..4d4d60b4bb 100644
    bool unpackFLipY = false;
  };
  
+diff --git a/packages/expo-gl/package.json b/packages/expo-gl/package.json
+index 7cfcc91192..2a6e354892 100644
+--- a/packages/expo-gl/package.json
++++ b/packages/expo-gl/package.json
+@@ -37,20 +37,22 @@
+     "preset": "expo-module-scripts"
+   },
+   "dependencies": {
+-    "invariant": "^2.2.4"
+-  },
++    "invariant": "^2.2.4"},
+   "devDependencies": {
+     "@types/invariant": "^2.2.33",
+     "@types/offscreencanvas": "2019.6.4",
+     "@types/webgl2": "^0.0.6",
+     "expo-module-scripts": "^4.0.0",
++    "react-native-vision-camera": "^4.6.4",
+     "react-test-renderer": "19.0.0"
+   },
+   "peerDependencies": {
+     "expo": "*",
+     "react": "*",
+     "react-native": "*",
+-    "react-native-web": "*"
++    "react-native-vision-camera": "*",
++    "react-native-web": "*",
++    "react-native-worklets-core": "*"
+   },
+   "peerDependenciesMeta": {
+     "react-native-web": {
 diff --git a/packages/expo-gl/src/GLView.tsx b/packages/expo-gl/src/GLView.tsx
-index 54f39bee1d..769f14cb8b 100644
+index 54f39bee1d..bbfae0598a 100644
 --- a/packages/expo-gl/src/GLView.tsx
 +++ b/packages/expo-gl/src/GLView.tsx
 @@ -27,6 +27,7 @@ export type WebGLObject = {
@@ -962,7 +1083,7 @@ index 54f39bee1d..769f14cb8b 100644
  const { ExponentGLViewManager } = NativeModulesProxy;
  
  const NativeView = requireNativeViewManager('ExponentGLView');
-@@ -58,11 +59,100 @@ export class GLView extends React.Component<GLViewProps> {
+@@ -58,11 +59,99 @@ export class GLView extends React.Component<GLViewProps> {
     * Also, keep in mind that you need to set up a viewport and create your own framebuffer and texture that you will be drawing to, before you take a snapshot.
     * @return A promise that resolves to WebGL context object. See [WebGL API](#webgl-api) for more details.
     */
@@ -1045,7 +1166,6 @@ index 54f39bee1d..769f14cb8b 100644
    }
  
 +  static async createTextureFromTexturePointer(exglCtxId: number, pointer: bigint): Promise<any> {
-+    'worklet'
 +    const pointerBigInt = BigInt(pointer) & BigInt('0xFFFFFFFFFFFFFFFF'); // Mask lower 64 bits
 +    const pointerString = pointerBigInt.toString(16); // Convert to hex string
 +    return await ExponentGLObjectManager.uploadAHardwareBufferAsync(exglCtxId, pointerString);
