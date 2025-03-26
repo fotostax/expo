@@ -12,6 +12,8 @@ set(COMMON_DIR ${CMAKE_SOURCE_DIR}/../common)
 
 find_package(ReactAndroid REQUIRED CONFIG)
 
+find_package(fbjni REQUIRED CONFIG)
+
 # Use find_package for react-native-vision-camera; its path is provided by build.gradle arguments.
 find_package(react-native-vision-camera REQUIRED CONFIG)
 
@@ -66,4 +68,5 @@ target_link_libraries(
     ${LOG_LIB}
     ${GLES_LIB}
     android
+    fbjni::fbjni
     react-native-vision-camera::VisionCamera)
