@@ -52,7 +52,8 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepare
 
       // Extract the frame and unwrap it as vision::FrameHostObject.
       auto frameHostObject = args[1].asObject(runtime).asHostObject<vision::FrameHostObject>(runtime);
-      AHardwareBuffer* hardwareBuffer = frameHostObject->getHardwareBuffer(); // Assumes this method exists.
+      auto frame = frameHostObject.getFrame();
+      AHardwareBuffer* hardwareBuffer = frame->getHardwareBuffer(); // Assumes this method exists.
       if (!hardwareBuffer) {
         throw jsi::JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
       }
