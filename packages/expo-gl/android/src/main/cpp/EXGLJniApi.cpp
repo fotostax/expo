@@ -35,7 +35,46 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepare
     threadLocalEnv->CallVoidMethod(glContextRef, flushMethodRef);
   };
   EXGLContextPrepare((void*) jsiPtr, exglCtxId, flushMethod);
+
+  // Install the JSI plugin for texture uploading
+  jsi::Runtime* runtime = static_cast<jsi::Runtime*>(jsiPtr);
+  if (!runtime->global().hasProperty(*runtime, "uploadTexturePlugin")) {
+    auto uploadTexturePlugin = [](jsi::Runtime& runtime, const jsi::Value& thisArg, const jsi::Value* args, size_t count) -> jsi::Value {
+      if (count < 2) {
+        throw jsi::JSError(runtime, "uploadTexturePlugin: Expected at least 2 arguments (exglCtxId, frame)");
+      }
+
+      // Extract exglCtxId from the first argument
+      int exglCtxId = args[0].asNumber();
+
+      // Extract the frame and unwrap it as FrameHostObject
+      auto frameHostObject = args[1].asObject(runtime).asHostObject<FrameHostObject>(runtime);
+      AHardwareBuffer* hardwareBuffer = frameHostObject->getHardwareBuffer(); // Assumes this method exists
+      if (!hardwareBuffer) {
+        throw jsi::JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
+      }
+
+      // Call EXGLContextUploadTexture with the runtime pointer, context ID, and hardware buffer
+      int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer);
+      return jsi::Value(textureId);
+    };
+
+    // Wrap the function in a JSI host function and set it globally
+    auto jsiFunc = jsi::Function::createFromHostFunction(
+      *runtime,
+      jsi::PropNameID::forUtf8(*runtime, "uploadTexturePlugin"),
+      2, // Number of arguments: exglCtxId and frame
+      uploadTexturePlugin
+    );
+    runtime->global().setProperty(*runtime, "uploadTexturePlugin", jsiFunc);
+  }
+  
 }
+
+
+
+
+
 
 JNIEXPORT void JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepareWorklet
@@ -240,7 +279,6 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextCreateTestHardwareBuffer(
             }
         }
     }
-
     AHardwareBuffer_unlock(hardwareBuffer, nullptr);
 
     uintptr_t pointer = reinterpret_cast<uintptr_t>(hardwareBuffer);
