@@ -11,6 +11,9 @@
 #include "EXGLImageUtils.h"
 #include "react-native-vision-camera/FrameHostObject.h"
 
+// Add the Facebook namespace for JSI
+using namespace facebook;
+
 extern "C" {
 
 // JNIEnv is valid only inside the same thread that it was passed from
@@ -68,12 +71,8 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepare
     );
     runtime->global().setProperty(*runtime, "uploadTexturePlugin", jsiFunc);
   }
-  
+
 }
-
-
-
-
 
 
 JNIEXPORT void JNICALL
