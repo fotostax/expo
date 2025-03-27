@@ -40,40 +40,38 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepare
   EXGLContextPrepare((void*) jsiPtr, exglCtxId, flushMethod);
 
   // Install the JSI plugin for texture uploading
-  jsi::Runtime* runtime = static_cast<jsi::Runtime*>(jsiPtr);
+  jsi::Runtime* runtime = reinterpret_cast<jsi::Runtime*>(jsiPtr);
   if (!runtime->global().hasProperty(*runtime, "uploadTexturePlugin")) {
     auto uploadTexturePlugin = [](jsi::Runtime& runtime, const jsi::Value& thisArg, const jsi::Value* args, size_t count) -> jsi::Value {
       if (count < 2) {
         throw jsi::JSError(runtime, "uploadTexturePlugin: Expected at least 2 arguments (exglCtxId, frame)");
       }
 
-      // Extract exglCtxId from the first argument
-      int exglCtxId = args[0].asNumber();
+      // Extract exglCtxId from the first argument.
+      int exglCtxId = static_cast<int>(args[0].asNumber());
 
-      // Extract the frame and unwrap it as FrameHostObject
-      auto frameHostObject = args[1].asObject(runtime).asHostObject<FrameHostObject>(runtime);
-      AHardwareBuffer* hardwareBuffer = frameHostObject->getHardwareBuffer(); // Assumes this method exists
+      // Extract the frame and unwrap it as vision::FrameHostObject.
+      auto frameHostObject = args[1].asObject(runtime).asHostObject<vision::FrameHostObject>(runtime);
+      AHardwareBuffer* hardwareBuffer = frameHostObject->getHardwareBuffer(); // Assumes this method exists.
       if (!hardwareBuffer) {
         throw jsi::JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
       }
 
-      // Call EXGLContextUploadTexture with the runtime pointer, context ID, and hardware buffer
+      // Call EXGLContextUploadTexture with the runtime pointer, context ID, and hardware buffer.
       int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer);
       return jsi::Value(textureId);
     };
 
-    // Wrap the function in a JSI host function and set it globally
+    // Wrap the function in a JSI host function and set it globally.
     auto jsiFunc = jsi::Function::createFromHostFunction(
       *runtime,
       jsi::PropNameID::forUtf8(*runtime, "uploadTexturePlugin"),
-      2, // Number of arguments: exglCtxId and frame
+      2, // Number of arguments: exglCtxId and frame.
       uploadTexturePlugin
     );
     runtime->global().setProperty(*runtime, "uploadTexturePlugin", jsiFunc);
   }
-
 }
-
 
 JNIEXPORT void JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepareWorklet
