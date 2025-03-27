@@ -71,6 +71,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepare
       uploadTexturePlugin
     );
     runtime->global().setProperty(*runtime, "uploadTexturePlugin", jsiFunc);
+    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "uploadTexturePlugin has been initialized");
   }
 }
 
