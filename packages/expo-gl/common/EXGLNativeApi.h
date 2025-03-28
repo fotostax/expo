@@ -11,6 +11,7 @@
 
 #ifdef __cplusplus
 #include <functional>
+#include <jsi/jsi.h> // Include JSI header for registration function
 #else
 #include <stdbool.h>
 #endif
@@ -45,14 +46,8 @@ bool EXGLContextNeedsRedraw(EXGLContextId exglCtxId);
 // [GL thread] Tell cpp that we finished drawing to the surface
 void EXGLContextDrawEnded(EXGLContextId exglCtxId);
 
-// [Any thread] Release the resources for an EXGL context. The same id is never
-// reused.
+// [Any thread] Release the resources for an EXGL context. The same id is never reused.
 void EXGLContextDestroy(EXGLContextId exglCtxId);
-
-// Remember to implement an ifdef and include this for ios.
-EXGLObjectId EXGLContextUploadTexture(void *runtime,EXGLContextId exglCtxId, AHardwareBuffer* hardwareBuffer);
-// Remember to implement an ifdef and include this for ios.
-//EXGLObjectId EXGLContextUploadTexture(void *runtime,EXGLContextId exglCtxId, long hardwareBuffer);
 
 // [GL thread] Perform one frame's worth of queued up GL work
 void EXGLContextFlush(EXGLContextId exglCtxId);
@@ -72,6 +67,16 @@ void EXGLContextMapObject(EXGLContextId exglCtxId, EXGLObjectId exglObjId, GLuin
 
 // [GL thread] Get the underlying OpenGL object an EXGL object maps to.
 GLuint EXGLContextGetObject(EXGLContextId exglCtxId, EXGLObjectId exglObjId);
+
+// Remember to implement an ifdef and include this for ios.
+EXGLObjectId EXGLContextUploadTexture(void *runtime,EXGLContextId exglCtxId, AHardwareBuffer* hardwareBuffer);
+
+#ifdef __cplusplus
+// Registers the upload texture plugin with a given JSI runtime.
+// This function wraps the native EXGLContextUploadTexture call into a JSI host function
+// and adds it to the runtime's global object so it can be accessed from JavaScript.
+void EXGLRegisterUploadTexturePlugin(facebook::jsi::Runtime &runtime);
+#endif
 
 #ifdef __cplusplus
 }

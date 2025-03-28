@@ -24,4 +24,7 @@ public class EXGL {
   public static native int EXGLContextUploadTexture(long jsCtxPtr,int exglCtxId,long hardwareBuffer);
   // Native method to create and return a Hardware Buffer pointer.
   public static native long EXGLContextCreateTestHardwareBuffer(int bufferFormat);
+// New method to register the upload texture plugin
+  public static native void EXGLRegisterFrameProcessorPlugin(long jsiPtr, String pluginName);
+
 }

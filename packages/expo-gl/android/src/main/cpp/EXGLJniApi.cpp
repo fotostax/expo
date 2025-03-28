@@ -1,23 +1,25 @@
 #include <stdint.h>
-
 #include <jni.h>
 #include <thread>
 #include <android/log.h>
-#include <android/hardware_buffer_jni.h>
+#include <android/hardware_buffer.h> // Updated from hardware_buffer_jni.h for direct AHardwareBuffer usage
 #include <jsi/jsi.h>
 #include "EXGLNativeApi.h"
 #include "EXPlatformUtils.h"
 #include <stdio.h>
 #include "EXGLImageUtils.h"
-#include "react-native-vision-camera/FrameHostObject.h"
+#include "react-native-vision-camera/FrameHostObject.h" // Ensure this path matches your project structure
 
-// Add the Facebook namespace for JSI
-using namespace facebook;
+// Use the full facebook::jsi namespace for clarity and correctness
+using namespace facebook::jsi;
+
+// Declare the EXGLContextUploadTexture function
+//extern int EXGLContextUploadTexture(Runtime* runtime, int exglCtxId, AHardwareBuffer* hardwareBuffer);
 
 extern "C" {
 
 // JNIEnv is valid only inside the same thread that it was passed from
-// to support worklet we need register it from UI thread
+// To support worklets, we need to register it from the UI thread
 thread_local JNIEnv* threadLocalEnv;
 
 JNIEXPORT jint JNICALL
@@ -38,41 +40,49 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepare
     threadLocalEnv->CallVoidMethod(glContextRef, flushMethodRef);
   };
   EXGLContextPrepare((void*) jsiPtr, exglCtxId, flushMethod);
+}
 
-  // Install the JSI plugin for texture uploading
-  jsi::Runtime* runtime = reinterpret_cast<jsi::Runtime*>(jsiPtr);
-  if (!runtime->global().hasProperty(*runtime, "uploadTexturePlugin")) {
-    auto uploadTexturePlugin = [](jsi::Runtime& runtime, const jsi::Value& thisArg, const jsi::Value* args, size_t count) -> jsi::Value {
-      if (count < 2) {
-        throw jsi::JSError(runtime, "uploadTexturePlugin: Expected at least 2 arguments (exglCtxId, frame)");
-      }
+// New JNI function to register the plugin
+JNIEXPORT void JNICALL
+Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
+    JNIEnv *env,
+    jclass clazz,
+    jlong jsiPtr,
+    jstring pluginName) {
+  
+  Runtime* runtime = reinterpret_cast<Runtime*>(jsiPtr);
+  const char* name = env->GetStringUTFChars(pluginName, nullptr);
 
-      // Extract exglCtxId from the first argument.
-      int exglCtxId = static_cast<int>(args[0].asNumber());
+  auto uploadTexturePlugin = [](Runtime& runtime, const Value& thisArg, const Value* args, size_t count) -> Value {
+    if (count < 2) {
+      throw JSError(runtime, "uploadTexturePlugin: Expected 2 arguments (exglCtxId, frame)");
+    }
 
-      // Extract the frame and unwrap it as vision::FrameHostObject.
-      auto frameHostObject = args[1].asObject(runtime).asHostObject<vision::FrameHostObject>(runtime);
-      auto frame = frameHostObject->getFrame();
-      AHardwareBuffer* hardwareBuffer = frame->getHardwareBuffer(); // Assumes this method exists.
-      if (!hardwareBuffer) {
-        throw jsi::JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
-      }
+    int exglCtxId = static_cast<int>(args[0].asNumber());
+    auto frameHostObject = args[1].asObject(runtime).asHostObject<vision::FrameHostObject>(runtime);
+    auto frame = frameHostObject->getFrame();
+    AHardwareBuffer* hardwareBuffer = frame->getHardwareBuffer();
+    if (!hardwareBuffer) {
+      throw JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
+    }
 
-      // Call EXGLContextUploadTexture with the runtime pointer, context ID, and hardware buffer.
-      int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer);
-      return jsi::Value(textureId);
-    };
+    int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer); // Pass address of runtime
+    return Value(textureId);
+  };
 
-    // Wrap the function in a JSI host function and set it globally.
-    auto jsiFunc = jsi::Function::createFromHostFunction(
+  runtime->global().setProperty(
       *runtime,
-      jsi::PropNameID::forUtf8(*runtime, "uploadTexturePlugin"),
-      2, // Number of arguments: exglCtxId and frame.
-      uploadTexturePlugin
-    );
-    runtime->global().setProperty(*runtime, "uploadTexturePlugin", jsiFunc);
-    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "uploadTexturePlugin has been initialized");
-  }
+      name,
+      Function::createFromHostFunction(
+          *runtime,
+          PropNameID::forUtf8(*runtime, name),
+          2,
+          uploadTexturePlugin
+      )
+  );
+
+  env->ReleaseStringUTFChars(pluginName, name);
+  __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Registered frame processor plugin: %s", name);
 }
 
 JNIEXPORT void JNICALL
@@ -139,13 +149,11 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
     jint exglCtxId,
     jlong hardwareBuffer)
 {
-    // Check if we actually got a valid pointer
     if (hardwareBuffer == 0) {
         __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Error: hardwareBuffer handle is zero");
         return 0;
     }
 
-    // Reinterpret the jlong to AHardwareBuffer*
     AHardwareBuffer *nativeBuffer = reinterpret_cast<AHardwareBuffer *>(hardwareBuffer);
     if (!nativeBuffer) {
         __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
@@ -153,21 +161,18 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
         return 0;
     }
 
-    // Acquire the buffer once here
     AHardwareBuffer_acquire(nativeBuffer);
 
     int textureId = 0;
     try {
-        // Describe it for logging
         AHardwareBuffer_Desc desc;
         AHardwareBuffer_describe(nativeBuffer, &desc);
         __android_log_print(ANDROID_LOG_INFO, "EXGLJni",
                             "Uploading texture: Width=%u, Height=%u, Format=%u, Layers=%u",
                             desc.width, desc.height, desc.format, desc.layers);
 
-        // Call the actual texture upload function
         textureId = EXGLContextUploadTexture(
-            reinterpret_cast<void *>(jsiPtr),
+            reinterpret_cast<Runtime*>(jsiPtr), // Corrected to Runtime* from void*
             exglCtxId,
             nativeBuffer
         );
@@ -179,9 +184,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
                             "Unknown error occurred in EXGLContextUploadTexture");
     }
 
-    // Release the buffer reference after usage
     AHardwareBuffer_release(nativeBuffer);
-
     return textureId;
 }
 #else
@@ -201,91 +204,79 @@ JNIEXPORT jlong JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextCreateTestHardwareBuffer(
     JNIEnv *env,
     jclass clazz,
-    jint bufferFormat) // Pass format as a parameter
+    jint bufferFormat)
 {
-    // Create the AHardwareBuffer description
     AHardwareBuffer_Desc desc = {};
-    desc.width = 256; 
-    desc.height = 256; 
-    desc.layers = 1; 
+    desc.width = 256;
+    desc.height = 256;
+    desc.layers = 1;
     desc.format = (bufferFormat == 1) ? AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420 : AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
-    desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY; 
-     __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", 
-                            "YUV format %d", AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420);
-    // Create the hardware buffer
+    desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY;
+    __android_log_print(ANDROID_LOG_INFO, "EXGLJni",
+                        "Creating test hardware buffer with format: %d", desc.format);
+
     AHardwareBuffer *hardwareBuffer = nullptr;
     int result = AHardwareBuffer_allocate(&desc, &hardwareBuffer);
-    
     if (result != 0 || hardwareBuffer == nullptr) {
-        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", 
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
                             "Failed to create AHardwareBuffer: %d", result);
-        return 0; // Return 0 to indicate failure
+        return 0;
     }
 
-    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Successfully created AHardwareBuffer");
-
-    // Acquire a reference to the buffer
-    AHardwareBuffer_acquire(hardwareBuffer); 
+    AHardwareBuffer_acquire(hardwareBuffer);
 
     void *bufferData = nullptr;
     int lock_result = AHardwareBuffer_lock(
-        hardwareBuffer, 
-        AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY, 
-        -1, 
-        nullptr, 
+        hardwareBuffer,
+        AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY,
+        -1,
+        nullptr,
         &bufferData
     );
 
     if (lock_result != 0 || !bufferData) {
         __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Failed to lock AHardwareBuffer");
         AHardwareBuffer_release(hardwareBuffer);
-        return 0; 
+        return 0;
     }
 
     if (desc.format == AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM) {
-        // Fill the buffer with a checkerboard pattern (RGBA)
         uint32_t red = 0xFF0000FF;   // Red color (RGBA)
         uint32_t white = 0xFFFFFFFF; // White color (RGBA)
         uint32_t squareSize = 32;    // 32x32 squares
 
         uint32_t *pixels = static_cast<uint32_t *>(bufferData);
-        for (int y = 0; y < desc.height; ++y) {
-            for (int x = 0; x < desc.width; ++x) {
+        for (uint32_t y = 0; y < desc.height; ++y) { // Changed to uint32_t to match desc.height
+            for (uint32_t x = 0; x < desc.width; ++x) { // Changed to uint32_t to match desc.width
                 bool isRedSquare = ((x / squareSize) % 2) == ((y / squareSize) % 2);
                 pixels[y * desc.width + x] = isRedSquare ? red : white;
             }
         }
-
     } else if (desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
-        // Handle YUV 420f format
         uint8_t *yPlane = reinterpret_cast<uint8_t *>(bufferData);
         uint8_t *uPlane = yPlane + (desc.width * desc.height);
         uint8_t *vPlane = uPlane + ((desc.width / 2) * (desc.height / 2));
 
-        // Fill the Y (brightness) plane with checkerboard pattern
-        for (int y = 0; y < desc.height; ++y) {
-            for (int x = 0; x < desc.width; ++x) {
+        for (uint32_t y = 0; y < desc.height; ++y) { // Changed to uint32_t
+            for (uint32_t x = 0; x < desc.width; ++x) { // Changed to uint32_t
                 bool isBright = ((x / 32) % 2) == ((y / 32) % 2);
-                yPlane[y * desc.width + x] = isBright ? 255 : 0; // Bright Y values
+                yPlane[y * desc.width + x] = isBright ? 255 : 0;
             }
         }
 
-        // Fill the U and V planes with uniform color
-        for (int y = 0; y < desc.height / 2; ++y) {
-            for (int x = 0; x < desc.width / 2; ++x) {
-                uPlane[y * (desc.width / 2) + x] = 128; // Default U component
-                vPlane[y * (desc.width / 2) + x] = 128; // Default V component
+        for (uint32_t y = 0; y < desc.height / 2; ++y) { // Changed to uint32_t
+            for (uint32_t x = 0; x < desc.width / 2; ++x) { // Changed to uint32_t
+                uPlane[y * (desc.width / 2) + x] = 128;
+                vPlane[y * (desc.width / 2) + x] = 128;
             }
         }
     }
     AHardwareBuffer_unlock(hardwareBuffer, nullptr);
 
     uintptr_t pointer = reinterpret_cast<uintptr_t>(hardwareBuffer);
-    __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Pointer to be sent: %p", hardwareBuffer);
-    __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Pointer (64-bit unsigned): %llu", (unsigned long long) pointer);
-    
-    // Return the pointer as a jlong
-    return (jlong)pointer; 
+    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Pointer to be sent: %p", hardwareBuffer);
+    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Pointer (64-bit unsigned): %llu", (unsigned long long) pointer);
+    return (jlong)pointer;
 }
 
-}
+} // extern "C"
