@@ -85,6 +85,17 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
   __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Registered frame processor plugin: %s", name);
 }
 
+// New JNI function for GLFrameProcessorModule
+JNIEXPORT void JNICALL
+Java_expo_modules_gl_GLFrameProcessorModule_registerFrameProcessorPlugin(
+    JNIEnv *env,
+    jclass clazz,
+    jlong jsiPtr,
+    jstring pluginName) {
+  // Delegate to the existing EXGLRegisterFrameProcessorPlugin
+  Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(env, clazz, jsiPtr, pluginName);
+}
+
 JNIEXPORT void JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepareWorklet
 (JNIEnv *env, jclass clazz, jint exglCtxId) {
