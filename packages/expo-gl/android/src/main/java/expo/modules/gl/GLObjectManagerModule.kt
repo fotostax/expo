@@ -123,7 +123,7 @@ class GLObjectManagerModule : Module() {
 
     // Added frame processor installation function
     Function("installFrameProcessorPlugin") {
-      Log.d("GLObjectManagerhwModule", "installFrameProcessorPlugin() function called")
+      Log.d("GLObjectManagerModule", "installFrameProcessorPlugin() function called")
       val reactContext = appContext.reactContext as? ReactApplicationContext
       Log.d("GLObjectManagerModule", "reactContext available: ${reactContext != null}")
       
@@ -132,7 +132,7 @@ class GLObjectManagerModule : Module() {
 
       if (jsContext != null && jsContext.get() != 0L) {
         Log.d("GLObjectManagerModule", "Registering uploadTexturePlugin with JSI runtime")
-        registerFrameProcessorPlugin(jsContext.get(), "uploadTexturePlugin")
+        EXGLObjectManagerRegisterFrameProcessorPlugin(jsContext.get(), "uploadTexturePlugin") // Updated to match external declaration
         Log.d("GLObjectManagerModule", "uploadTexturePlugin registered successfully")
       } else {
         Log.e("GLObjectManagerModule", "JSI Runtime is not available")
@@ -155,6 +155,6 @@ class GLObjectManagerModule : Module() {
     mGLContextMap.delete(exglCtxId)
   }
 
-  // Declare the external native method
-  private external fun registerFrameProcessorPlugin(jsiPtr: Long, pluginName: String)
+  // External function declaration (unchanged)
+  private external fun EXGLObjectManagerRegisterFrameProcessorPlugin(jsiPtr: Long, pluginName: String)
 }
