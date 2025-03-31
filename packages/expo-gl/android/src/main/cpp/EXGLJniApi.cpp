@@ -2,24 +2,18 @@
 #include <jni.h>
 #include <thread>
 #include <android/log.h>
-#include <android/hardware_buffer.h> // Updated from hardware_buffer_jni.h for direct AHardwareBuffer usage
+#include <android/hardware_buffer.h>
 #include <jsi/jsi.h>
 #include "EXGLNativeApi.h"
 #include "EXPlatformUtils.h"
 #include <stdio.h>
 #include "EXGLImageUtils.h"
-#include "react-native-vision-camera/FrameHostObject.h" // Ensure this path matches your project structure
+#include "react-native-vision-camera/FrameHostObject.h"
 
-// Use the full facebook::jsi namespace for clarity and correctness
 using namespace facebook::jsi;
-
-// Declare the EXGLContextUploadTexture function
-//extern int EXGLContextUploadTexture(Runtime* runtime, int exglCtxId, AHardwareBuffer* hardwareBuffer);
 
 extern "C" {
 
-// JNIEnv is valid only inside the same thread that it was passed from
-// To support worklets, we need to register it from the UI thread
 thread_local JNIEnv* threadLocalEnv;
 
 JNIEXPORT jint JNICALL
@@ -42,14 +36,12 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepare
   EXGLContextPrepare((void*) jsiPtr, exglCtxId, flushMethod);
 }
 
-// New JNI function to register the plugin
 JNIEXPORT void JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
     JNIEnv *env,
     jclass clazz,
     jlong jsiPtr,
     jstring pluginName) {
-  
   Runtime* runtime = reinterpret_cast<Runtime*>(jsiPtr);
   const char* name = env->GetStringUTFChars(pluginName, nullptr);
 
@@ -66,7 +58,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
       throw JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
     }
 
-    int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer); // Pass address of runtime
+    int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer);
     return Value(textureId);
   };
 
@@ -85,9 +77,9 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
   __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Registered frame processor plugin: %s", name);
 }
 
-// New JNI function for GLFrameProcessorModule
+// New JNI function for GLObjectManagerModule
 JNIEXPORT void JNICALL
-Java_expo_modules_gl_GLFrameProcessorModule_registerFrameProcessorPlugin(
+Java_expo_modules_gl_cpp_EXGL_EXGLObjectManagerRegisterFrameProcessorPlugin(
     JNIEnv *env,
     jclass clazz,
     jlong jsiPtr,
@@ -95,6 +87,10 @@ Java_expo_modules_gl_GLFrameProcessorModule_registerFrameProcessorPlugin(
   // Delegate to the existing EXGLRegisterFrameProcessorPlugin
   Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(env, clazz, jsiPtr, pluginName);
 }
+
+// Removed outdated GLFrameProcessorModule function since it’s integrated into GLObjectManagerModule
+// JNIEXPORT void JNICALL
+// Java_expo_modules_gl_GLFrameProcessorModule_registerFrameProcessorPlugin(...)
 
 JNIEXPORT void JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepareWorklet
@@ -139,7 +135,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextGetObject
   return EXGLContextGetObject(exglCtxId, exglObjId);
 }
 
-JNIEXPORT bool JNICALL
+JNIEXPORT jboolean JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextNeedsRedraw
 (JNIEnv *env, jclass clazz, jint exglCtxId) {
   return EXGLContextNeedsRedraw(exglCtxId);
@@ -183,7 +179,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
                             desc.width, desc.height, desc.format, desc.layers);
 
         textureId = EXGLContextUploadTexture(
-            reinterpret_cast<Runtime*>(jsiPtr), // Corrected to Runtime* from void*
+            reinterpret_cast<Runtime*>(jsiPtr),
             exglCtxId,
             nativeBuffer
         );
@@ -252,13 +248,13 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextCreateTestHardwareBuffer(
     }
 
     if (desc.format == AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM) {
-        uint32_t red = 0xFF0000FF;   // Red color (RGBA)
-        uint32_t white = 0xFFFFFFFF; // White color (RGBA)
-        uint32_t squareSize = 32;    // 32x32 squares
+        uint32_t red = 0xFF0000FF;
+        uint32_t white = 0xFFFFFFFF;
+        uint32_t squareSize = 32;
 
         uint32_t *pixels = static_cast<uint32_t *>(bufferData);
-        for (uint32_t y = 0; y < desc.height; ++y) { // Changed to uint32_t to match desc.height
-            for (uint32_t x = 0; x < desc.width; ++x) { // Changed to uint32_t to match desc.width
+        for (uint32_t y = 0; y < desc.height; ++y) {
+            for (uint32_t x = 0; x < desc.width; ++x) {
                 bool isRedSquare = ((x / squareSize) % 2) == ((y / squareSize) % 2);
                 pixels[y * desc.width + x] = isRedSquare ? red : white;
             }
@@ -268,15 +264,15 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextCreateTestHardwareBuffer(
         uint8_t *uPlane = yPlane + (desc.width * desc.height);
         uint8_t *vPlane = uPlane + ((desc.width / 2) * (desc.height / 2));
 
-        for (uint32_t y = 0; y < desc.height; ++y) { // Changed to uint32_t
-            for (uint32_t x = 0; x < desc.width; ++x) { // Changed to uint32_t
+        for (uint32_t y = 0; y < desc.height; ++y) {
+            for (uint32_t x = 0; x < desc.width; ++x) {
                 bool isBright = ((x / 32) % 2) == ((y / 32) % 2);
                 yPlane[y * desc.width + x] = isBright ? 255 : 0;
             }
         }
 
-        for (uint32_t y = 0; y < desc.height / 2; ++y) { // Changed to uint32_t
-            for (uint32_t x = 0; x < desc.width / 2; ++x) { // Changed to uint32_t
+        for (uint32_t y = 0; y < desc.height / 2; ++y) {
+            for (uint32_t x = 0; x < desc.width / 2; ++x) {
                 uPlane[y * (desc.width / 2) + x] = 128;
                 vPlane[y * (desc.width / 2) + x] = 128;
             }

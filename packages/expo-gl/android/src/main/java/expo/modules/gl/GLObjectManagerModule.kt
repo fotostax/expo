@@ -16,6 +16,8 @@ import android.hardware.HardwareBuffer
 import android.util.Log
 import java.nio.ByteBuffer
 import expo.modules.gl.cpp.EXGL.*
+import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.JavaScriptContextHolder
 
 private class InvalidCameraViewException :
   CodedException("Provided view tag doesn't point to a valid instance of the camera view")
@@ -29,6 +31,9 @@ class GLObjectManagerModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("ExponentGLObjectManager")
+
+    // Log module initialization
+    Log.d("GLObjectManagerModule", "Module definition initialized")
 
     AsyncFunction("destroyObjectAsync") { exglObjId: Int ->
       val glObject = mGLObjects[exglObjId]
@@ -87,40 +92,52 @@ class GLObjectManagerModule : Module() {
       true
     }
 
-AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: String, promise: Promise ->
-  try {
-    val context = mGLContextMap[exglCtxId]
-      ?: throw InvalidGLContextException()
-    
-    // Convert the hex string back to a ULong, then to a signed jlong
-    val pointer = pointerString.toULong(16).toLong()
+    AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: String, promise: Promise ->
+      try {
+        val context = mGLContextMap[exglCtxId]
+          ?: throw InvalidGLContextException()
+        
+        val pointer = pointerString.toULong(16).toLong()
+        val exglObjId = context.push_texture_from_native_buffer(pointer)
+        promise.resolve(exglObjId)
+      } catch (e: Throwable) {
+        Log.e("GLObjectManagerModule", "Error in uploadAHardwareBufferAsync", e)
+        promise.reject("E_UPLOAD_TEXTURE", e.message, e)
+      }
+    }
 
-    val exglObjId = context.push_texture_from_native_buffer(pointer)
-    promise.resolve(exglObjId)
-
-  } catch (e: Throwable) {
-    // Optionally log the error
-    Log.e("GLObjectManagerModule", "Error in uploadAHardwareBufferAsync", e)
-    // Reject the promise so JS can handle it
-    promise.reject("E_UPLOAD_TEXTURE", e.message, e)
-  }
-}
-
-    AsyncFunction("createAHardwareBufferAsync") {option: Int,promise: Promise ->
-      // Call the JNI method to create a hardware buffer
-      Log.i("GLObjectManagerModule"," Pre Option : $option .")
+    AsyncFunction("createAHardwareBufferAsync") { option: Int, promise: Promise ->
+      Log.i("GLObjectManagerModule", "Pre Option: $option")
       val pointer = EXGLContextCreateTestHardwareBuffer(option)
       
-      // Cast to unsigned to avoid negative numbers
-      val unsignedPointer = pointer.toULong() // Cast to unsigned 64-bit long
-      val pointerHex = unsignedPointer.toString(16) // Convert to hex string
+      val unsignedPointer = pointer.toULong()
+      val pointerHex = unsignedPointer.toString(16)
 
-      Log.i("GLObjectManagerModule","Pointer as unsigned (ULong): $unsignedPointer .")
-      Log.i("GLObjectManagerModule","Pointer in hexadecimal: 0x$pointerHex")
+      Log.i("GLObjectManagerModule", "Pointer as unsigned (ULong): $unsignedPointer")
+      Log.i("GLObjectManagerModule", "Pointer in hexadecimal: 0x$pointerHex")
 
       val response = Bundle()
       response.putLong("pointer", pointer)
       promise.resolve(response)
+    }
+
+    // Added frame processor installation function
+    Function("installFrameProcessorPlugin") {
+      Log.d("GLObjectManagerhwModule", "installFrameProcessorPlugin() function called")
+      val reactContext = appContext.reactContext as? ReactApplicationContext
+      Log.d("GLObjectManagerModule", "reactContext available: ${reactContext != null}")
+      
+      val jsContext = reactContext?.javaScriptContextHolder
+      Log.d("GLObjectManagerModule", "jsContext available: ${jsContext != null}")
+
+      if (jsContext != null && jsContext.get() != 0L) {
+        Log.d("GLObjectManagerModule", "Registering uploadTexturePlugin with JSI runtime")
+        registerFrameProcessorPlugin(jsContext.get(), "uploadTexturePlugin")
+        Log.d("GLObjectManagerModule", "uploadTexturePlugin registered successfully")
+      } else {
+        Log.e("GLObjectManagerModule", "JSI Runtime is not available")
+        throw Exception("JSI Runtime is not available")
+      }
     }
   }
 
@@ -137,4 +154,7 @@ AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: Str
     Log.i("GLObjectManagerModule", "Deleting GL context with ID: $exglCtxId")
     mGLContextMap.delete(exglCtxId)
   }
+
+  // Declare the external native method
+  private external fun registerFrameProcessorPlugin(jsiPtr: Long, pluginName: String)
 }
