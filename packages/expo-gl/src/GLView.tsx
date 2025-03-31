@@ -6,7 +6,7 @@ import {
   CodedError,
 } from 'expo-modules-core';
 import * as React from 'react';
-import { Platform, View, findNodeHandle } from 'react-native';
+import { Platform, View, findNodeHandle ,NativeModules} from 'react-native';
 
 import { configureLogging } from './GLUtils';
 import {
@@ -26,6 +26,30 @@ export type WebGLObject = {
 
 declare let global: any;
 
+/*
+const LINKING_ERROR =
+  `The package 'react-native-vision-jsi-processor' doesn't seem to be linked. Make sure: \n\n` +
+  Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
+  '- You rebuilt the app after installing the package\n' +
+  '- You are not using Expo Go\n';
+
+const VisionJsiProcessorModule = NativeModules.VisionJsiProcessor;
+
+const VisionJsiProcessor = VisionJsiProcessorModule
+  ? VisionJsiProcessorModule
+  : new Proxy(
+      {},
+      {
+        get() {
+          throw new Error(LINKING_ERROR);
+        },
+      }
+    );
+
+export function install() {
+  VisionJsiProcessor.install();
+}
+*/
 const ExponentGLObjectManager = requireNativeModule('ExponentGLObjectManager');
 
 const { ExponentGLViewManager } = NativeModulesProxy;

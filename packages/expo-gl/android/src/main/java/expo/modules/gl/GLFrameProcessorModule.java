@@ -22,7 +22,11 @@ public class GLFrameProcessorModule extends ReactContextBaseJavaModule {
     return NAME;
   }
   // No static block for System.loadLibrary here; rely on EXGL.java to load "expo-gl"
-
+ 
+ /* static {
+    System.loadLibrary("gl-frame-processor");
+  }
+  */
   // Native method to register frame processor plugins with the JSI runtime
   public static native void registerFrameProcessorPlugin(long jsiPtr, String pluginName);
 
