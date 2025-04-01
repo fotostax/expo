@@ -45,21 +45,21 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
   Runtime* runtime = reinterpret_cast<Runtime*>(jsiPtr);
   const char* name = env->GetStringUTFChars(pluginName, nullptr);
 
-  auto uploadTexturePlugin = [](Runtime& runtime, const Value& thisArg, const Value* args, size_t count) -> Value {
+  auto uploadTexturePlugin = [](jsi::Runtime& runtime, const jsi::Value& thisArg, const jsi::Value* args, size_t count) -> jsi::Value {
+    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "uploadTexturePlugin called with %zu arguments", count);
     if (count < 2) {
-      throw JSError(runtime, "uploadTexturePlugin: Expected 2 arguments (exglCtxId, frame)");
+      throw jsi::JSError(runtime, "Expected 2 arguments");
     }
-
-    int exglCtxId = static_cast<int>(args[0].asNumber());
+    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Arg 0 is number: %d", args[0].isNumber());
+    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Arg 1 is object: %d", args[1].isObject());
+    if (!args[1].isObject()) {
+      throw jsi::JSError(runtime, "Second argument is not an object");
+    }
     auto frameHostObject = args[1].asObject(runtime).asHostObject<vision::FrameHostObject>(runtime);
-    auto frame = frameHostObject->getFrame();
-    AHardwareBuffer* hardwareBuffer = frame->getHardwareBuffer();
-    if (!hardwareBuffer) {
-      throw JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
-    }
-
+    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "FrameHostObject retrieved");
+    // Continue with frame processing
     int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer);
-    return Value(textureId);
+    return jsi::Value(textureId);
   };
 
   runtime->global().setProperty(
