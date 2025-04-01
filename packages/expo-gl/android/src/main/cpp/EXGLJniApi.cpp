@@ -73,8 +73,8 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
       )
   );
 
-  env->ReleaseStringUTFChars(pluginName, name);
   __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Registered frame processor plugin: %s", name);
+  env->ReleaseStringUTFChars(pluginName, name);
 }
 
 JNIEXPORT void JNICALL
