@@ -69,25 +69,139 @@ index 6e5e438eb3..cb0197a984 100644
 +  implementation project(':react-native-vision-camera')
  }
 diff --git a/packages/expo-gl/android/src/main/cpp/EXGLJniApi.cpp b/packages/expo-gl/android/src/main/cpp/EXGLJniApi.cpp
-index f0f5f84821..4def263e12 100644
+index f0f5f84821..8a612906ac 100644
 --- a/packages/expo-gl/android/src/main/cpp/EXGLJniApi.cpp
 +++ b/packages/expo-gl/android/src/main/cpp/EXGLJniApi.cpp
-@@ -3,10 +3,13 @@
+@@ -1,17 +1,19 @@
+ #include <stdint.h>
+-
  #include <jni.h>
  #include <thread>
  #include <android/log.h>
 -
-+#include <android/hardware_buffer_jni.h>
++#include <android/hardware_buffer.h>
  #include <jsi/jsi.h>
  #include "EXGLNativeApi.h"
  #include "EXPlatformUtils.h"
 +#include <stdio.h>
 +#include "EXGLImageUtils.h"
 +#include "react-native-vision-camera/FrameHostObject.h"
++
++using namespace facebook::jsi;
  
  extern "C" {
  
-@@ -89,4 +92,163 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextDrawEnded
+-// JNIEnv is valid only inside the same thread that it was passed from
+-// to support worklet we need register it from UI thread
+ thread_local JNIEnv* threadLocalEnv;
+ 
+ JNIEXPORT jint JNICALL
+@@ -34,6 +36,95 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepare
+   EXGLContextPrepare((void*) jsiPtr, exglCtxId, flushMethod);
+ }
+ 
++JNIEXPORT void JNICALL
++Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
++    JNIEnv *env,
++    jclass clazz,
++    jlong jsiPtr,
++    jstring pluginName) {
++  Runtime* runtime = reinterpret_cast<Runtime*>(jsiPtr);
++  const char* name = env->GetStringUTFChars(pluginName, nullptr);
++
++  auto uploadTexturePlugin = [env](Runtime& runtime, const Value& thisArg, const Value* args, size_t count) -> Value {
++    try {
++      // Check if exactly 2 arguments are provided
++      if (count != 2) {
++        throw JSError(runtime, "uploadTexturePlugin: Expected exactly 2 arguments (exglCtxId, frame)");
++      }
++
++      // Validate and extract exglCtxId from args[0]
++      if (!args[0].isNumber()) {
++        throw JSError(runtime, "First argument must be a number (exglCtxId)");
++      }
++      int exglCtxId = static_cast<int>(args[0].asNumber());
++      __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "exglCtxId: %d", exglCtxId);
++
++      // Validate and extract frameHostObject from args[1]
++      if (!args[1].isObject()) {
++        throw JSError(runtime, "Second argument must be an object (frame)");
++      }
++      auto frameHostObject = args[1].asObject(runtime).asHostObject<vision::FrameHostObject>(runtime);
++      if (!frameHostObject) {
++        throw JSError(runtime, "Failed to cast frame to FrameHostObject");
++      }
++
++      // Get the frame and then the hardwareBuffer
++      auto frame = frameHostObject->getFrame();
++      if (!frame) {
++        throw JSError(runtime, "Failed to get frame from FrameHostObject");
++      }
++      AHardwareBuffer* hardwareBuffer = frame->getHardwareBuffer();
++      if (!hardwareBuffer) {
++        throw JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
++      }
++
++      // Describe the hardware buffer for logging
++      AHardwareBuffer_Desc desc;
++      AHardwareBuffer_describe(hardwareBuffer, &desc);
++      __android_log_print(ANDROID_LOG_INFO, "EXGLJni", 
++                          "Uploading texture: Width=%u, Height=%u, Format=%u",
++                          desc.width, desc.height, desc.format);
++
++      // Call EXGLContextUploadTexture with extracted values
++      int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer);
++      if (textureId == 0) {
++        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Texture upload failed, returned ID 0");
++      } else {
++        __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Texture uploaded successfully, ID: %d", textureId);
++      }
++      return Value(textureId);
++    } catch (const std::exception& e) {
++      __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Exception in uploadTexturePlugin: %s", e.what());
++      throw JSError(runtime, std::string("uploadTexturePlugin error: ") + e.what());
++    }
++  };
++
++  runtime->global().setProperty(
++      *runtime,
++      name,
++      Function::createFromHostFunction(
++          *runtime,
++          PropNameID::forUtf8(*runtime, name),
++          2,  // Expecting exactly 2 arguments
++          uploadTexturePlugin
++      )
++  );
++
++  __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Registered frame processor plugin: %s", name);
++  env->ReleaseStringUTFChars(pluginName, name);
++}
++
++JNIEXPORT void JNICALL
++Java_expo_modules_gl_GLObjectManagerModule_EXGLObjectManagerRegisterFrameProcessorPlugin(
++    JNIEnv *env,
++    jobject thiz,  // Changed from jclass to jobject
++    jlong jsiPtr,
++    jstring pluginName) {
++  jclass clazz = env->GetObjectClass(thiz);
++  Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(env, clazz, jsiPtr, pluginName);
++  __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "EXGLObjectManagerRegisterFrameProcessorPlugin called");
++}
++
+ JNIEXPORT void JNICALL
+ Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepareWorklet
+ (JNIEnv *env, jclass clazz, jint exglCtxId) {
+@@ -77,7 +168,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextGetObject
+   return EXGLContextGetObject(exglCtxId, exglObjId);
+ }
+ 
+-JNIEXPORT bool JNICALL
++JNIEXPORT jboolean JNICALL
+ Java_expo_modules_gl_cpp_EXGL_EXGLContextNeedsRedraw
+ (JNIEnv *env, jclass clazz, jint exglCtxId) {
+   return EXGLContextNeedsRedraw(exglCtxId);
+@@ -89,4 +180,143 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextDrawEnded
    EXGLContextDrawEnded(exglCtxId);
  }
  
@@ -100,13 +214,11 @@ index f0f5f84821..4def263e12 100644
 +    jint exglCtxId,
 +    jlong hardwareBuffer)
 +{
-+    // Check if we actually got a valid pointer
 +    if (hardwareBuffer == 0) {
 +        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Error: hardwareBuffer handle is zero");
 +        return 0;
 +    }
 +
-+    // Reinterpret the jlong to AHardwareBuffer*
 +    AHardwareBuffer *nativeBuffer = reinterpret_cast<AHardwareBuffer *>(hardwareBuffer);
 +    if (!nativeBuffer) {
 +        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
@@ -114,21 +226,18 @@ index f0f5f84821..4def263e12 100644
 +        return 0;
 +    }
 +
-+    // Acquire the buffer once here
 +    AHardwareBuffer_acquire(nativeBuffer);
 +
 +    int textureId = 0;
 +    try {
-+        // Describe it for logging
 +        AHardwareBuffer_Desc desc;
 +        AHardwareBuffer_describe(nativeBuffer, &desc);
 +        __android_log_print(ANDROID_LOG_INFO, "EXGLJni",
 +                            "Uploading texture: Width=%u, Height=%u, Format=%u, Layers=%u",
 +                            desc.width, desc.height, desc.format, desc.layers);
 +
-+        // Call the actual texture upload function
 +        textureId = EXGLContextUploadTexture(
-+            reinterpret_cast<void *>(jsiPtr),
++            reinterpret_cast<Runtime*>(jsiPtr),
 +            exglCtxId,
 +            nativeBuffer
 +        );
@@ -140,9 +249,7 @@ index f0f5f84821..4def263e12 100644
 +                            "Unknown error occurred in EXGLContextUploadTexture");
 +    }
 +
-+    // Release the buffer reference after usage
 +    AHardwareBuffer_release(nativeBuffer);
-+
 +    return textureId;
 +}
 +#else
@@ -162,95 +269,82 @@ index f0f5f84821..4def263e12 100644
 +Java_expo_modules_gl_cpp_EXGL_EXGLContextCreateTestHardwareBuffer(
 +    JNIEnv *env,
 +    jclass clazz,
-+    jint bufferFormat) // Pass format as a parameter
++    jint bufferFormat)
 +{
-+    // Create the AHardwareBuffer description
 +    AHardwareBuffer_Desc desc = {};
-+    desc.width = 256; 
-+    desc.height = 256; 
-+    desc.layers = 1; 
++    desc.width = 256;
++    desc.height = 256;
++    desc.layers = 1;
 +    desc.format = (bufferFormat == 1) ? AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420 : AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
-+    desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY; 
-+     __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", 
-+                            "YUV format %d", AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420);
-+    // Create the hardware buffer
++    desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY;
++    __android_log_print(ANDROID_LOG_INFO, "EXGLJni",
++                        "Creating test hardware buffer with format: %d", desc.format);
++
 +    AHardwareBuffer *hardwareBuffer = nullptr;
 +    int result = AHardwareBuffer_allocate(&desc, &hardwareBuffer);
-+    
 +    if (result != 0 || hardwareBuffer == nullptr) {
-+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", 
++        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
 +                            "Failed to create AHardwareBuffer: %d", result);
-+        return 0; // Return 0 to indicate failure
++        return 0;
 +    }
 +
-+    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Successfully created AHardwareBuffer");
-+
-+    // Acquire a reference to the buffer
-+    AHardwareBuffer_acquire(hardwareBuffer); 
++    AHardwareBuffer_acquire(hardwareBuffer);
 +
 +    void *bufferData = nullptr;
 +    int lock_result = AHardwareBuffer_lock(
-+        hardwareBuffer, 
-+        AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY, 
-+        -1, 
-+        nullptr, 
++        hardwareBuffer,
++        AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY,
++        -1,
++        nullptr,
 +        &bufferData
 +    );
 +
 +    if (lock_result != 0 || !bufferData) {
 +        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Failed to lock AHardwareBuffer");
 +        AHardwareBuffer_release(hardwareBuffer);
-+        return 0; 
++        return 0;
 +    }
 +
 +    if (desc.format == AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM) {
-+        // Fill the buffer with a checkerboard pattern (RGBA)
-+        uint32_t red = 0xFF0000FF;   // Red color (RGBA)
-+        uint32_t white = 0xFFFFFFFF; // White color (RGBA)
-+        uint32_t squareSize = 32;    // 32x32 squares
++        uint32_t red = 0xFF0000FF;
++        uint32_t white = 0xFFFFFFFF;
++        uint32_t squareSize = 32;
 +
 +        uint32_t *pixels = static_cast<uint32_t *>(bufferData);
-+        for (int y = 0; y < desc.height; ++y) {
-+            for (int x = 0; x < desc.width; ++x) {
++        for (uint32_t y = 0; y < desc.height; ++y) {
++            for (uint32_t x = 0; x < desc.width; ++x) {
 +                bool isRedSquare = ((x / squareSize) % 2) == ((y / squareSize) % 2);
 +                pixels[y * desc.width + x] = isRedSquare ? red : white;
 +            }
 +        }
-+
 +    } else if (desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
-+        // Handle YUV 420f format
 +        uint8_t *yPlane = reinterpret_cast<uint8_t *>(bufferData);
 +        uint8_t *uPlane = yPlane + (desc.width * desc.height);
 +        uint8_t *vPlane = uPlane + ((desc.width / 2) * (desc.height / 2));
 +
-+        // Fill the Y (brightness) plane with checkerboard pattern
-+        for (int y = 0; y < desc.height; ++y) {
-+            for (int x = 0; x < desc.width; ++x) {
++        for (uint32_t y = 0; y < desc.height; ++y) {
++            for (uint32_t x = 0; x < desc.width; ++x) {
 +                bool isBright = ((x / 32) % 2) == ((y / 32) % 2);
-+                yPlane[y * desc.width + x] = isBright ? 255 : 0; // Bright Y values
++                yPlane[y * desc.width + x] = isBright ? 255 : 0;
 +            }
 +        }
 +
-+        // Fill the U and V planes with uniform color
-+        for (int y = 0; y < desc.height / 2; ++y) {
-+            for (int x = 0; x < desc.width / 2; ++x) {
-+                uPlane[y * (desc.width / 2) + x] = 128; // Default U component
-+                vPlane[y * (desc.width / 2) + x] = 128; // Default V component
++        for (uint32_t y = 0; y < desc.height / 2; ++y) {
++            for (uint32_t x = 0; x < desc.width / 2; ++x) {
++                uPlane[y * (desc.width / 2) + x] = 128;
++                vPlane[y * (desc.width / 2) + x] = 128;
 +            }
 +        }
 +    }
-+
 +    AHardwareBuffer_unlock(hardwareBuffer, nullptr);
 +
 +    uintptr_t pointer = reinterpret_cast<uintptr_t>(hardwareBuffer);
-+    __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Pointer to be sent: %p", hardwareBuffer);
-+    __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Pointer (64-bit unsigned): %llu", (unsigned long long) pointer);
-+    
-+    // Return the pointer as a jlong
-+    return (jlong)pointer; 
++    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Pointer to be sent: %p", hardwareBuffer);
++    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Pointer (64-bit unsigned): %llu", (unsigned long long) pointer);
++    return (jlong)pointer;
  }
 +
-+}
++} // extern "C"
 \ No newline at end of file
 diff --git a/packages/expo-gl/android/src/main/java/expo/modules/gl/GLContext.java b/packages/expo-gl/android/src/main/java/expo/modules/gl/GLContext.java
 index d1c990f841..5017497869 100644
@@ -381,10 +475,10 @@ index d1c990f841..5017497869 100644
 +      }
  }
 diff --git a/packages/expo-gl/android/src/main/java/expo/modules/gl/GLObjectManagerModule.kt b/packages/expo-gl/android/src/main/java/expo/modules/gl/GLObjectManagerModule.kt
-index ebc8392228..871ed96c62 100644
+index ebc8392228..fefaea19e8 100644
 --- a/packages/expo-gl/android/src/main/java/expo/modules/gl/GLObjectManagerModule.kt
 +++ b/packages/expo-gl/android/src/main/java/expo/modules/gl/GLObjectManagerModule.kt
-@@ -11,16 +11,22 @@ import expo.modules.kotlin.exception.Exceptions
+@@ -11,19 +11,30 @@ import expo.modules.kotlin.exception.Exceptions
  import expo.modules.kotlin.functions.Queues
  import expo.modules.kotlin.modules.Module
  import expo.modules.kotlin.modules.ModuleDefinition
@@ -393,6 +487,8 @@ index ebc8392228..871ed96c62 100644
 +import android.util.Log
 +import java.nio.ByteBuffer
 +import expo.modules.gl.cpp.EXGL.*
++import com.facebook.react.bridge.ReactApplicationContext
++import com.facebook.react.bridge.JavaScriptContextHolder
  
  private class InvalidCameraViewException :
 -  CodedException("Provided view tag don't point to valid instance of the camera view")
@@ -409,7 +505,13 @@ index ebc8392228..871ed96c62 100644
    override fun definition() = ModuleDefinition {
      Name("ExponentGLObjectManager")
  
-@@ -66,6 +72,8 @@ class GLObjectManagerModule : Module() {
++    // Log module initialization
++    Log.d("GLObjectManagerModule", "Module definition initialized")
++
+     AsyncFunction("destroyObjectAsync") { exglObjId: Int ->
+       val glObject = mGLObjects[exglObjId]
+         ?: return@AsyncFunction false
+@@ -66,6 +77,8 @@ class GLObjectManagerModule : Module() {
          val results = Bundle()
          results.putInt("exglCtxId", glContext.contextId)
          promise.resolve(results)
@@ -418,7 +520,7 @@ index ebc8392228..871ed96c62 100644
        }
      }
  
-@@ -73,9 +81,47 @@ class GLObjectManagerModule : Module() {
+@@ -73,9 +86,59 @@ class GLObjectManagerModule : Module() {
        val glContext = getContextWithId(exglCtxId)
          ?: return@AsyncFunction false
  
@@ -428,45 +530,57 @@ index ebc8392228..871ed96c62 100644
        true
      }
 +
-+AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: String, promise: Promise ->
-+  try {
-+    val context = mGLContextMap[exglCtxId]
-+      ?: throw InvalidGLContextException()
-+    
-+    // Convert the hex string back to a ULong, then to a signed jlong
-+    val pointer = pointerString.toULong(16).toLong()
++    AsyncFunction("uploadAHardwareBufferAsync") { exglCtxId: Int, pointerString: String, promise: Promise ->
++      try {
++        val context = mGLContextMap[exglCtxId]
++          ?: throw InvalidGLContextException()
++        
++        val pointer = pointerString.toULong(16).toLong()
++        val exglObjId = context.push_texture_from_native_buffer(pointer)
++        promise.resolve(exglObjId)
++      } catch (e: Throwable) {
++        Log.e("GLObjectManagerModule", "Error in uploadAHardwareBufferAsync", e)
++        promise.reject("E_UPLOAD_TEXTURE", e.message, e)
++      }
++    }
 +
-+    val exglObjId = context.push_texture_from_native_buffer(pointer)
-+    promise.resolve(exglObjId)
-+
-+  } catch (e: Throwable) {
-+    // Optionally log the error
-+    Log.e("GLObjectManagerModule", "Error in uploadAHardwareBufferAsync", e)
-+    // Reject the promise so JS can handle it
-+    promise.reject("E_UPLOAD_TEXTURE", e.message, e)
-+  }
-+}
-+
-+    AsyncFunction("createAHardwareBufferAsync") {option: Int,promise: Promise ->
-+      // Call the JNI method to create a hardware buffer
-+      Log.i("GLObjectManagerModule"," Pre Option : $option .")
++    AsyncFunction("createAHardwareBufferAsync") { option: Int, promise: Promise ->
++      Log.i("GLObjectManagerModule", "Pre Option: $option")
 +      val pointer = EXGLContextCreateTestHardwareBuffer(option)
 +      
-+      // Cast to unsigned to avoid negative numbers
-+      val unsignedPointer = pointer.toULong() // Cast to unsigned 64-bit long
-+      val pointerHex = unsignedPointer.toString(16) // Convert to hex string
++      val unsignedPointer = pointer.toULong()
++      val pointerHex = unsignedPointer.toString(16)
 +
-+      Log.i("GLObjectManagerModule","Pointer as unsigned (ULong): $unsignedPointer .")
-+      Log.i("GLObjectManagerModule","Pointer in hexadecimal: 0x$pointerHex")
++      Log.i("GLObjectManagerModule", "Pointer as unsigned (ULong): $unsignedPointer")
++      Log.i("GLObjectManagerModule", "Pointer in hexadecimal: 0x$pointerHex")
 +
 +      val response = Bundle()
 +      response.putLong("pointer", pointer)
 +      promise.resolve(response)
 +    }
++
++    // Added frame processor installation function
++    Function("installFrameProcessorPlugin") {
++      Log.d("GLObjectManagerModule", "installFrameProcessorPlugin() function called")
++      val reactContext = appContext.reactContext as? ReactApplicationContext
++      Log.d("GLObjectManagerModule", "reactContext available: ${reactContext != null}")
++      
++      val jsContext = reactContext?.javaScriptContextHolder
++      Log.d("GLObjectManagerModule", "jsContext available: ${jsContext != null}")
++
++      if (jsContext != null && jsContext.get() != 0L) {
++        Log.d("GLObjectManagerModule", "Registering uploadTexturePlugin with JSI runtime")
++        EXGLObjectManagerRegisterFrameProcessorPlugin(jsContext.get(), "uploadTexturePlugin") // Updated to match external declaration
++        Log.d("GLObjectManagerModule", "uploadTexturePlugin registered successfully")
++      } else {
++        Log.e("GLObjectManagerModule", "JSI Runtime is not available")
++        throw Exception("JSI Runtime is not available")
++      }
++    }
    }
  
    private fun getContextWithId(exglCtxId: Int): GLContext? {
-@@ -83,10 +129,12 @@ class GLObjectManagerModule : Module() {
+@@ -83,10 +146,15 @@ class GLObjectManagerModule : Module() {
    }
  
    fun saveContext(glContext: GLContext) {
@@ -478,7 +592,12 @@ index ebc8392228..871ed96c62 100644
 +    Log.i("GLObjectManagerModule", "Deleting GL context with ID: $exglCtxId")
      mGLContextMap.delete(exglCtxId)
    }
- }
+-}
++
++  // External function declaration (unchanged)
++  private external fun EXGLObjectManagerRegisterFrameProcessorPlugin(jsiPtr: Long, pluginName: String)
++}
+\ No newline at end of file
 diff --git a/packages/expo-gl/android/src/main/java/expo/modules/gl/GLView.kt b/packages/expo-gl/android/src/main/java/expo/modules/gl/GLView.kt
 index b05a646ba6..aaf0163ea2 100644
 --- a/packages/expo-gl/android/src/main/java/expo/modules/gl/GLView.kt
@@ -492,27 +611,42 @@ index b05a646ba6..aaf0163ea2 100644
    }
  
 diff --git a/packages/expo-gl/android/src/main/java/expo/modules/gl/cpp/EXGL.java b/packages/expo-gl/android/src/main/java/expo/modules/gl/cpp/EXGL.java
-index d3731494b9..d6b22bf3cf 100644
+index d3731494b9..381d4e5c61 100644
 --- a/packages/expo-gl/android/src/main/java/expo/modules/gl/cpp/EXGL.java
 +++ b/packages/expo-gl/android/src/main/java/expo/modules/gl/cpp/EXGL.java
-@@ -1,7 +1,7 @@
+@@ -1,8 +1,8 @@
  package expo.modules.gl.cpp;
  
  import com.facebook.soloader.SoLoader;
--
-+import 	android.hardware.HardwareBuffer;
- // Java bindings for EXGLNativeApi.h interface
++import android.hardware.HardwareBuffer;
+ 
+-// Java bindings for EXGLNativeApi.h interface
  public class EXGL {
    static {
-@@ -20,4 +20,8 @@ public class EXGL {
+     SoLoader.loadLibrary("expo-gl");
+@@ -10,14 +10,18 @@ public class EXGL {
+   public static native int EXGLContextCreate();
+   public static native void EXGLContextPrepare(long jsCtxPtr, int exglCtxId, Object glContext);
+   public static native void EXGLContextPrepareWorklet(int exglCtxId);
+-
+   public static native void EXGLContextDestroy(int exglCtxId);
+   public static native void EXGLContextFlush(int exglCtxId);
+-
+   public static native int EXGLContextCreateObject(int exglCtxId);
+   public static native void EXGLContextDestroyObject(int exglCtxId, int exglObjId);
+   public static native void EXGLContextMapObject(int exglCtxId, int exglObjId, int glObj);
    public static native int EXGLContextGetObject(int exglCtxId, int exglObjId);
    public static native boolean EXGLContextNeedsRedraw(int exglCtxId);
    public static native void EXGLContextDrawEnded(int exglCtxId);
-+  // Native Method to upload a texture to a pointer.
-+  public static native int EXGLContextUploadTexture(long jsCtxPtr,int exglCtxId,long hardwareBuffer);
-+  // Native method to create and return a Hardware Buffer pointer.
+-}
++  public static native int EXGLContextUploadTexture(long jsCtxPtr, int exglCtxId, long hardwareBuffer);
 +  public static native long EXGLContextCreateTestHardwareBuffer(int bufferFormat);
- }
++  public static native void EXGLRegisterFrameProcessorPlugin(long jsiPtr, String pluginName);
++
++  // Add this method for GLObjectManagerModule
++  public static native void EXGLObjectManagerRegisterFrameProcessorPlugin(long jsiPtr, String pluginName);
++}
+\ No newline at end of file
 diff --git a/packages/expo-gl/build/GLView.d.ts b/packages/expo-gl/build/GLView.d.ts
 index 15834ff5a9..1a0549acca 100644
 Binary files a/packages/expo-gl/build/GLView.d.ts and b/packages/expo-gl/build/GLView.d.ts differ
@@ -677,7 +811,7 @@ index cf0599f882..f37d19b3f4 100644
    auto [exglCtx, lock] = ContextGet(exglCtxId);
    if (exglCtx) {
 diff --git a/packages/expo-gl/common/EXGLNativeApi.h b/packages/expo-gl/common/EXGLNativeApi.h
-index 8af1d2e95f..37f1099b69 100644
+index 8af1d2e95f..3616e4a8df 100644
 --- a/packages/expo-gl/common/EXGLNativeApi.h
 +++ b/packages/expo-gl/common/EXGLNativeApi.h
 @@ -3,6 +3,7 @@
@@ -688,18 +822,41 @@ index 8af1d2e95f..37f1099b69 100644
  #endif
  #ifdef __APPLE__
  #include <OpenGLES/ES3/gl.h>
-@@ -48,6 +49,11 @@ void EXGLContextDrawEnded(EXGLContextId exglCtxId);
- // reused.
+@@ -10,6 +11,7 @@
+ 
+ #ifdef __cplusplus
+ #include <functional>
++#include <jsi/jsi.h> // Include JSI header for registration function
+ #else
+ #include <stdbool.h>
+ #endif
+@@ -44,8 +46,7 @@ bool EXGLContextNeedsRedraw(EXGLContextId exglCtxId);
+ // [GL thread] Tell cpp that we finished drawing to the surface
+ void EXGLContextDrawEnded(EXGLContextId exglCtxId);
+ 
+-// [Any thread] Release the resources for an EXGL context. The same id is never
+-// reused.
++// [Any thread] Release the resources for an EXGL context. The same id is never reused.
  void EXGLContextDestroy(EXGLContextId exglCtxId);
+ 
+ // [GL thread] Perform one frame's worth of queued up GL work
+@@ -67,6 +68,16 @@ void EXGLContextMapObject(EXGLContextId exglCtxId, EXGLObjectId exglObjId, GLuin
+ // [GL thread] Get the underlying OpenGL object an EXGL object maps to.
+ GLuint EXGLContextGetObject(EXGLContextId exglCtxId, EXGLObjectId exglObjId);
  
 +// Remember to implement an ifdef and include this for ios.
 +EXGLObjectId EXGLContextUploadTexture(void *runtime,EXGLContextId exglCtxId, AHardwareBuffer* hardwareBuffer);
-+// Remember to implement an ifdef and include this for ios.
-+//EXGLObjectId EXGLContextUploadTexture(void *runtime,EXGLContextId exglCtxId, long hardwareBuffer);
 +
- // [GL thread] Perform one frame's worth of queued up GL work
- void EXGLContextFlush(EXGLContextId exglCtxId);
- 
++#ifdef __cplusplus
++// Registers the upload texture plugin with a given JSI runtime.
++// This function wraps the native EXGLContextUploadTexture call into a JSI host function
++// and adds it to the runtime's global object so it can be accessed from JavaScript.
++void EXGLRegisterUploadTexturePlugin(facebook::jsi::Runtime &runtime);
++#endif
++
+ #ifdef __cplusplus
+ }
+ #endif
 diff --git a/packages/expo-gl/common/EXGLNativeContext.cpp b/packages/expo-gl/common/EXGLNativeContext.cpp
 index 3b2bbca951..9ded22990d 100644
 --- a/packages/expo-gl/common/EXGLNativeContext.cpp
@@ -1072,18 +1229,52 @@ index 7cfcc91192..2a6e354892 100644
    "peerDependenciesMeta": {
      "react-native-web": {
 diff --git a/packages/expo-gl/src/GLView.tsx b/packages/expo-gl/src/GLView.tsx
-index 54f39bee1d..bbfae0598a 100644
+index 54f39bee1d..de8f792885 100644
 --- a/packages/expo-gl/src/GLView.tsx
 +++ b/packages/expo-gl/src/GLView.tsx
-@@ -27,6 +27,7 @@ export type WebGLObject = {
+@@ -6,7 +6,7 @@ import {
+   CodedError,
+ } from 'expo-modules-core';
+ import * as React from 'react';
+-import { Platform, View, findNodeHandle } from 'react-native';
++import { Platform, View, findNodeHandle ,NativeModules} from 'react-native';
+ 
+ import { configureLogging } from './GLUtils';
+ import {
+@@ -26,7 +26,32 @@ export type WebGLObject = {
+ 
  declare let global: any;
  
++/*
++const LINKING_ERROR =
++  `The package 'react-native-vision-jsi-processor' doesn't seem to be linked. Make sure: \n\n` +
++  Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
++  '- You rebuilt the app after installing the package\n' +
++  '- You are not using Expo Go\n';
++
++const VisionJsiProcessorModule = NativeModules.VisionJsiProcessor;
++
++const VisionJsiProcessor = VisionJsiProcessorModule
++  ? VisionJsiProcessorModule
++  : new Proxy(
++      {},
++      {
++        get() {
++          throw new Error(LINKING_ERROR);
++        },
++      }
++    );
++
++export function install() {
++  VisionJsiProcessor.install();
++}
++*/
  const ExponentGLObjectManager = requireNativeModule('ExponentGLObjectManager');
 +
  const { ExponentGLViewManager } = NativeModulesProxy;
  
  const NativeView = requireNativeViewManager('ExponentGLView');
-@@ -58,11 +59,99 @@ export class GLView extends React.Component<GLViewProps> {
+@@ -58,11 +83,99 @@ export class GLView extends React.Component<GLViewProps> {
     * Also, keep in mind that you need to set up a viewport and create your own framebuffer and texture that you will be drawing to, before you take a snapshot.
     * @return A promise that resolves to WebGL context object. See [WebGL API](#webgl-api) for more details.
     */

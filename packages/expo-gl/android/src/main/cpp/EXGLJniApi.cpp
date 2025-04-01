@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include "EXGLImageUtils.h"
 #include "react-native-vision-camera/FrameHostObject.h"
-
+#include <memory> // Required for std::static_pointer_cast
 using namespace facebook::jsi;
 
 extern "C" {
@@ -59,11 +59,13 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
       int exglCtxId = static_cast<int>(args[0].asNumber());
       __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "exglCtxId: %d", exglCtxId);
 
-      // Validate and extract frameHostObject from args[1]
+      // Validate and extract frameHostObject from args[1] using std::static_pointer_cast
       if (!args[1].isObject()) {
         throw JSError(runtime, "Second argument must be an object (frame)");
       }
-      auto frameHostObject = args[1].asObject(runtime).asHostObject<vision::FrameHostObject>(runtime);
+      auto valueAsObject = args[1].getObject(runtime);
+      auto hostObject = valueAsObject.getHostObject(runtime); // Returns std::shared_ptr<jsi::HostObject>
+      auto frameHostObject = std::static_pointer_cast<vision::FrameHostObject>(hostObject);
       if (!frameHostObject) {
         throw JSError(runtime, "Failed to cast frame to FrameHostObject");
       }
@@ -117,14 +119,13 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
 JNIEXPORT void JNICALL
 Java_expo_modules_gl_GLObjectManagerModule_EXGLObjectManagerRegisterFrameProcessorPlugin(
     JNIEnv *env,
-    jobject thiz,  // Changed from jclass to jobject
+    jobject thiz,
     jlong jsiPtr,
     jstring pluginName) {
   jclass clazz = env->GetObjectClass(thiz);
   Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(env, clazz, jsiPtr, pluginName);
   __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "EXGLObjectManagerRegisterFrameProcessorPlugin called");
 }
-
 JNIEXPORT void JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepareWorklet
 (JNIEnv *env, jclass clazz, jint exglCtxId) {
