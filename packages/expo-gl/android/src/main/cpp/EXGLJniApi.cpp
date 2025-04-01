@@ -45,34 +45,58 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
   Runtime* runtime = reinterpret_cast<Runtime*>(jsiPtr);
   const char* name = env->GetStringUTFChars(pluginName, nullptr);
 
-  auto uploadTexturePlugin = [](Runtime& runtime, const Value& thisArg, const Value* args, size_t count) -> Value {
-    // Check if enough arguments are provided
-    if (count < 2) {
-      throw JSError(runtime, "uploadTexturePlugin: Expected 2 arguments (exglCtxId, frame)");
-    }
+  auto uploadTexturePlugin = [env](Runtime& runtime, const Value& thisArg, const Value* args, size_t count) -> Value {
+    try {
+      // Check if exactly 2 arguments are provided
+      if (count != 2) {
+        throw JSError(runtime, "uploadTexturePlugin: Expected exactly 2 arguments (exglCtxId, frame)");
+      }
 
-    // Extract exglCtxId from args[0]
-    if (!args[0].isNumber()) {
-      throw JSError(runtime, "First argument must be a number (exglCtxId)");
-    }
-    int exglCtxId = static_cast<int>(args[0].asNumber());
+      // Validate and extract exglCtxId from args[0]
+      if (!args[0].isNumber()) {
+        throw JSError(runtime, "First argument must be a number (exglCtxId)");
+      }
+      int exglCtxId = static_cast<int>(args[0].asNumber());
+      __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "exglCtxId: %d", exglCtxId);
 
-    // Extract frameHostObject from args[1]
-    if (!args[1].isObject()) {
-      throw JSError(runtime, "Second argument must be an object (frame)");
-    }
-    auto frameHostObject = args[1].asObject(runtime).asHostObject<vision::FrameHostObject>(runtime);
+      // Validate and extract frameHostObject from args[1]
+      if (!args[1].isObject()) {
+        throw JSError(runtime, "Second argument must be an object (frame)");
+      }
+      auto frameHostObject = args[1].asObject(runtime).asHostObject<vision::FrameHostObject>(runtime);
+      if (!frameHostObject) {
+        throw JSError(runtime, "Failed to cast frame to FrameHostObject");
+      }
 
-    // Get the frame and then the hardwareBuffer
-    auto frame = frameHostObject->getFrame();
-    AHardwareBuffer* hardwareBuffer = frame->getHardwareBuffer();
-    if (!hardwareBuffer) {
-      throw JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
-    }
+      // Get the frame and then the hardwareBuffer
+      auto frame = frameHostObject->getFrame();
+      if (!frame) {
+        throw JSError(runtime, "Failed to get frame from FrameHostObject");
+      }
+      AHardwareBuffer* hardwareBuffer = frame->getHardwareBuffer();
+      if (!hardwareBuffer) {
+        throw JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
+      }
 
-    // Call EXGLContextUploadTexture with extracted values
-    int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer);
-    return Value(textureId);
+      // Describe the hardware buffer for logging
+      AHardwareBuffer_Desc desc;
+      AHardwareBuffer_describe(hardwareBuffer, &desc);
+      __android_log_print(ANDROID_LOG_INFO, "EXGLJni", 
+                          "Uploading texture: Width=%u, Height=%u, Format=%u",
+                          desc.width, desc.height, desc.format);
+
+      // Call EXGLContextUploadTexture with extracted values
+      int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer);
+      if (textureId == 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Texture upload failed, returned ID 0");
+      } else {
+        __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Texture uploaded successfully, ID: %d", textureId);
+      }
+      return Value(textureId);
+    } catch (const std::exception& e) {
+      __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Exception in uploadTexturePlugin: %s", e.what());
+      throw JSError(runtime, std::string("uploadTexturePlugin error: ") + e.what());
+    }
   };
 
   runtime->global().setProperty(
@@ -81,7 +105,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
       Function::createFromHostFunction(
           *runtime,
           PropNameID::forUtf8(*runtime, name),
-          2,  // Expecting 2 arguments
+          2,  // Expecting exactly 2 arguments
           uploadTexturePlugin
       )
   );
