@@ -45,21 +45,34 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
   Runtime* runtime = reinterpret_cast<Runtime*>(jsiPtr);
   const char* name = env->GetStringUTFChars(pluginName, nullptr);
 
-  auto uploadTexturePlugin = [](jsi::Runtime& runtime, const jsi::Value& thisArg, const jsi::Value* args, size_t count) -> jsi::Value {
-    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "uploadTexturePlugin called with %zu arguments", count);
+  auto uploadTexturePlugin = [](Runtime& runtime, const Value& thisArg, const Value* args, size_t count) -> Value {
+    // Check if enough arguments are provided
     if (count < 2) {
-      throw jsi::JSError(runtime, "Expected 2 arguments");
+      throw JSError(runtime, "uploadTexturePlugin: Expected 2 arguments (exglCtxId, frame)");
     }
-    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Arg 0 is number: %d", args[0].isNumber());
-    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Arg 1 is object: %d", args[1].isObject());
+
+    // Extract exglCtxId from args[0]
+    if (!args[0].isNumber()) {
+      throw JSError(runtime, "First argument must be a number (exglCtxId)");
+    }
+    int exglCtxId = static_cast<int>(args[0].asNumber());
+
+    // Extract frameHostObject from args[1]
     if (!args[1].isObject()) {
-      throw jsi::JSError(runtime, "Second argument is not an object");
+      throw JSError(runtime, "Second argument must be an object (frame)");
     }
     auto frameHostObject = args[1].asObject(runtime).asHostObject<vision::FrameHostObject>(runtime);
-    __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "FrameHostObject retrieved");
-    // Continue with frame processing
+
+    // Get the frame and then the hardwareBuffer
+    auto frame = frameHostObject->getFrame();
+    AHardwareBuffer* hardwareBuffer = frame->getHardwareBuffer();
+    if (!hardwareBuffer) {
+      throw JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
+    }
+
+    // Call EXGLContextUploadTexture with extracted values
     int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer);
-    return jsi::Value(textureId);
+    return Value(textureId);
   };
 
   runtime->global().setProperty(
@@ -68,7 +81,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
       Function::createFromHostFunction(
           *runtime,
           PropNameID::forUtf8(*runtime, name),
-          2,
+          2,  // Expecting 2 arguments
           uploadTexturePlugin
       )
   );
@@ -83,11 +96,8 @@ Java_expo_modules_gl_GLObjectManagerModule_EXGLObjectManagerRegisterFrameProcess
     jobject thiz,  // Changed from jclass to jobject
     jlong jsiPtr,
     jstring pluginName) {
-  // Optionally, get the class if needed for delegation
   jclass clazz = env->GetObjectClass(thiz);
-  // Delegate to the existing static method
   Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(env, clazz, jsiPtr, pluginName);
-  // Add logging to verify execution
   __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "EXGLObjectManagerRegisterFrameProcessorPlugin called");
 }
 
