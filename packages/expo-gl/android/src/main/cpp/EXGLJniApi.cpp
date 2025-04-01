@@ -84,7 +84,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
       AHardwareBuffer_Desc desc;
       AHardwareBuffer_describe(hardwareBuffer, &desc);
       __android_log_print(ANDROID_LOG_INFO, "EXGLJni", 
-                          "Uploading texture: Width=%u, Height=%u, Format=%u",
+                          "Uploading texture Global: Width=%u, Height=%u, Format=%u",
                           desc.width, desc.height, desc.format);
 
       // Call EXGLContextUploadTexture with extracted values
