@@ -80,15 +80,16 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
 JNIEXPORT void JNICALL
 Java_expo_modules_gl_GLObjectManagerModule_EXGLObjectManagerRegisterFrameProcessorPlugin(
     JNIEnv *env,
-    jclass clazz,
+    jobject thiz,  // Changed from jclass to jobject
     jlong jsiPtr,
     jstring pluginName) {
-  // Delegate to the existing EXGLRegisterFrameProcessorPlugin
+  // Optionally, get the class if needed for delegation
+  jclass clazz = env->GetObjectClass(thiz);
+  // Delegate to the existing static method
   Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(env, clazz, jsiPtr, pluginName);
+  // Add logging to verify execution
+  __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "EXGLObjectManagerRegisterFrameProcessorPlugin called");
 }
-// Removed outdated GLFrameProcessorModule function since it’s integrated into GLObjectManagerModule
-// JNIEXPORT void JNICALL
-// Java_expo_modules_gl_GLFrameProcessorModule_registerFrameProcessorPlugin(...)
 
 JNIEXPORT void JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepareWorklet
