@@ -24,27 +24,34 @@ EXGLObjectId EXGLContextUploadTexture(
   EXGLContextId exglCtxId,
   AHardwareBuffer* hardwareBuffer
 ) {
-EXGLObjectId textureId = 0;
+  EXGLObjectId textureId = 0;
 
-// Look up the EXGL context
-auto [exglCtx, lock] = ContextGet(exglCtxId);
-if (!exglCtx) {
+  // Look up the EXGL context
+  auto [exglCtx, lock] = ContextGet(exglCtxId);
+  if (!exglCtx) {
+    __android_log_print(ANDROID_LOG_ERROR, "EXGLNativeApi",
+                        "Context %d not found or already destroyed", exglCtxId);
+    return 0;
+  }
   __android_log_print(ANDROID_LOG_INFO, "EXGLNativeApi",
-                      "Context %d not found or already destroyed",
-                      exglCtxId);
-  return 0;
+                      "Context %d found, proceeding with texture upload", exglCtxId);
+
+  // Call into the context method
+  textureId = exglCtx->uploadTextureToOpenGL(
+      *reinterpret_cast<jsi::Runtime*>(jsiPtr),
+      hardwareBuffer
+  );
+
+  if (textureId == 0) {
+    __android_log_print(ANDROID_LOG_ERROR, "EXGLNativeApi",
+                        "uploadTextureToOpenGL failed for context %d, returned 0", exglCtxId);
+  } else {
+    __android_log_print(ANDROID_LOG_INFO, "EXGLNativeApi",
+                        "Texture uploaded successfully for context %d, ID: %d", exglCtxId, textureId);
+  }
+
+  return textureId;
 }
-
-// Simply call into the context method.
-// Do NOT acquire or release the buffer here.
-textureId = exglCtx->uploadTextureToOpenGL(
-    *reinterpret_cast<jsi::Runtime*>(jsiPtr),
-    hardwareBuffer
-);
-
-return textureId;
-}
-
 
 void EXGLContextPrepareWorklet(EXGLContextId exglCtxId) {
   auto [exglCtx, lock] = ContextGet(exglCtxId);
