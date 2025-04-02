@@ -228,8 +228,8 @@ int EXGLContext::uploadTextureToOpenGL(
                               "Exception in YUV upload batch: %s", e.what());
         }
       });
-
-      // Attempt to create the JS WebGLTexture object
+      /*
+            // Attempt to create the JS WebGLTexture object
       __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Attempting to create JS WebGLTexture object");
       const char* constructorName = getConstructorName(EXWebGLClass::WebGLTexture).c_str(); // Fixed: Use .c_str()
       __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Constructor name: %s", constructorName);
@@ -243,6 +243,8 @@ int EXGLContext::uploadTextureToOpenGL(
       jsi::Function constructorFunc = constructorValue.asObject(runtime).asFunction(runtime);
       jsi::Object webglObject = constructorFunc.callAsConstructor(runtime, {}).asObject(runtime);
       webglObject.setProperty(runtime, "id", jsi::Value(static_cast<double>(exglObjId)));
+      */
+
       __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Created JS WebGLTexture object with ID: %d", exglObjId);
 
       return exglObjId;
