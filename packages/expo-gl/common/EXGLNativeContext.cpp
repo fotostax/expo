@@ -246,7 +246,7 @@ int EXGLContext::uploadTextureToOpenGL(
 
       // Attempt to create the JS WebGLTexture object
       __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Attempting to create JS WebGLTexture object");
-      const char* constructorName = getConstructorName(EXWebGLClass::WebGLTexture);
+      const char* constructorName = getConstructorName(EXWebGLClass::WebGLTexture).c_str(); // Fixed: Use .c_str()
       __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Constructor name: %s", constructorName);
 
       jsi::Value constructorValue = runtime.global().getProperty(runtime, jsi::PropNameID::forUtf8(runtime, constructorName));
@@ -328,7 +328,7 @@ int EXGLContext::uploadTextureToOpenGL(
 
       // Create the JS-side WebGLTexture object for RGBA
       __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Attempting to create JS WebGLTexture object for RGBA");
-      const char* constructorName = getConstructorName(EXWebGLClass::WebGLTexture);
+      const char* constructorName = getConstructorName(EXWebGLClass::WebGLTexture).c_str(); // Fixed: Use .c_str()
       __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Constructor name: %s", constructorName);
 
       jsi::Value constructorValue = runtime.global().getProperty(runtime, jsi::PropNameID::forUtf8(runtime, constructorName));
