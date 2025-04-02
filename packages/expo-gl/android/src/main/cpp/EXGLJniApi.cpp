@@ -45,7 +45,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
   Runtime* runtime = reinterpret_cast<Runtime*>(jsiPtr);
   const char* name = env->GetStringUTFChars(pluginName, nullptr);
 
-  auto uploadTexturePlugin = [](Runtime& runtime, const Value& thisArg, const Value* args, size_t count) -> Value {
+  auto uploadTexturePlugin = [=](Runtime& runtime, const Value& thisArg, const Value* args, size_t count) -> Value {
     try {
       // Check if exactly 2 arguments are provided
       if (count != 2) {
