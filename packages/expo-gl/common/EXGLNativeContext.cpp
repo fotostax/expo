@@ -322,9 +322,10 @@ int EXGLContext::uploadTextureToOpenGL(
         return 0;
       }
 
-      jsi::Function constructorFunc = constructorValue.asObject(runtime).asFunction(runtime);
+      /*jsi::Function constructorFunc = constructorValue.asObject(runtime).asFunction(runtime);
       jsi::Object webglObject = constructorFunc.callAsConstructor(runtime, {}).asObject(runtime);
-      webglObject.setProperty(runtime, "id", jsi::Value(static_cast<double>(exglObjId)));
+      webglObject.setProperty(runtime, "id", jsi::Value(static_cast<double>(exglObjId)));*/
+      
       __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Created JS WebGLTexture object with ID: %d", exglObjId);
 
       return exglObjId;
