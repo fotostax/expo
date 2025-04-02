@@ -178,11 +178,7 @@ int EXGLContext::uploadTextureToOpenGL(
               GL_UNSIGNED_BYTE,
               yVec.data()
           );
-          GLenum err = glGetError();
-          if (err != GL_NO_ERROR) {
-            __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
-                                "glTexImage2D (Y) failed, GL error: %u", err);
-          }
+    
 
           // Upload U-plane
           glActiveTexture(GL_TEXTURE1);
@@ -202,12 +198,7 @@ int EXGLContext::uploadTextureToOpenGL(
               GL_UNSIGNED_BYTE,
               uVec.data()
           );
-          err = glGetError();
-          if (err != GL_NO_ERROR) {
-            __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
-                                "glTexImage2D (U) failed, GL error: %u", err);
-          }
-
+         
           // Upload V-plane
           glActiveTexture(GL_TEXTURE2);
           glBindTexture(GL_TEXTURE_2D, textureV);
@@ -226,12 +217,6 @@ int EXGLContext::uploadTextureToOpenGL(
               GL_UNSIGNED_BYTE,
               vVec.data()
           );
-          err = glGetError();
-          if (err != GL_NO_ERROR) {
-            __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
-                                "glTexImage2D (V) failed, GL error: %u", err);
-          }
-
           __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Uploaded YUV textures");
 
           // Register the Y/U/V textures with the EXGL object IDs
