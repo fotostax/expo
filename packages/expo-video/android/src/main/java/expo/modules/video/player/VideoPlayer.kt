@@ -2,7 +2,6 @@ package expo.modules.video.player
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
-import android.view.SurfaceView
 import androidx.media3.common.C
 import android.webkit.URLUtil
 import androidx.annotation.OptIn
@@ -38,6 +37,7 @@ import expo.modules.video.records.BufferOptions
 import expo.modules.video.records.PlaybackError
 import expo.modules.video.records.TimeUpdate
 import expo.modules.video.records.VideoSource
+import expo.modules.video.utils.MutableWeakReference
 import expo.modules.video.records.VideoTrack
 import kotlinx.coroutines.launch
 import java.io.FileInputStream
@@ -51,8 +51,10 @@ class VideoPlayer(val context: Context, appContext: AppContext, source: VideoSou
     .forceEnableMediaCodecAsynchronousQueueing()
     .setEnableDecoderFallback(true)
   private var listeners: MutableList<WeakReference<VideoPlayerListener>> = mutableListOf()
+  private var currentPlayerView = MutableWeakReference<PlayerView?>(null)
   val loadControl: VideoPlayerLoadControl = VideoPlayerLoadControl.Builder().build()
   val subtitles: VideoPlayerSubtitles = VideoPlayerSubtitles(this)
+  val audioTracks: VideoPlayerAudioTracks = VideoPlayerAudioTracks(this)
   val trackSelector = DefaultTrackSelector(context)
 
   val player = ExoPlayer
@@ -61,6 +63,7 @@ class VideoPlayer(val context: Context, appContext: AppContext, source: VideoSou
     .setLoadControl(loadControl)
     .build()
 
+  private val firstFrameEventGenerator = createFirstFrameEventGenerator()
   val serviceConnection = PlaybackServiceConnection(WeakReference(this))
   val intervalUpdateClock = IntervalUpdateClock(this)
 
@@ -178,13 +181,17 @@ class VideoPlayer(val context: Context, appContext: AppContext, source: VideoSou
 
     override fun onTracksChanged(tracks: Tracks) {
       val oldSubtitleTracks = ArrayList(subtitles.availableSubtitleTracks)
+      val oldAudioTracks = ArrayList(audioTracks.availableAudioTracks)
       val oldCurrentTrack = subtitles.currentSubtitleTrack
+      val oldCurrentAudioTrack = audioTracks.currentAudioTrack
 
       // Emit the tracks change event to update the subtitles
       sendEvent(PlayerEvent.TracksChanged(tracks))
 
       val newSubtitleTracks = subtitles.availableSubtitleTracks
+      val newAudioTracks = audioTracks.availableAudioTracks
       val newCurrentSubtitleTrack = subtitles.currentSubtitleTrack
+      val newCurrentAudioTrack = audioTracks.currentAudioTrack
       availableVideoTracks = tracks.toVideoTracks()
 
       if (isLoadingNewSource) {
@@ -193,7 +200,8 @@ class VideoPlayer(val context: Context, appContext: AppContext, source: VideoSou
             commitedSource,
             this@VideoPlayer.player.duration / 1000.0,
             availableVideoTracks,
-            newSubtitleTracks
+            newSubtitleTracks,
+            newAudioTracks
           )
         )
         isLoadingNewSource = false
@@ -202,18 +210,27 @@ class VideoPlayer(val context: Context, appContext: AppContext, source: VideoSou
       if (!oldSubtitleTracks.toArray().contentEquals(newSubtitleTracks.toArray())) {
         sendEvent(PlayerEvent.AvailableSubtitleTracksChanged(newSubtitleTracks, oldSubtitleTracks))
       }
+      if (!oldAudioTracks.toArray().contentEquals(newAudioTracks.toArray())) {
+        sendEvent(PlayerEvent.AvailableAudioTracksChanged(newAudioTracks, oldAudioTracks))
+      }
       if (oldCurrentTrack != newCurrentSubtitleTrack) {
         sendEvent(PlayerEvent.SubtitleTrackChanged(newCurrentSubtitleTrack, oldCurrentTrack))
+      }
+      if (oldCurrentAudioTrack != newCurrentAudioTrack) {
+        sendEvent(PlayerEvent.AudioTrackChanged(newCurrentAudioTrack, oldCurrentAudioTrack))
       }
       super.onTracksChanged(tracks)
     }
 
     override fun onTrackSelectionParametersChanged(parameters: TrackSelectionParameters) {
       val oldTrack = subtitles.currentSubtitleTrack
+      val oldAudioTrack = audioTracks.currentAudioTrack
       sendEvent(PlayerEvent.TrackSelectionParametersChanged(parameters))
 
       val newTrack = subtitles.currentSubtitleTrack
+      val newAudioTrack = audioTracks.currentAudioTrack
       sendEvent(PlayerEvent.SubtitleTrackChanged(newTrack, oldTrack))
+      sendEvent(PlayerEvent.AudioTrackChanged(newAudioTrack, oldAudioTrack))
       super.onTrackSelectionParametersChanged(parameters)
     }
 
@@ -300,10 +317,9 @@ class VideoPlayer(val context: Context, appContext: AppContext, source: VideoSou
     close()
   }
 
-  fun changePlayerView(playerView: PlayerView) {
-    player.clearVideoSurface()
-    player.setVideoSurfaceView(playerView.videoSurfaceView as SurfaceView?)
-    playerView.player = player
+  fun changePlayerView(playerView: PlayerView?) {
+    PlayerView.switchTargetView(player, currentPlayerView.get(), playerView)
+    currentPlayerView.set(playerView)
   }
 
   fun prepare() {
@@ -379,10 +395,19 @@ class VideoPlayer(val context: Context, appContext: AppContext, source: VideoSou
 
   private fun sendEvent(event: PlayerEvent) {
     // Emits to the native listeners
-    event.emit(this, listeners.mapNotNull { it.get() })
+    val listenersSnapshot = listeners.toList().mapNotNull { it.get() }
+
+    event.emit(this, listenersSnapshot)
+
     // Emits to the JS side
     if (event.emitToJS) {
       emit(event.name, event.jsEventPayload)
+    }
+  }
+
+  private fun createFirstFrameEventGenerator(): FirstFrameEventGenerator {
+    return FirstFrameEventGenerator(player, currentPlayerView) {
+      sendEvent(PlayerEvent.RenderedFirstFrame())
     }
   }
 

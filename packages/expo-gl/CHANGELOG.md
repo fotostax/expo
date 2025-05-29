@@ -4,16 +4,52 @@
 
 ### 🛠 Breaking changes
 
-- upgrade RN to 0.78 ([#35050](https://github.com/expo/expo/pull/35050) by [@vonovak](https://github.com/vonovak))
-
 ### 🎉 New features
 
 ### 🐛 Bug fixes
 
 ### 💡 Others
 
+## 15.1.5 — 2025-04-30
+
+_This version does not introduce any user-facing changes._
+
+## 15.1.4 — 2025-04-25
+
+_This version does not introduce any user-facing changes._
+
+## 15.1.3 — 2025-04-21
+
+_This version does not introduce any user-facing changes._
+
+## 15.1.2 — 2025-04-14
+
+_This version does not introduce any user-facing changes._
+
+## 15.1.1 — 2025-04-09
+
+_This version does not introduce any user-facing changes._
+
+## 15.1.0 — 2025-04-04
+
+### 🛠 Breaking changes
+
+- upgrade RN to 0.78 ([#35050](https://github.com/expo/expo/pull/35050) by [@vonovak](https://github.com/vonovak))
+
+### 🐛 Bug fixes
+
+- stb_image PNG: Checks for invalid DEFLATE codes. ([#35184](https://github.com/expo/expo/pull/35184) by [@manoj23](https://github.com/manoj23))
+
+### 💡 Others
+
 - [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
 - [apple] Migrate remaining `expo-module.config.json` to unified platform syntax. ([#34445](https://github.com/expo/expo/pull/34445) by [@reichhartd](https://github.com/reichhartd))
+
+## 15.0.5 - 2025-04-01
+
+### 🐛 Bug fixes
+
+- [ios] Fixed build errors in XCode 16.3 ([#35811](https://github.com/expo/expo/pull/35811) by [@chrfalch](https://github.com/chrfalch))
 
 ## 15.0.4 - 2025-01-19
 

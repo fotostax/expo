@@ -1,5 +1,5 @@
-import glob from 'fast-glob';
 import fs from 'fs';
+import { glob } from 'glob';
 import path from 'path';
 
 import {
@@ -11,7 +11,7 @@ import type { findModulesAsync as findModulesAsyncType } from '../findModules';
 
 const expoRoot = path.join(__dirname, '..', '..', '..', '..', '..');
 
-jest.mock('fast-glob');
+jest.mock('glob');
 
 const mockProjectPackageJsonPath = jest.fn().mockResolvedValue(path.join(expoRoot, 'package.json'));
 
@@ -440,5 +440,18 @@ describe(findModulesAsync, () => {
         path: path.join(expoModulesDir, 'expo-application'),
       }),
     ]);
+  });
+
+  it('should not link modules excluded by `options.exclude`', async () => {
+    const searchPath = path.join(expoRoot, 'node_modules');
+    addMockedModule('expo-module', { globCwd: searchPath });
+
+    const result = await findModulesAsync({
+      searchPaths: [searchPath],
+      platform: 'ios',
+      projectRoot: expoRoot,
+      exclude: ['expo-module'],
+    });
+    expect(result['expo-module']).toBeUndefined();
   });
 });

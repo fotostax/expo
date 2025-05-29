@@ -47,7 +47,7 @@ export function getAvailablePlatforms(
  */
 function ensureUriString(uri: any): string {
   if (!uri) {
-    throw new CommandError('Please supply a URI protocol');
+    throw new CommandError('No URI protocol provided. Supply one with --uri');
   }
   if (typeof uri !== 'string') {
     throw new CommandError(`URI protocol should be of type string. Instead got: ${typeof uri}`);
@@ -114,7 +114,7 @@ export async function addAsync(options: Options): Promise<string[]> {
   if (!actionOccurred) {
     console.log(
       chalk.yellow(
-        'No URI schemes could be added. Please ensure there is a native project available.'
+        'No URI schemes could be added. Ensure there is a native project in "ios" and/or "android" directories.'
       )
     );
   }
@@ -146,7 +146,7 @@ export async function removeAsync(options: Options): Promise<string[]> {
   if (!actionOccurred) {
     console.log(
       chalk.yellow(
-        'No URI schemes could be removed. Please ensure there is a native project available.'
+        'No URI schemes could be removed. Ensure there is a native project in "ios" and/or "android" directories.'
       )
     );
   }
@@ -154,15 +154,20 @@ export async function removeAsync(options: Options): Promise<string[]> {
 }
 
 export async function openAsync(
-  options: Pick<Options, 'uri' | 'ios' | 'android' | 'projectRoot'> & { androidPackage?: string }
+  options: Pick<Options, 'uri' | 'ios' | 'android' | 'projectRoot'> & {
+    androidPackage?: string;
+    escapeUri?: boolean;
+  }
 ): Promise<void> {
   options.uri = ensureUriString(options.uri);
 
   if (options.ios) {
+    if (options.escapeUri) options.uri = Ios.escapeUri(options.uri);
     logPlatformMessage('iOS', `Opening URI "${options.uri}" in simulator`);
     await Ios.openAsync(options);
   }
   if (options.android) {
+    if (options.escapeUri) options.uri = Android.escapeUri(options.uri);
     logPlatformMessage('Android', `Opening URI "${options.uri}" in emulator`);
     await Android.openAsync(options);
   }

@@ -4,7 +4,7 @@ hideFromSearch: true
 description: Learn how to send notifications with FCM and APNs.
 ---
 
-You may need finer-grained control over your notifications, so communicating directly with FCM and APNs may be necessary. The Expo platform does not lock you into using Expo Application Services, and the `expo-notifications` API is push-service agnostic.
+You may need finer-grained control over your notifications, in which case communicating directly with FCM and APNs may be necessary. The Expo platform does not lock you into using Expo Application Services, and the `expo-notifications` API is push-service agnostic.
 
 > **Note**: This guide does not aim to be a comprehensive resource for sending notifications via FCM or APNs. We recommend you read the official documentation to make sure you're following the latest instructions.
 
@@ -108,7 +108,7 @@ async function sendFCMv1Notification() {
 }
 ```
 
-**The `experienceId` and `scopeKey` fields are required**. Otherwise, your notifications will not go through to your app. FCM has a list of supported fields in the [notification payload](https://firebase.google.com/docs/cloud-messaging/http-server-ref#notification-payload-support), and you can see which ones are supported by `expo-notifications` on Android by looking at the [FirebaseRemoteMessage](/versions/latest/sdk/notifications/#firebaseremotemessage).
+The `experienceId` and `scopeKey` fields are only applicable when using Expo Go (from SDK 53, push notifications support is removed from Expo Go). Otherwise, your notifications will not go through to your app. FCM has a list of supported fields in the [notification payload](https://firebase.google.com/docs/cloud-messaging/http-server-ref#notification-payload-support), and you can see which ones are supported by `expo-notifications` on Android by looking at the [FirebaseRemoteMessage](/versions/latest/sdk/notifications/#firebaseremotemessage).
 
 FCM also provides some [server-side libraries in a few different languages](https://firebase.google.com/docs/cloud-messaging/send-message#node.js) you can use instead of raw `fetch` requests.
 
@@ -121,6 +121,42 @@ Your FCM server key can be found by making sure you've followed the [configurati
 > **info** This documentation is based on [Apple's documentation](https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/APNSOverview.html), and this section covers the basics to get you started.
 
 Communicating with APNs is a little more complicated than with FCM. Some libraries wrap all of this functionality into one or two function calls such as [`node-apn`](https://github.com/node-apn/node-apn). However, in the examples below, a minimum set of libraries are used.
+
+### Client APNs entitlement
+
+Receiving push notifications only works if your iOS app has the APNs entitlement. For apps using [CNG](/workflow/continuous-native-generation/),
+the Expo config needs to be modified in one of two ways:
+
+- **Recommended**: Add the `expo-notifications` library to your app, and ensure that its plugin appears in the `plugins` array of your [app config](/workflow/configuration/):
+
+```json app.json
+{
+  "expo": {
+    /* @hide ... */ /* @end */ "plugins": [/* @hide ... */ /* @end */ "expo-notifications"]
+  }
+}
+```
+
+- If you do not plan to use the `expo-notifications` library, then you should [add the `aps-environment` entitlement manually to the Expo configuration](/build-reference/ios-capabilities/#entitlements),
+  as in the example below:
+
+```json app.json
+{
+  "expo": {
+    /* @hide ... */ /* @end */
+    "ios": {
+      /* @hide ... */ /* @end */
+      "entitlements": {
+        "aps-environment": "development"
+      }
+    }
+  }
+}
+```
+
+If you are not using CNG, then you should [add the push notification entitlement in Xcode](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
+
+> **Note**: If you are upgrading an Expo app from a version before SDK 51, you should refer to [this FYI document](https://expo.fyi/apns-entitlement-sdk-51).
 
 ### Authorization
 

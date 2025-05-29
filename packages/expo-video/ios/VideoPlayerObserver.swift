@@ -24,6 +24,7 @@ protocol VideoPlayerObserverDelegate: AnyObject {
   func onTimeUpdate(player: AVPlayer, timeUpdate: TimeUpdate)
   func onAudioMixingModeChanged(player: AVPlayer, oldAudioMixingMode: AudioMixingMode, newAudioMixingMode: AudioMixingMode)
   func onSubtitleSelectionChanged(player: AVPlayer, playerItem: AVPlayerItem?, subtitleTrack: SubtitleTrack?)
+  func onAudioTrackSelectionChanged(player: AVPlayer, playerItem: AVPlayerItem?, audioTrack: AudioTrack?)
   func onLoadedPlayerItem(player: AVPlayer, playerItem: AVPlayerItem?)
   func onVideoTrackChanged(player: AVPlayer, oldVideoTrack: VideoTrack?, newVideoTrack: VideoTrack?)
 }
@@ -41,6 +42,7 @@ extension VideoPlayerObserverDelegate {
   func onTimeUpdate(player: AVPlayer, timeUpdate: TimeUpdate) {}
   func onAudioMixingModeChanged(player: AVPlayer, oldAudioMixingMode: AudioMixingMode, newAudioMixingMode: AudioMixingMode) {}
   func onSubtitleSelectionChanged(player: AVPlayer, playerItem: AVPlayerItem?, subtitleTrack: SubtitleTrack?) {}
+  func onAudioTrackSelectionChanged(player: AVPlayer, playerItem: AVPlayerItem?, audioTrack: AudioTrack?) {}
   func onLoadedPlayerItem(player: AVPlayer, playerItem: AVPlayerItem?) {}
   func onVideoTrackChanged(player: AVPlayer, oldVideoTrack: VideoTrack?, newVideoTrack: VideoTrack?) {}
 }
@@ -70,7 +72,7 @@ final class WeakPlayerObserverDelegate: Hashable {
 class VideoPlayerObserver {
   private weak var owner: VideoPlayer?
   var player: AVPlayer? {
-    owner?.pointer
+    owner?.ref
   }
   var delegates = Set<WeakPlayerObserverDelegate>()
   private var currentItem: VideoPlayerItem?
@@ -123,6 +125,7 @@ class VideoPlayerObserver {
   private var playerItemStatusObserver: NSKeyValueObservation?
   private var playbackLikelyToKeepUpObserver: NSKeyValueObservation?
   private var currentSubtitlesObserver: NSObjectProtocol?
+  private var currentAudioTracksObserver: NSObjectProtocol?
 
   init(owner: VideoPlayer) {
     self.owner = owner
@@ -241,6 +244,17 @@ class VideoPlayerObserver {
         delegate.value?.onSubtitleSelectionChanged(player: player, playerItem: playerItem, subtitleTrack: subtitleTrack)
       }
     }
+
+    currentAudioTracksObserver = NotificationCenter.default.addObserver(
+      forName: AVPlayerItem.mediaSelectionDidChangeNotification,
+      object: playerItem,
+      queue: nil
+    ) { [weak self] _ in
+      self?.delegates.forEach { delegate in
+        let audioTrack = VideoPlayerAudioTracks.findCurrentAudioTrack(for: playerItem)
+        delegate.value?.onAudioTrackSelectionChanged(player: player, playerItem: playerItem, audioTrack: audioTrack)
+      }
+    }
   }
 
   private func invalidateCurrentPlayerItemObservers() {
@@ -250,6 +264,7 @@ class VideoPlayerObserver {
     tracksObserver?.invalidate()
     NotificationCenter.default.removeObserver(playerItemObserver as Any)
     NotificationCenter.default.removeObserver(currentSubtitlesObserver as Any)
+    NotificationCenter.default.removeObserver(currentAudioTracksObserver as Any)
   }
 
   func startOrUpdateTimeUpdates(forInterval interval: Double) {
@@ -338,8 +353,8 @@ class VideoPlayerObserver {
       status = .loading
     case .failed:
       // The AVPlayerItem.error can't be modified, so we have a custom field for caching errors
-      let playerItemError = (playerItem as? VideoPlayerItem)?.cachingError ?? error
-      error = PlayerItemLoadException(playerItemError?.description)
+      let playerItemError = (playerItem as? VideoPlayerItem)?.urlAsset.cachingError ?? error
+      error = PlayerItemLoadException(playerItemError?.localizedDescription)
       status = .error
     case .readyToPlay:
       if playerItem.isPlaybackBufferEmpty {
@@ -347,6 +362,9 @@ class VideoPlayerObserver {
       } else {
         status = .readyToPlay
       }
+    @unknown default:
+      log.error("Unhandled `AVPlayerItem.Status` value: \(playerItem.status), returning `.loading` as fallback. Add the missing case as soon as possible.")
+      status = .loading
     }
 
     if let player, !loadedCurrentItem && (status == .readyToPlay || status == .error) {

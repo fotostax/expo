@@ -6,11 +6,53 @@
 
 ### 🎉 New features
 
-- Support GitHub shorthand for templates ([#33383](https://github.com/expo/expo/pull/33383) by [@satya164](https://github.com/satya164))
-
 ### 🐛 Bug fixes
 
+- Update to `getenv@2.0.0` to support upper case boolean environment variables ([#36688](https://github.com/expo/expo/pull/36688) by [@stephenlacy](https://github.com/stephenlacy))
+
 ### 💡 Others
+
+- Remove "Please" from warnings and errors ([#36862](https://github.com/expo/expo/pull/36862) by [@brentvatne](https://github.com/brentvatne))
+
+## 3.4.2 — 2025-05-01
+
+_This version does not introduce any user-facing changes._
+
+## 3.4.1 — 2025-04-30
+
+### 💡 Others
+
+- add template and example links to the default output ([#36235](https://github.com/expo/expo/pull/36235) by [@vonovak](https://github.com/vonovak))
+
+## 3.4.0 — 2025-04-28
+
+### 🎉 New features
+
+- Add support for `.vscode`, `.eas`, `.github`, `.cursor` directories by using an underscore instead of a dot. ([#36240](https://github.com/expo/expo/pull/36240) by [@EvanBacon](https://github.com/EvanBacon))
+
+## 3.3.3 — 2025-04-14
+
+_This version does not introduce any user-facing changes._
+
+## 3.3.2 — 2025-04-09
+
+_This version does not introduce any user-facing changes._
+
+## 3.3.1 — 2025-04-08
+
+_This version does not introduce any user-facing changes._
+
+## 3.3.0 — 2025-03-31
+
+### 🎉 New features
+
+- Support GitHub shorthand for templates ([#33383](https://github.com/expo/expo/pull/33383) by [@satya164](https://github.com/satya164))
+- Add support for aliasing and deprecating examples. ([#35717](https://github.com/expo/expo/pull/35717) by [@brentvatne](https://github.com/brentvatne))
+
+### 💡 Others
+
+- Drop `fast-glob` in favor of `glob`. ([#35082](https://github.com/expo/expo/pull/35082) by [@kitten](https://github.com/kitten))
+- Upgrade to `tar@6` ([#35315](https://github.com/expo/expo/pull/35315) by [@kitten](https://github.com/kitten))
 
 ## 3.1.6 - 2025-02-14
 

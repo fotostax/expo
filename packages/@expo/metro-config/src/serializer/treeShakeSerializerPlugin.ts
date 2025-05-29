@@ -304,7 +304,7 @@ export async function treeShakeSerializer(
               // ```
               // export { a, b, c } from 'a';
               // ```
-              // NOTE: It's import we only use one statement so we don't skew the multi-dep tracking from collect dependencies.
+              // NOTE: It's important we only use one statement so we don't skew the multi-dep tracking from collect dependencies.
               path.replaceWithMultiple([
                 // @ts-expect-error: missing type
                 types.ExportNamedDeclaration(
@@ -424,10 +424,12 @@ export async function treeShakeSerializer(
   function disconnectGraphNode(
     graphModule: Module<MixedOutput>,
     importModuleId: string,
-    { isSideEffectyImport }: { isSideEffectyImport?: boolean } = {}
+    {
+      isSideEffectyImport,
+      bailOnDuplicateDefaultExport,
+    }: { isSideEffectyImport?: boolean; bailOnDuplicateDefaultExport?: boolean } = {}
   ): { path: string; removed: boolean } {
     // Unlink the module in the graph
-
     // The hash key for the dependency instance in the module.
     const targetHashId = getDependencyHashIdForImportModuleId(graphModule, importModuleId);
     // If the dependency was already removed, then we don't need to do anything.
@@ -447,6 +449,18 @@ export async function treeShakeSerializer(
     //
     if (graphEntryForTargetImport.path.match(/\.(s?css|sass)$/)) {
       debug('Skip graph unlinking for CSS:');
+      debug('- Origin module:', graphModule.path);
+      debug('- Module ID:', importModuleId);
+      // Skip CSS imports.
+      return { path: importInstance.absolutePath, removed: false };
+    }
+
+    if (
+      bailOnDuplicateDefaultExport &&
+      // @ts-expect-error: exportNames is added by babel
+      importInstance.data.data.exportNames?.includes('default')
+    ) {
+      debug('Skip graph unlinking for duplicate default export:');
       debug('- Origin module:', graphModule.path);
       debug('- Module ID:', importModuleId);
       // Skip CSS imports.
@@ -644,12 +658,10 @@ export async function treeShakeSerializer(
           const declaration = path.node.declaration;
 
           if (types.isVariableDeclaration(declaration)) {
-            declaration.declarations.forEach((decl) => {
+            declaration.declarations = declaration.declarations.filter((decl) => {
               if (decl.id.type === 'Identifier') {
                 if (possibleUnusedExports.includes(decl.id.name) && !isExportUsed(decl.id.name)) {
                   // TODO: Update source maps
-                  markUnused(path);
-
                   debug(
                     `mark remove (type: var, depth: ${depth}):`,
                     decl.id.name,
@@ -659,9 +671,16 @@ export async function treeShakeSerializer(
 
                   // Account for variables, and classes which may contain references to other exports.
                   shouldRecurseUnusedExports = true;
+                  return false; // Remove this declaration
                 }
               }
+              return true; // Keep this declaration
             });
+
+            // If all declarations were removed, remove the entire path
+            if (declaration.declarations.length === 0) {
+              markUnused(path);
+            }
           } else if (declaration && 'id' in declaration && types.isIdentifier(declaration.id)) {
             // function, class, etc.
             if (
@@ -692,7 +711,11 @@ export async function treeShakeSerializer(
           // If export from import then check if we can remove the import.
           if (importModuleId) {
             if (path.node.specifiers.length === 0) {
-              const removeRequest = disconnectGraphNode(value, importModuleId);
+              const removeRequest = disconnectGraphNode(value, importModuleId, {
+                // Due to a quirk in how we've added tree shaking, export-all is expanded and could overlap with existing exports in the same module.
+                // If we find that the existing export has a default export then we should skip removing the node entirely.
+                bailOnDuplicateDefaultExport: true,
+              });
               if (removeRequest.removed) {
                 dirtyImports.push(removeRequest.path);
                 // TODO: Update source maps
@@ -727,10 +750,10 @@ export async function treeShakeSerializer(
     // Traverse imports and remove unused imports.
 
     // Keep track of all the imported identifiers
-    const importedIdentifiers = new Set();
+    const importedIdentifiers = new Set<string>();
 
     // Keep track of all used identifiers
-    const usedIdentifiers = new Set();
+    const usedIdentifiers = new Set<string>();
 
     const importDecs: NodePath<types.ImportDeclaration>[] = [];
 
@@ -759,9 +782,6 @@ export async function treeShakeSerializer(
       },
       Identifier(path) {
         // Make sure this identifier isn't coming from an import specifier
-        if (path.findParent((path) => path.isImportSpecifier())) {
-          return;
-        }
         if (!path.scope.bindingIdentifierEquals(path.node.name, path.node)) {
           usedIdentifiers.add(path.node.name);
         }
@@ -774,7 +794,6 @@ export async function treeShakeSerializer(
         // TODO: This doesn't account for `import {} from './foo'`
         // @ts-expect-error: custom property
         path.opts.originalSpecifiers ??= path.node.specifiers.length;
-
         importDecs.push(path);
       },
     });
@@ -792,13 +811,15 @@ export async function treeShakeSerializer(
     // Remove the unused imports from the AST
     importDecs.forEach((path) => {
       const originalSize = path.node.specifiers.length;
+
       // @ts-expect-error: custom property
       const absoluteOriginalSize = path.opts.originalSpecifiers ?? originalSize;
 
       path.node.specifiers = path.node.specifiers.filter((specifier) => {
-        if (specifier.type === 'ImportDefaultSpecifier') {
-          return !unusedImports.includes(specifier.local.name);
-        } else if (specifier.type === 'ImportNamespaceSpecifier') {
+        if (
+          specifier.type === 'ImportDefaultSpecifier' ||
+          specifier.type === 'ImportNamespaceSpecifier'
+        ) {
           return !unusedImports.includes(specifier.local.name);
         } else if (types.isIdentifier(specifier.imported)) {
           return !unusedImports.includes(specifier.imported.name);

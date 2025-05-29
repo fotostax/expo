@@ -9,7 +9,7 @@ import { Terminal } from '~/ui/components/Snippet';
 
 This can happen if your Chrome DevTools has exclusions within its ignore list. To fix the issue, use [React Native DevTools](https://reactnative.dev/docs/react-native-devtools):
 
-1. Start the React Native DevTools by pressing <kbd>J</kbd> from the development server running in the terminal window
+1. Start the React Native DevTools by pressing <kbd>j</kbd> from the development server running in the terminal window
 2. Open **Settings** by clicking the gear icon
 3. Under **Extensions**, click **Restore defaults and reload**
 4. Open **Settings** again, and go to **Ignore List** tab
@@ -42,6 +42,15 @@ export function App() {
 }
 
 registerRootComponent(App);
+```
+
+Then, update your app's main entry point in **package.json**:
+
+```json package.json
+{
+  "main": "index.js"
+  /* @hide ... */ /* @end */
+}
 ```
 
 > Do not use this to change the root directory (**app**) as it won't account for usage in any other places.

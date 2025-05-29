@@ -31,9 +31,7 @@ export function useAudioSampleListener(player, listener) {
         }
         player.setAudioSamplingEnabled(true);
         const subscription = player.addListener(AUDIO_SAMPLE_UPDATE, listener);
-        return () => {
-            subscription.remove();
-        };
+        return () => subscription.remove();
     }, [player.id]);
 }
 // @docsMissing
@@ -84,6 +82,7 @@ export async function setAudioModeAsync(mode) {
         : {
             shouldPlayInBackground: mode.shouldPlayInBackground,
             shouldRouteThroughEarpiece: mode.shouldRouteThroughEarpiece,
+            interruptionMode: mode.interruptionModeAndroid,
         };
     return await AudioModule.setAudioModeAsync(audioMode);
 }

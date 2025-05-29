@@ -115,6 +115,18 @@ public final class ImageModule: Module {
         view.sdImageView.stopAnimating()
       }
 
+      AsyncFunction("lockResourceAsync") { (view: ImageView) in
+        view.lockResource = true
+      }
+
+      AsyncFunction("unlockResourceAsync") { (view: ImageView) in
+        view.lockResource = false
+      }
+
+      AsyncFunction("reloadAsync") { (view: ImageView) in
+        view.reload(force: true)
+      }
+
       OnViewDidUpdateProps { view in
         view.reload()
       }
@@ -209,8 +221,7 @@ public final class ImageModule: Module {
   }
 
   static func registerCoders() {
-    // By default Animated WebP is not supported
-    SDImageCodersManager.shared.addCoder(SDImageAWebPCoder.shared)
+    SDImageCodersManager.shared.addCoder(WebPCoder.shared)
     SDImageCodersManager.shared.addCoder(SDImageAVIFCoder.shared)
     SDImageCodersManager.shared.addCoder(SDImageSVGCoder.shared)
     SDImageCodersManager.shared.addCoder(SDImageHEICCoder.shared)

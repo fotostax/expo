@@ -15,18 +15,29 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.treeShakeSerializer = exports.isModuleEmptyFor = void 0;
+exports.isModuleEmptyFor = isModuleEmptyFor;
+exports.treeShakeSerializer = treeShakeSerializer;
 /**
  * Copyright © 2024 650 Industries.
  *
@@ -66,7 +77,6 @@ function isModuleEmptyFor(ast) {
     });
     return isEmptyOrCommentsAndUseStrict;
 }
-exports.isModuleEmptyFor = isModuleEmptyFor;
 function isEmptyModule(value) {
     return value.output.every((outputItem) => {
         return isModuleEmptyFor(accessAst(outputItem));
@@ -257,7 +267,7 @@ async function treeShakeSerializer(entryPoint, preModules, graph, options) {
                             // ```
                             // export { a, b, c } from 'a';
                             // ```
-                            // NOTE: It's import we only use one statement so we don't skew the multi-dep tracking from collect dependencies.
+                            // NOTE: It's important we only use one statement so we don't skew the multi-dep tracking from collect dependencies.
                             path.replaceWithMultiple([
                                 // @ts-expect-error: missing type
                                 types.ExportNamedDeclaration(null, exportResults.exportNames.map((exportName) => types.exportSpecifier(types.identifier(exportName), types.identifier(exportName))), types.stringLiteral(path.node.source.value)),
@@ -347,7 +357,7 @@ async function treeShakeSerializer(entryPoint, preModules, graph, options) {
         }
         return depId;
     }
-    function disconnectGraphNode(graphModule, importModuleId, { isSideEffectyImport } = {}) {
+    function disconnectGraphNode(graphModule, importModuleId, { isSideEffectyImport, bailOnDuplicateDefaultExport, } = {}) {
         // Unlink the module in the graph
         // The hash key for the dependency instance in the module.
         const targetHashId = getDependencyHashIdForImportModuleId(graphModule, importModuleId);
@@ -361,6 +371,15 @@ async function treeShakeSerializer(entryPoint, preModules, graph, options) {
         //
         if (graphEntryForTargetImport.path.match(/\.(s?css|sass)$/)) {
             debug('Skip graph unlinking for CSS:');
+            debug('- Origin module:', graphModule.path);
+            debug('- Module ID:', importModuleId);
+            // Skip CSS imports.
+            return { path: importInstance.absolutePath, removed: false };
+        }
+        if (bailOnDuplicateDefaultExport &&
+            // @ts-expect-error: exportNames is added by babel
+            importInstance.data.data.exportNames?.includes('default')) {
+            debug('Skip graph unlinking for duplicate default export:');
             debug('- Origin module:', graphModule.path);
             debug('- Module ID:', importModuleId);
             // Skip CSS imports.
@@ -510,17 +529,22 @@ async function treeShakeSerializer(entryPoint, preModules, graph, options) {
                     // Remove the entire node if the export has been completely removed.
                     const declaration = path.node.declaration;
                     if (types.isVariableDeclaration(declaration)) {
-                        declaration.declarations.forEach((decl) => {
+                        declaration.declarations = declaration.declarations.filter((decl) => {
                             if (decl.id.type === 'Identifier') {
                                 if (possibleUnusedExports.includes(decl.id.name) && !isExportUsed(decl.id.name)) {
                                     // TODO: Update source maps
-                                    markUnused(path);
                                     debug(`mark remove (type: var, depth: ${depth}):`, decl.id.name, 'from:', value.path);
                                     // Account for variables, and classes which may contain references to other exports.
                                     shouldRecurseUnusedExports = true;
+                                    return false; // Remove this declaration
                                 }
                             }
+                            return true; // Keep this declaration
                         });
+                        // If all declarations were removed, remove the entire path
+                        if (declaration.declarations.length === 0) {
+                            markUnused(path);
+                        }
                     }
                     else if (declaration && 'id' in declaration && types.isIdentifier(declaration.id)) {
                         // function, class, etc.
@@ -543,7 +567,11 @@ async function treeShakeSerializer(entryPoint, preModules, graph, options) {
                     // If export from import then check if we can remove the import.
                     if (importModuleId) {
                         if (path.node.specifiers.length === 0) {
-                            const removeRequest = disconnectGraphNode(value, importModuleId);
+                            const removeRequest = disconnectGraphNode(value, importModuleId, {
+                                // Due to a quirk in how we've added tree shaking, export-all is expanded and could overlap with existing exports in the same module.
+                                // If we find that the existing export has a default export then we should skip removing the node entirely.
+                                bailOnDuplicateDefaultExport: true,
+                            });
                             if (removeRequest.removed) {
                                 dirtyImports.push(removeRequest.path);
                                 // TODO: Update source maps
@@ -599,9 +627,6 @@ async function treeShakeSerializer(entryPoint, preModules, graph, options) {
             },
             Identifier(path) {
                 // Make sure this identifier isn't coming from an import specifier
-                if (path.findParent((path) => path.isImportSpecifier())) {
-                    return;
-                }
                 if (!path.scope.bindingIdentifierEquals(path.node.name, path.node)) {
                     usedIdentifiers.add(path.node.name);
                 }
@@ -628,10 +653,8 @@ async function treeShakeSerializer(entryPoint, preModules, graph, options) {
             // @ts-expect-error: custom property
             const absoluteOriginalSize = path.opts.originalSpecifiers ?? originalSize;
             path.node.specifiers = path.node.specifiers.filter((specifier) => {
-                if (specifier.type === 'ImportDefaultSpecifier') {
-                    return !unusedImports.includes(specifier.local.name);
-                }
-                else if (specifier.type === 'ImportNamespaceSpecifier') {
+                if (specifier.type === 'ImportDefaultSpecifier' ||
+                    specifier.type === 'ImportNamespaceSpecifier') {
                     return !unusedImports.includes(specifier.local.name);
                 }
                 else if (types.isIdentifier(specifier.imported)) {
@@ -726,7 +749,6 @@ async function treeShakeSerializer(entryPoint, preModules, graph, options) {
         }
     }
 }
-exports.treeShakeSerializer = treeShakeSerializer;
 function accessAst(output) {
     return output.data.ast;
 }

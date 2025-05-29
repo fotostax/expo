@@ -1,6 +1,6 @@
 import chalk from 'chalk';
-import glob from 'fast-glob';
 import fs from 'fs';
+import { glob } from 'glob';
 import { createRequire } from 'module';
 import path from 'path';
 
@@ -51,11 +51,7 @@ export async function findModulesAsync(providedOptions: SearchOptions): Promise<
         searchPaths.add(maybeIsolatedModulesPath);
       }
 
-      // we ignore the `exclude` option for custom native modules
-      if (
-        (!isNativeModulesDir && options.exclude?.includes(name)) ||
-        !expoModuleConfig.supportsPlatform(options.platform)
-      ) {
+      if (options.exclude?.includes(name) || !expoModuleConfig.supportsPlatform(options.platform)) {
         continue;
       }
 

@@ -6,7 +6,72 @@
 
 ### 🎉 New features
 
-- Allow `version` to be overridden on iOS and Android. ([#33637](https://github.com/expo/expo/pull/33637) by [@Titozzz](https://github.com/Titozzz))
+### 🐛 Bug fixes
+
+- Update to `getenv@2.0.0` to support upper case boolean environment variables ([#36688](https://github.com/expo/expo/pull/36688) by [@stephenlacy](https://github.com/stephenlacy))
+
+### 💡 Others
+
+- Add missing `package.json:types` and `package.json:exports` fields ([#36774](https://github.com/expo/expo/pull/36774) by [@kitten](https://github.com/kitten))
+- Remove "Please" from warnings and errors ([#36862](https://github.com/expo/expo/pull/36862) by [@brentvatne](https://github.com/brentvatne))
+
+## 10.0.2 — 2025-05-01
+
+### 🐛 Bug fixes
+
+- Ensure that the manifest has a valid intent filter before appending schemes. This fixes an issue where the scheme was not being added to the manifest when no `scheme` was provided in the config. ([#36541](https://github.com/expo/expo/pull/36541) by [@brentvatne](https://github.com/brentvatne))
+
+## 10.0.1 — 2025-04-30
+
+_This version does not introduce any user-facing changes._
+
+## 10.0.0 — 2025-04-30
+
+### 🛠 Breaking changes
+
+- Remove `android.package` from the list of schemes. ([#36472](https://github.com/expo/expo/pull/36472) by [@brentvatne](https://github.com/brentvatne))
+
+### 🎉 New features
+
+- Expose support for `ios.scheme` and `android.scheme` in the config schema. ([#36472](https://github.com/expo/expo/pull/36472) by [@brentvatne](https://github.com/brentvatne))
+
+## 9.1.7 — 2025-04-25
+
+_This version does not introduce any user-facing changes._
+
+## 9.1.6 — 2025-04-23
+
+_This version does not introduce any user-facing changes._
+
+## 9.1.5 — 2025-04-21
+
+### 💡 Others
+
+- Added some helper for codeMod to support Gradle and Swift. ([#36203](https://github.com/expo/expo/pull/36203) by [@kudo](https://github.com/kudo))
+
+## 9.1.4 — 2025-04-14
+
+_This version does not introduce any user-facing changes._
+
+## 9.1.3 — 2025-04-11
+
+_This version does not introduce any user-facing changes._
+
+## 9.1.2 — 2025-04-09
+
+_This version does not introduce any user-facing changes._
+
+## 9.1.1 — 2025-04-08
+
+### 💡 Others
+
+- Enabled `newArchEnabled` by default. ([#35964](https://github.com/expo/expo/pull/35964) by [@kudo](https://github.com/kudo))
+
+## 9.1.0 — 2025-04-04
+
+### 🎉 New features
+
+- Support for updates.useNativeDebug. ([#35468](https://github.com/expo/expo/pull/35468) by [@douglowder](https://github.com/douglowder))
 
 ### 🐛 Bug fixes
 
@@ -19,6 +84,13 @@
 - Only add `UISupportedInterfaceOrientations~ipad` if tablet support is also enabled. ([#32361](https://github.com/expo/expo/pull/32361) by [@EvanBacon](https://github.com/EvanBacon))
 - Removed creating the bridging header from the defaults plugin and added it to the template instead. ([#33539](https://github.com/expo/expo/pull/33539) by [@tsapeta](https://github.com/tsapeta))
 - Throw more descriptive error when string resource tag value is empty. ([#34212](https://github.com/expo/expo/pull/34212) by [@wschurman](https://github.com/wschurman))
+- Update test snapshot for template changes. ([#35661](https://github.com/expo/expo/pull/35661) by [@kudo](https://github.com/kudo))
+
+## 9.0.17 - 2025-03-11
+
+### 🎉 New features
+
+- Allow `version` to be overridden on iOS and Android. ([#33637](https://github.com/expo/expo/pull/33637) by [@Titozzz](https://github.com/Titozzz))
 
 ## 9.0.16 - 2025-02-21
 

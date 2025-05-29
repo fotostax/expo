@@ -4,6 +4,66 @@
 
 ### 🛠 Breaking changes
 
+### 🎉 New features
+
+- Add support for custom headers in downloadFileAsync ([#36108](https://github.com/expo/expo/pull/36108) by [@leonhh](https://github.com/leonhh))
+
+### 🐛 Bug fixes
+
+- Improved type safety in the FileSystem module to support tsconfig setups with stricter rules than the default. ([#37107](https://github.com/expo/expo/pull/37107) by [@hirbod](https://github.com/hirbod))
+
+### 💡 Others
+
+- Remove "Please" from warnings and errors ([#36862](https://github.com/expo/expo/pull/36862) by [@brentvatne](https://github.com/brentvatne))
+
+## 18.1.10 — 2025-05-08
+
+### 🐛 Bug fixes
+
+- Fix the `UploadTask.uploadAsync` method's return type did not indicate that the method could resolve to `null`. ([#36476](https://github.com/expo/expo/pull/36476) by [@DoctorJohn](https://github.com/DoctorJohn))
+
+## 18.1.9 — 2025-05-03
+
+_This version does not introduce any user-facing changes._
+
+## 18.1.8 — 2025-04-30
+
+_This version does not introduce any user-facing changes._
+
+## 18.1.7 — 2025-04-28
+
+### 💡 Others
+
+- Remove `web-streams-polyfill` in favor of `expo` support. ([#36407](https://github.com/expo/expo/pull/36407) by [@EvanBacon](https://github.com/EvanBacon))
+
+## 18.1.6 — 2025-04-25
+
+_This version does not introduce any user-facing changes._
+
+## 18.1.5 — 2025-04-21
+
+_This version does not introduce any user-facing changes._
+
+## 18.1.4 — 2025-04-14
+
+_This version does not introduce any user-facing changes._
+
+## 18.1.3 — 2025-04-11
+
+_This version does not introduce any user-facing changes._
+
+## 18.1.2 — 2025-04-11
+
+_This version does not introduce any user-facing changes._
+
+## 18.1.1 — 2025-04-09
+
+_This version does not introduce any user-facing changes._
+
+## 18.1.0 — 2025-04-04
+
+### 🛠 Breaking changes
+
 - Bump minimum macOS version to 11.0. ([#34980](https://github.com/expo/expo/pull/34980) by [@gabrieldonadel](https://github.com/gabrieldonadel))
 
 ### 🎉 New features
@@ -12,12 +72,18 @@
 
 ### 🐛 Bug fixes
 
+- [next] Fix inconsistent behavior when using special chars in filenames. ([#35801](https://github.com/expo/expo/pull/35801) by [@aleqsio](https://github.com/aleqsio))
 - Fix expo-updates breaking filesystem on Android API 24 and 25. ([#33694](https://github.com/expo/expo/pull/33694) by [@aleqsio](https://github.com/aleqsio))
 
 ### 💡 Others
 
 - [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
 - [apple] Migrate remaining `expo-module.config.json` to unified platform syntax. ([#34445](https://github.com/expo/expo/pull/34445) by [@reichhartd](https://github.com/reichhartd))
+- [iOS] Fix warnings which will become errors in Swift 6. ([#35288](https://github.com/expo/expo/pull/35288) by [@behenate](https://github.com/behenate))
+
+## 18.0.12 - 2025-03-20
+
+_This version does not introduce any user-facing changes._
 
 ## 18.0.11 - 2025-02-19
 

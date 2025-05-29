@@ -1,5 +1,6 @@
 import { getConfig } from '@expo/config';
 import type { Platform } from '@expo/config';
+import { SerialAsset } from '@expo/metro-config/build/serializer/serializerAssets';
 import assert from 'assert';
 import chalk from 'chalk';
 import fs from 'fs';
@@ -8,8 +9,10 @@ import path from 'path';
 import { type PlatformMetadata, createMetadataJson } from './createMetadataJson';
 import { exportAssetsAsync } from './exportAssets';
 import {
+  addDomBundleToMetadataAsync,
   exportDomComponentAsync,
-  updateDomComponentAssetsForMD5Naming,
+  transformNativeBundleForMd5Filename,
+  transformDomEntryForMd5Filename,
 } from './exportDomComponents';
 import { assertEngineMismatchAsync, isEnableHermesManaged } from './exportHermes';
 import { exportApiRoutesStandaloneAsync, exportFromServerAsync } from './exportStaticAsync';
@@ -22,6 +25,7 @@ import {
   BundleOutput,
   getFilesFromSerialAssets,
   persistMetroFilesAsync,
+  BundleAssetWithFileHashes,
 } from './saveAssets';
 import { createAssetMap } from './writeContents';
 import * as Log from '../log';
@@ -165,28 +169,45 @@ export async function exportAppAsync(
             await assertEngineMismatchAsync(projectRoot, exp, platform);
           }
 
-          // Run metro bundler and create the JS bundles/source maps.
-          const bundle = await devServer.nativeExportBundleAsync(
-            {
-              platform,
-              splitChunks:
-                !env.EXPO_NO_BUNDLE_SPLITTING &&
-                ((devServer.isReactServerComponentsEnabled && !bytecode) || platform === 'web'),
-              mainModuleName: getEntryWithServerRoot(projectRoot, {
+          let bundle: {
+            artifacts: SerialAsset[];
+            assets: readonly BundleAssetWithFileHashes[];
+            files?: ExportAssetMap;
+          };
+
+          try {
+            // Run metro bundler and create the JS bundles/source maps.
+            bundle = await devServer.nativeExportBundleAsync(
+              exp,
+              {
                 platform,
-                pkg: projectConfig.pkg,
-              }),
-              mode: dev ? 'development' : 'production',
-              engine: isHermes ? 'hermes' : undefined,
-              serializerIncludeMaps: sourceMaps,
-              bytecode: bytecode && isHermes,
-              reactCompiler: !!exp.experiments?.reactCompiler,
-            },
-            files
-          );
+                splitChunks:
+                  !env.EXPO_NO_BUNDLE_SPLITTING &&
+                  ((devServer.isReactServerComponentsEnabled && !bytecode) || platform === 'web'),
+                mainModuleName: getEntryWithServerRoot(projectRoot, {
+                  platform,
+                  pkg: projectConfig.pkg,
+                }),
+                mode: dev ? 'development' : 'production',
+                engine: isHermes ? 'hermes' : undefined,
+                serializerIncludeMaps: sourceMaps,
+                bytecode: bytecode && isHermes,
+                reactCompiler: !!exp.experiments?.reactCompiler,
+              },
+              files
+            );
+          } catch (error) {
+            Log.log('');
+            if (error instanceof Error) {
+              Log.exception(error);
+            } else {
+              Log.error('Failed to bundle the app');
+              Log.log(error as any);
+            }
+            process.exit(1);
+          }
 
           bundles[platform] = bundle;
-          domComponentAssetsMetadata[platform] = [];
 
           getFilesFromSerialAssets(bundle.artifacts, {
             includeSourceMaps: sourceMaps,
@@ -215,20 +236,26 @@ export async function exportAppAsync(
                   includeSourceMaps: sourceMaps,
                   exp,
                   files,
+                  useMd5Filename: true,
                 });
 
               // Merge the assets from the DOM component into the output assets.
               // @ts-expect-error: mutate assets
               bundle.assets.push(...platformDomComponentsBundle.assets);
 
-              const assetsMetadata = updateDomComponentAssetsForMD5Naming({
+              transformNativeBundleForMd5Filename({
                 domComponentReference: filePath,
                 nativeBundle: bundle,
-                domComponentBundle: platformDomComponentsBundle,
                 files,
                 htmlOutputName,
               });
-              domComponentAssetsMetadata[platform]?.push(...assetsMetadata);
+              domComponentAssetsMetadata[platform] = [
+                ...(await addDomBundleToMetadataAsync(platformDomComponentsBundle)),
+                ...transformDomEntryForMd5Filename({
+                  files,
+                  htmlOutputName,
+                }),
+              ];
             })
           );
 

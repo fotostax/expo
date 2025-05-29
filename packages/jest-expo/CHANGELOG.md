@@ -4,13 +4,72 @@
 
 ### 🛠 Breaking changes
 
-- upgrade RN to 0.78 ([#35050](https://github.com/expo/expo/pull/35050) by [@vonovak](https://github.com/vonovak))
-
 ### 🎉 New features
 
 ### 🐛 Bug fixes
 
+- Fix `requireOptionalNativeModule` throwing error if mock is missing. ([#36839](https://github.com/expo/expo/pull/36839) by [@aleqsio](https://github.com/aleqsio))
+
 ### 💡 Others
+
+- Rework mock generation for expo modules. ([#36677](https://github.com/expo/expo/pull/36677) by [@aleqsio](https://github.com/aleqsio))
+
+## 53.0.5 — 2025-05-06
+
+_This version does not introduce any user-facing changes._
+
+## 53.0.4 — 2025-05-02
+
+### 🐛 Bug fixes
+
+- Add ExpoFontUtils mock ([#36585](https://github.com/expo/expo/pull/36585) by [@brentvatne](https://github.com/brentvatne))
+
+## 53.0.3 — 2025-05-01
+
+_This version does not introduce any user-facing changes._
+
+## 53.0.2 — 2025-04-30
+
+_This version does not introduce any user-facing changes._
+
+## 53.0.1 — 2025-04-28
+
+### 🎉 New features
+
+- add web stream API support globally on native ([#36407](https://github.com/expo/expo/pull/36407) by [@EvanBacon](https://github.com/EvanBacon))
+
+## 53.0.0 — 2025-04-25
+
+_This version does not introduce any user-facing changes._
+
+## 53.0.0-preview.3 — 2025-04-14
+
+_This version does not introduce any user-facing changes._
+
+## 53.0.0-preview.2 — 2025-04-11
+
+_This version does not introduce any user-facing changes._
+
+## 53.0.0-preview.1 — 2025-04-08
+
+_This version does not introduce any user-facing changes._
+
+## 53.0.0-preview.0 — 2025-04-04
+
+### 🛠 Breaking changes
+
+- upgrade RN to 0.78 ([#35050](https://github.com/expo/expo/pull/35050) by [@vonovak](https://github.com/vonovak))
+
+### 🐛 Bug fixes
+
+- Drop `fbemitter` in favor of internal logic. ([#35318](https://github.com/expo/expo/pull/35319) by [@kitten](https://github.com/kitten)
+- Update mocks to for esm exports. ([#35574](https://github.com/expo/expo/pull/35574) by [@alanjhughes](https://github.com/alanjhughes))
+
+## 52.0.6 - 2025-03-11
+
+### 🐛 Bug fixes
+
+- Fixed jest error from `FormData`. ([#35162](https://github.com/expo/expo/pull/35162) by [@WoLewicki](https://github.com/WoLewicki))
 
 ## 52.0.5 - 2025-02-21
 

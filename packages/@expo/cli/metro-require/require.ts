@@ -97,10 +97,12 @@ export type DefineFn = (
 type VerboseModuleNameForDev = string;
 type ModuleDefiner = (moduleId: ModuleID) => void;
 
-global.__r = metroRequire as RequireFn;
-global[`${__METRO_GLOBAL_PREFIX__}__d`] = define as DefineFn;
-global.__c = clear;
-global.__registerSegment = registerSegment;
+if (__DEV__ || !global[`${__METRO_GLOBAL_PREFIX__}__d`]) {
+  global.__r = metroRequire as RequireFn;
+  global[`${__METRO_GLOBAL_PREFIX__}__d`] = define as DefineFn;
+  global.__c = clear;
+  global.__registerSegment = registerSegment;
+}
 
 var modules = clear();
 
@@ -182,7 +184,10 @@ function define(factory: FactoryFn, moduleId: ModuleID, dependencyMap?: Dependen
   }
 }
 
-function metroRequire(moduleId: ModuleID | VerboseModuleNameForDev): Exports {
+function metroRequire(
+  moduleId: ModuleID | VerboseModuleNameForDev,
+  moduleIdHint?: string
+): Exports {
   // if (__DEV__ && typeof moduleId === 'string') {
   //   const verboseName = moduleId;
   //   moduleId = getModuleIdForVerboseName(verboseName);
@@ -215,7 +220,7 @@ function metroRequire(moduleId: ModuleID | VerboseModuleNameForDev): Exports {
 
   return module && module.isInitialized
     ? module.publicModule.exports
-    : guardedLoadModule(moduleId, module);
+    : guardedLoadModule(moduleId, module, moduleIdHint);
 }
 
 // We print require cycles unless they match a pattern in the
@@ -309,7 +314,8 @@ metroRequire.resolveWeak = function fallbackRequireResolveWeak() {
 
 // Same as metroRequire but without the confusing error behavior. If the module import throws an error, it will be thrown normally.
 metroRequire.unguarded = function requireUnguarded(
-  moduleId: ModuleID | VerboseModuleNameForDev
+  moduleId: ModuleID | VerboseModuleNameForDev,
+  moduleIdHint?: string
 ): Exports {
   if (__DEV__) {
     const initializingIndex = initializingModuleIds.indexOf(moduleId);
@@ -333,19 +339,20 @@ metroRequire.unguarded = function requireUnguarded(
   const module = modules.get(moduleId);
   return module && module.isInitialized
     ? module.publicModule.exports
-    : loadModuleImplementation(moduleId, module);
+    : loadModuleImplementation(moduleId, module, moduleIdHint);
 };
 
 let inGuard = false;
 function guardedLoadModule(
   moduleId: ModuleID,
-  module: ModuleDefinition | undefined | null
+  module: ModuleDefinition | undefined | null,
+  moduleIdHint?: string
 ): Exports {
   if (!inGuard && global.ErrorUtils) {
     inGuard = true;
     let returnValue;
     try {
-      returnValue = loadModuleImplementation(moduleId, module);
+      returnValue = loadModuleImplementation(moduleId, module, moduleIdHint);
     } catch (e) {
       // TODO: (moti) T48204692 Type this use of ErrorUtils.
       global.ErrorUtils.reportFatalError(e);
@@ -353,7 +360,7 @@ function guardedLoadModule(
     inGuard = false;
     return returnValue;
   } else {
-    return loadModuleImplementation(moduleId, module);
+    return loadModuleImplementation(moduleId, module, moduleIdHint);
   }
 }
 
@@ -406,7 +413,8 @@ function registerSegment(
 
 function loadModuleImplementation(
   moduleId: ModuleID,
-  module: ModuleDefinition | undefined | null
+  module: ModuleDefinition | undefined | null,
+  moduleIdHint?: string
 ): Exports {
   if (!module && moduleDefinersBySegmentID.length > 0) {
     const segmentId = definingSegmentByModuleID.get(moduleId) ?? 0;
@@ -428,7 +436,7 @@ function loadModuleImplementation(
   //   }
 
   if (!module) {
-    throw unknownModuleError(moduleId);
+    throw unknownModuleError(moduleId, moduleIdHint);
   }
 
   if (module.hasError) {
@@ -517,8 +525,9 @@ function loadModuleImplementation(
   }
 }
 
-function unknownModuleError(id: ModuleID): Error {
-  let message = 'Requiring unknown module "' + id + '".';
+function unknownModuleError(id: ModuleID, moduleIdHint?: string): Error {
+  let message =
+    'Requiring unknown module "' + (id ?? moduleIdHint ?? `[unknown optional import]`) + '".';
   if (__DEV__) {
     message +=
       ' If you are sure the module exists, try restarting Metro. ' +

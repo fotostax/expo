@@ -56,6 +56,8 @@ public final class ImageView: ExpoView {
 
   var allowDownscaling: Bool = true
 
+  var lockResource: Bool = false
+
   var recyclingKey: String? {
     didSet {
       if oldValue != nil && recyclingKey != oldValue {
@@ -118,7 +120,10 @@ public final class ImageView: ExpoView {
 
   // MARK: - Implementation
 
-  func reload() {
+  func reload(force: Bool = false) {
+    if lockResource && !force {
+      return
+    }
     if isViewEmpty {
       displayPlaceholderIfNecessary()
     }
@@ -139,13 +144,8 @@ public final class ImageView: ExpoView {
     // It seems that `UIImageView` can't tint some vector graphics. If the `tintColor` prop is specified,
     // we tell the SVG coder to decode to a bitmap instead. This will become useless when we switch to SVGNative coder.
     if imageTintColor != nil {
-      context[.imageDecodeOptions] = [
-        SDImageCoderOption.webImageContext: [
-          "svgPrefersBitmap": true,
-          "svgImageSize": sdImageView.bounds.size,
-          "svgImagePreserveAspectRatio": true
-        ]
-      ]
+      context[.imagePreserveAspectRatio] = true
+      context[.imageThumbnailPixelSize] = sdImageView.bounds.size
     }
 
     // Some loaders (e.g. PhotoLibraryAssetLoader) may need to know the screen scale.
@@ -249,7 +249,7 @@ public final class ImageView: ExpoView {
       return nil
     }()
 
-    if let path, let local = UIImage(named: path) {
+    if let path, !path.isEmpty, let local = UIImage(named: path) {
       renderSourceImage(local)
       return true
     }
@@ -337,7 +337,10 @@ public final class ImageView: ExpoView {
 
   // MARK: - Processing
 
-  private func createTransformPipeline() -> SDImagePipelineTransformer {
+  private func createTransformPipeline() -> SDImagePipelineTransformer? {
+    if blurRadius <= 0 {
+      return nil
+    }
     let transformers: [SDImageTransformer] = [
       SDImageBlurTransformer(radius: blurRadius)
     ]
@@ -348,9 +351,15 @@ public final class ImageView: ExpoView {
     guard let image = image, !bounds.isEmpty else {
       return nil
     }
+    sdImageView.animationTransformer = nil
     // Downscale the image only when necessary
     if allowDownscaling && shouldDownscale(image: image, toSize: idealSize, scale: scale) {
-      return resize(animatedImage: image, toSize: idealSize, scale: scale)
+      if image.sd_isAnimated {
+        let size = idealSize * scale
+        sdImageView.animationTransformer = SDImageResizingTransformer(size: size, scaleMode: .fill)
+        return image
+      }
+      return resize(image: image, toSize: idealSize, scale: scale)
     }
     return image
   }
@@ -362,7 +371,20 @@ public final class ImageView: ExpoView {
    */
   private func applyContentPosition(contentSize: CGSize, containerSize: CGSize) {
     let offset = contentPosition.offset(contentSize: contentSize, containerSize: containerSize)
-    sdImageView.layer.frame.origin = offset
+    if sdImageView.layer.mask != nil {
+      // In New Architecture mode, React Native adds a mask layer to image subviews.
+      // When moving the layer frame, we must move the mask layer with a compensation value.
+      // This prevents the layer from being cropped.
+      // See https://github.com/expo/expo/issues/34201
+      // and https://github.com/facebook/react-native/blob/c72d4c5ee97/packages/react-native/React/Fabric/Mounting/ComponentViews/View/RCTViewComponentView.mm#L1066-L1076
+      CATransaction.begin()
+      CATransaction.setDisableActions(true)
+      sdImageView.layer.frame.origin = offset
+      sdImageView.layer.mask?.frame.origin = CGPoint(x: -offset.x, y: -offset.y)
+      CATransaction.commit()
+    } else {
+      sdImageView.layer.frame.origin = offset
+    }
   }
 
   internal func renderSourceImage(_ image: UIImage?) {

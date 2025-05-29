@@ -62,11 +62,11 @@ function getResolverContext(
     dev: true,
     extraNodeModules: {},
     mainFields: ['react-native', 'browser', 'main'],
-    nodeModulesPaths: ['/node_modules'],
+    nodeModulesPaths: ['/root/node_modules'],
     preferNativePlatform: true,
     sourceExts: ['mjs', 'ts', 'tsx', 'js', 'jsx', 'json', 'css'],
     customResolverOptions: {},
-    originModulePath: '/index.js',
+    originModulePath: '/root/index.js',
     getPackage: () => null,
     ...context,
   } as any;
@@ -79,14 +79,14 @@ function getNodeResolverContext({
     dev: true,
     extraNodeModules: {},
     mainFields: ['react-native', 'browser', 'main'],
-    nodeModulesPaths: ['/node_modules'],
+    nodeModulesPaths: ['/root/node_modules'],
     preferNativePlatform: true,
     sourceExts: ['mjs', 'ts', 'tsx', 'js', 'jsx', 'json', 'css'],
     customResolverOptions: {
       environment: 'node',
       ...(customResolverOptions || {}),
     },
-    originModulePath: '/index.js',
+    originModulePath: '/root/index.js',
     ...context,
   } as any;
 }
@@ -101,7 +101,7 @@ describe(withExtendedResolver, () => {
       {
         'node_modules/@react-native/assets-registry/registry.js': '',
       },
-      '/'
+      '/root/'
     );
   }
   afterEach(() => {
@@ -111,7 +111,7 @@ describe(withExtendedResolver, () => {
   it(`resolves a file for web`, async () => {
     mockMinFs();
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: null,
       isTsconfigPathsEnabled: false,
       getMetroBundler: getMetroBundlerGetter(),
@@ -121,12 +121,12 @@ describe(withExtendedResolver, () => {
 
     modified.resolver.resolveRequest!(getDefaultRequestContext(), 'react-native', platform);
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       expect.objectContaining({
         extraNodeModules: {},
         mainFields: ['react-native', 'browser', 'main'],
-        nodeModulesPaths: ['/node_modules'],
+        nodeModulesPaths: ['/root/node_modules'],
         preferNativePlatform: true,
         sourceExts: ['mjs', 'ts', 'tsx', 'js', 'jsx', 'json', 'css'],
         customResolverOptions: {},
@@ -141,7 +141,7 @@ describe(withExtendedResolver, () => {
   it(`resolves against tsconfig baseUrl`, async () => {
     mockMinFs();
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: { baseUrl: '/src', paths: { '/*': ['*'] } },
       isTsconfigPathsEnabled: true,
     });
@@ -150,7 +150,7 @@ describe(withExtendedResolver, () => {
 
     modified.resolver.resolveRequest!(getDefaultRequestContext(), 'react-native', platform);
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
 
     expect(getResolveFunc()).toHaveBeenNthCalledWith(
       1,
@@ -167,7 +167,7 @@ describe(withExtendedResolver, () => {
   it(`resolves against tsconfig baseUrl without paths`, async () => {
     mockMinFs();
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: { baseUrl: '/src' },
       isTsconfigPathsEnabled: true,
     });
@@ -176,7 +176,7 @@ describe(withExtendedResolver, () => {
 
     modified.resolver.resolveRequest!(getDefaultRequestContext(), 'react-native', platform);
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
 
     expect(getResolveFunc()).toHaveBeenNthCalledWith(
       1,
@@ -193,7 +193,7 @@ describe(withExtendedResolver, () => {
   it(`does not alias react-native-web in initial resolution with baseUrl on web`, async () => {
     mockMinFs();
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: { baseUrl: '/src', paths: { '/*': ['*'] } },
       isTsconfigPathsEnabled: true,
     });
@@ -202,8 +202,8 @@ describe(withExtendedResolver, () => {
 
     modified.resolver.resolveRequest!(getDefaultRequestContext(), 'react-native', platform);
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       expect.objectContaining({
         mainFields: ['browser', 'module', 'main'],
         preferNativePlatform: false,
@@ -216,7 +216,7 @@ describe(withExtendedResolver, () => {
   it(`resolves to react-native-web on web`, async () => {
     mockMinFs();
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: {},
       isTsconfigPathsEnabled: false,
     });
@@ -225,8 +225,8 @@ describe(withExtendedResolver, () => {
 
     modified.resolver.resolveRequest!(getDefaultRequestContext(), 'react-native', platform);
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       expect.objectContaining({
         mainFields: ['browser', 'module', 'main'],
         preferNativePlatform: false,
@@ -239,7 +239,7 @@ describe(withExtendedResolver, () => {
   it(`resolves to expo-asset/build/resolveAssetSource on web`, async () => {
     mockMinFs();
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: {},
       isTsconfigPathsEnabled: false,
     });
@@ -252,8 +252,8 @@ describe(withExtendedResolver, () => {
       platform
     );
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       expect.objectContaining({
         mainFields: ['browser', 'module', 'main'],
         preferNativePlatform: false,
@@ -275,7 +275,7 @@ describe(withExtendedResolver, () => {
       it(`resolves production react files to empty when bundling for development: (platform: ${platform}, import: ${targetModulePath})`, async () => {
         mockMinFs();
 
-        const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+        const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
           tsconfig: {},
           isTsconfigPathsEnabled: false,
         });
@@ -297,7 +297,7 @@ describe(withExtendedResolver, () => {
     it(`does not mock native files on web`, async () => {
       mockMinFs();
 
-      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
         tsconfig: {},
         isTsconfigPathsEnabled: false,
       });
@@ -319,7 +319,7 @@ describe(withExtendedResolver, () => {
     it(`resolves production react files normally when bundling for production`, async () => {
       mockMinFs();
 
-      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
         tsconfig: {},
         isTsconfigPathsEnabled: false,
       });
@@ -344,11 +344,11 @@ describe(withExtendedResolver, () => {
         'node_modules/@react-native/assets-registry/registry.js': '',
         'node_modules/@expo/vector-icons/index.js': '',
       },
-      '/'
+      '/root/'
     );
 
     ['ios', 'web'].forEach((platform) => {
-      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
         tsconfig: {},
         isTsconfigPathsEnabled: false,
       });
@@ -359,7 +359,11 @@ describe(withExtendedResolver, () => {
         platform
       );
 
-      expect(getResolveFunc()).toBeCalledWith(expect.anything(), '@expo/vector-icons', platform);
+      expect(getResolveFunc()).toHaveBeenCalledWith(
+        expect.anything(),
+        '@expo/vector-icons',
+        platform
+      );
     });
   });
 
@@ -369,11 +373,11 @@ describe(withExtendedResolver, () => {
         'node_modules/@react-native/assets-registry/registry.js': '',
         'node_modules/@expo/vector-icons/index.js': '',
       },
-      '/'
+      '/root/'
     );
 
     ['ios', 'web'].forEach((platform) => {
-      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
         tsconfig: {},
         isTsconfigPathsEnabled: false,
       });
@@ -384,7 +388,7 @@ describe(withExtendedResolver, () => {
         platform
       );
 
-      expect(getResolveFunc()).toBeCalledWith(
+      expect(getResolveFunc()).toHaveBeenCalledWith(
         expect.anything(),
         '@expo/vector-icons/FontAwesome',
         platform
@@ -397,11 +401,11 @@ describe(withExtendedResolver, () => {
       {
         'node_modules/@react-native/assets-registry/registry.js': '',
       },
-      '/'
+      '/root/'
     );
 
     ['ios', 'web'].forEach((platform) => {
-      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
         tsconfig: {},
         isTsconfigPathsEnabled: true,
       });
@@ -412,7 +416,7 @@ describe(withExtendedResolver, () => {
         platform
       );
 
-      expect(getResolveFunc()).toBeCalledWith(
+      expect(getResolveFunc()).toHaveBeenCalledWith(
         expect.anything(),
         'react-native-vector-icons',
         platform
@@ -426,16 +430,20 @@ describe(withExtendedResolver, () => {
         'node_modules/@react-native/assets-registry/registry.js': '',
         'node_modules/@expo/vector-icons/index.js': '',
       },
-      '/'
+      '/root/'
     );
     const platform = 'ios';
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: {},
       isTsconfigPathsEnabled: true,
     });
 
     modified.resolver.resolveRequest!(getDefaultRequestContext(), '@expo/vector-icons', platform);
-    expect(getResolveFunc()).toBeCalledWith(expect.anything(), '@expo/vector-icons', platform);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
+      expect.anything(),
+      '@expo/vector-icons',
+      platform
+    );
   });
 
   it(`resolves a node.js built-in as a shim on web`, async () => {
@@ -446,7 +454,7 @@ describe(withExtendedResolver, () => {
       throw new FailedToResolveNameError();
     });
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: null,
       isTsconfigPathsEnabled: false,
     });
@@ -459,8 +467,8 @@ describe(withExtendedResolver, () => {
       type: 'empty',
     });
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       expect.objectContaining({
         mainFields: ['browser', 'module', 'main'],
         preferNativePlatform: false,
@@ -481,7 +489,7 @@ describe(withExtendedResolver, () => {
       };
     });
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: null,
       isTsconfigPathsEnabled: false,
     });
@@ -495,10 +503,10 @@ describe(withExtendedResolver, () => {
       type: 'sourceFile',
     });
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       expect.objectContaining({
-        nodeModulesPaths: ['/node_modules'],
+        nodeModulesPaths: ['/root/node_modules'],
         mainFields: ['browser', 'module', 'main'],
         preferNativePlatform: false,
       }),
@@ -510,7 +518,7 @@ describe(withExtendedResolver, () => {
   it(`modifies resolution for Node.js environments`, async () => {
     mockMinFs();
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: null,
       isTsconfigPathsEnabled: false,
     });
@@ -528,8 +536,8 @@ describe(withExtendedResolver, () => {
       platform
     );
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       expect.objectContaining({
         mainFields: ['main', 'module'],
         preferNativePlatform: false,
@@ -544,7 +552,7 @@ describe(withExtendedResolver, () => {
   it(`modifies resolution for React Server environments`, async () => {
     mockMinFs();
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: null,
       isTsconfigPathsEnabled: false,
       getMetroBundler: getMetroBundlerGetter(),
@@ -563,18 +571,18 @@ describe(withExtendedResolver, () => {
       platform
     );
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       {
         customResolverOptions: { environment: 'react-server' },
         dev: true,
         extraNodeModules: {},
         mainFields: ['react-native', 'module', 'main'],
-        nodeModulesPaths: ['/node_modules'],
-        originModulePath: '/index.js',
+        nodeModulesPaths: ['/root/node_modules'],
+        originModulePath: '/root/index.js',
         preferNativePlatform: true,
         sourceExts: ['ts', 'tsx', 'js', 'jsx', 'mjs', 'json', 'css'],
-        unstable_conditionNames: ['node', 'import', 'require', 'react-server', 'workerd'],
+        unstable_conditionNames: ['node', 'react-server', 'workerd'],
         unstable_conditionsByPlatform: {},
         unstable_enablePackageExports: true,
         getPackage: expect.any(Function),
@@ -586,7 +594,7 @@ describe(withExtendedResolver, () => {
   it(`modifies resolution for React Server environments (web)`, async () => {
     mockMinFs();
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: null,
       isTsconfigPathsEnabled: false,
       getMetroBundler: getMetroBundlerGetter(),
@@ -605,18 +613,18 @@ describe(withExtendedResolver, () => {
       platform
     );
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       {
         customResolverOptions: { environment: 'react-server' },
         dev: true,
         extraNodeModules: {},
         mainFields: ['module', 'main'],
-        nodeModulesPaths: ['/node_modules'],
-        originModulePath: '/index.js',
+        nodeModulesPaths: ['/root/node_modules'],
+        originModulePath: '/root/index.js',
         preferNativePlatform: false,
         sourceExts: ['ts', 'tsx', 'js', 'jsx', 'mjs', 'json', 'css'],
-        unstable_conditionNames: ['node', 'import', 'require', 'react-server', 'workerd'],
+        unstable_conditionNames: ['node', 'react-server', 'workerd'],
         unstable_conditionsByPlatform: {},
         unstable_enablePackageExports: true,
         getPackage: expect.any(Function),
@@ -628,7 +636,7 @@ describe(withExtendedResolver, () => {
   it(`modifies resolution for Node.js environments (web + react-foobar)`, async () => {
     mockMinFs();
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: null,
       isTsconfigPathsEnabled: false,
       getMetroBundler: getMetroBundlerGetter(),
@@ -647,18 +655,18 @@ describe(withExtendedResolver, () => {
       platform
     );
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       {
         customResolverOptions: { environment: 'node' },
         dev: true,
         extraNodeModules: {},
         mainFields: ['main', 'module'],
-        nodeModulesPaths: ['/node_modules'],
-        originModulePath: '/index.js',
+        nodeModulesPaths: ['/root/node_modules'],
+        originModulePath: '/root/index.js',
         preferNativePlatform: false,
         sourceExts: ['ts', 'tsx', 'js', 'jsx', 'mjs', 'json', 'css'],
-        unstable_conditionNames: ['node', 'require'],
+        unstable_conditionNames: ['node'],
         unstable_conditionsByPlatform: {},
         unstable_enablePackageExports: true,
         getPackage: expect.any(Function),
@@ -697,7 +705,7 @@ describe(withExtendedResolver, () => {
         };
       });
 
-    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+    const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
       tsconfig: {},
       isTsconfigPathsEnabled: false,
       isReactCanaryEnabled: true,
@@ -715,8 +723,8 @@ describe(withExtendedResolver, () => {
       type: 'sourceFile',
     });
 
-    expect(getResolveFunc()).toBeCalledTimes(1);
-    expect(getResolveFunc()).toBeCalledWith(
+    expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+    expect(getResolveFunc()).toHaveBeenCalledWith(
       expect.anything(),
       '/node_modules/react-native-web/dist/cjs/exports/AppRegistry/AppContainer.js',
       'web'
@@ -725,7 +733,7 @@ describe(withExtendedResolver, () => {
 
   describe('built-in externals', () => {
     function getModifiedConfig(props: { isExporting?: boolean } = {}) {
-      return withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+      return withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
         tsconfig: {},
         isExporting: props.isExporting,
         isTsconfigPathsEnabled: false,
@@ -751,7 +759,7 @@ describe(withExtendedResolver, () => {
               );
 
               expect(result.type).toBe('empty');
-              expect(getResolveFunc()).toBeCalledTimes(1);
+              expect(getResolveFunc()).toHaveBeenCalledTimes(1);
             });
           });
 
@@ -759,7 +767,6 @@ describe(withExtendedResolver, () => {
             'source-map-support',
             'source-map-support/register.js',
             'react',
-            'react-native-helmet-async',
             '@radix-ui/accordion',
             '@babel/runtime/helpers/interopRequireDefault',
             'react-dom/server',
@@ -805,7 +812,7 @@ describe(withExtendedResolver, () => {
                 `\0node:${name}`
               );
 
-              expect(getResolveFunc()).toBeCalledTimes(0);
+              expect(getResolveFunc()).toHaveBeenCalledTimes(0);
             });
           });
 
@@ -822,10 +829,36 @@ describe(withExtendedResolver, () => {
               '\0node:@babel/runtime/xxx/foo.js'
             );
 
-            expect(getResolveFunc()).toBeCalledTimes(0);
+            expect(getResolveFunc()).toHaveBeenCalledTimes(0);
           });
         });
       });
+    });
+
+    it(`does not apply virtual externals to imports originating in CSS files`, () => {
+      vol.fromJSON(
+        {
+          'node_modules/@radix-ui/colors/green-dark.css': '',
+          mock: '',
+        },
+        '/'
+      );
+
+      const config = getModifiedConfig();
+
+      const result = config.resolver.resolveRequest!(
+        getNodeResolverContext({
+          originModulePath: '/index.css',
+        }),
+        '@radix-ui/colors/green-dark.css',
+        'web'
+      );
+
+      expect(result).toEqual({
+        type: 'empty',
+      });
+
+      expect(getResolveFunc()).toHaveBeenCalledTimes(1);
     });
 
     it(`does not extern source-map-support in server environments that are bundling for standalone exports`, async () => {
@@ -843,7 +876,7 @@ describe(withExtendedResolver, () => {
         type: 'empty',
       });
 
-      expect(getResolveFunc()).toBeCalledTimes(1);
+      expect(getResolveFunc()).toHaveBeenCalledTimes(1);
     });
 
     it(`does not extern source-map-support in client environment`, async () => {
@@ -857,7 +890,7 @@ describe(withExtendedResolver, () => {
         type: 'empty',
       });
 
-      expect(getResolveFunc()).toBeCalledTimes(1);
+      expect(getResolveFunc()).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -893,7 +926,7 @@ describe(withExtendedResolver, () => {
           };
         });
 
-      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+      const modified = withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
         tsconfig: {},
         isTsconfigPathsEnabled: false,
         isReactCanaryEnabled: true,
@@ -911,8 +944,8 @@ describe(withExtendedResolver, () => {
         type: 'sourceFile',
       });
 
-      expect(getResolveFunc()).toBeCalledTimes(1);
-      expect(getResolveFunc()).toBeCalledWith(
+      expect(getResolveFunc()).toHaveBeenCalledTimes(1);
+      expect(getResolveFunc()).toHaveBeenCalledWith(
         expect.anything(),
         '/node_modules/react-native/Libraries/Renderer/implementations/ReactNativeRenderer-dev.js',
         platform
@@ -922,7 +955,7 @@ describe(withExtendedResolver, () => {
 
   describe('with fallback module resolver', () => {
     function getModifiedConfig() {
-      return withExtendedResolver(asMetroConfig({ projectRoot: '/' }), {
+      return withExtendedResolver(asMetroConfig({ projectRoot: '/root/' }), {
         tsconfig: {},
         isTsconfigPathsEnabled: false,
         isReactCanaryEnabled: true,
@@ -936,7 +969,7 @@ describe(withExtendedResolver, () => {
 
       jest.mocked(getResolveFunc()).mockImplementation((context, moduleName, _platform) => {
         if (
-          context.originModulePath === '/index.js' &&
+          context.originModulePath === '/root/index.js' &&
           moduleName === '@babel/runtime/helpers/interopRequireDefault'
         ) {
           throw new FailedToResolveNameError();
@@ -974,7 +1007,7 @@ describe(withExtendedResolver, () => {
       // 1: Fails to resolve the dependency by `expo` (@babel/runtime)
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ originModulePath: '/index.js' }),
+        expect.objectContaining({ originModulePath: '/root/index.js' }),
         '@babel/runtime/helpers/interopRequireDefault',
         platform
       );
@@ -982,7 +1015,7 @@ describe(withExtendedResolver, () => {
       // 2: Resolves the origin root module path for `expo`
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ originModulePath: 'expo/package.json' }),
+        expect.objectContaining({ originModulePath: '/root/package.json' }),
         'expo/package.json',
         platform
       );
@@ -1004,7 +1037,7 @@ describe(withExtendedResolver, () => {
       const modified = getModifiedConfig();
 
       jest.mocked(getResolveFunc()).mockImplementation((context, moduleName, _platform) => {
-        if (context.originModulePath === '/index.js' && moduleName === 'example') {
+        if (context.originModulePath === '/root/index.js' && moduleName === 'example') {
           throw new FailedToResolveNameError();
         } else if (moduleName === 'expo/package.json') {
           return { type: 'sourceFile', filePath: `/node_modules/${moduleName}` };
@@ -1044,7 +1077,7 @@ describe(withExtendedResolver, () => {
       // 1: Fails to resolve the dependency by `expo` (example)
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ originModulePath: '/index.js' }),
+        expect.objectContaining({ originModulePath: '/root/index.js' }),
         'example',
         platform
       );
@@ -1052,7 +1085,7 @@ describe(withExtendedResolver, () => {
       // 2: Resolves the origin root module path for `expo`
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ originModulePath: 'expo/package.json' }),
+        expect.objectContaining({ originModulePath: '/root/package.json' }),
         'expo/package.json',
         platform
       );
@@ -1060,7 +1093,7 @@ describe(withExtendedResolver, () => {
       // 3: Resolves the origin root module path for `expo-router`
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         3,
-        expect.objectContaining({ originModulePath: 'expo-router/package.json' }),
+        expect.objectContaining({ originModulePath: '/root/package.json' }),
         'expo-router/package.json',
         platform
       );
@@ -1094,7 +1127,7 @@ describe(withExtendedResolver, () => {
       // 1: Fails to resolve the dependency by `expo` (@babel/runtime)
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ originModulePath: '/index.js' }),
+        expect.objectContaining({ originModulePath: '/root/index.js' }),
         'example',
         platform
       );
@@ -1102,7 +1135,7 @@ describe(withExtendedResolver, () => {
       // 2: Fails to resolve origin root module path for `expo`
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ originModulePath: 'expo/package.json' }),
+        expect.objectContaining({ originModulePath: '/root/package.json' }),
         'expo/package.json',
         platform
       );
@@ -1110,7 +1143,7 @@ describe(withExtendedResolver, () => {
       // 3: Fails to resolve origin root module path for `expo-router`
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         3,
-        expect.objectContaining({ originModulePath: 'expo-router/package.json' }),
+        expect.objectContaining({ originModulePath: '/root/package.json' }),
         'expo-router/package.json',
         platform
       );
@@ -1129,7 +1162,7 @@ describe(withExtendedResolver, () => {
             dependencies: {},
           }),
         },
-        '/'
+        '/root/'
       );
 
       const platform = 'ios';
@@ -1148,7 +1181,7 @@ describe(withExtendedResolver, () => {
       // 1: Fails to resolve the dependency (example)
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ originModulePath: '/index.js' }),
+        expect.objectContaining({ originModulePath: '/root/index.js' }),
         'example',
         platform
       );
@@ -1156,7 +1189,7 @@ describe(withExtendedResolver, () => {
       // 2: Resolves the origin root module path for `expo`
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ originModulePath: 'expo/package.json' }),
+        expect.objectContaining({ originModulePath: '/root/package.json' }),
         'expo/package.json',
         platform
       );
@@ -1164,7 +1197,7 @@ describe(withExtendedResolver, () => {
       // 2: Resolves the origin root module path for `expo-router`
       expect(getResolveFunc()).toHaveBeenNthCalledWith(
         3,
-        expect.objectContaining({ originModulePath: 'expo-router/package.json' }),
+        expect.objectContaining({ originModulePath: '/root/package.json' }),
         'expo-router/package.json',
         platform
       );

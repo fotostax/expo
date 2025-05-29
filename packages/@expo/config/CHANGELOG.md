@@ -4,13 +4,69 @@
 
 ### 🛠 Breaking changes
 
-- Remove getAccountUsername from package exports ([#33249](https://github.com/expo/expo/pull/33249) by [@wschurman](https://github.com/wschurman))
-
 ### 🎉 New features
 
 ### 🐛 Bug fixes
 
+- Update to `getenv@2.0.0` to support upper case boolean environment variables ([#36688](https://github.com/expo/expo/pull/36688) by [@stephenlacy](https://github.com/stephenlacy))
+
 ### 💡 Others
+
+- Remove "Please" from warnings and errors ([#36862](https://github.com/expo/expo/pull/36862) by [@brentvatne](https://github.com/brentvatne))
+
+## 11.0.10 — 2025-05-08
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.9 — 2025-05-06
+
+### 💡 Others
+
+- Rename remote build cache provider to build cache provider and deprecate `remoteBuildCache` field ([#36643](https://github.com/expo/expo/pull/36643) by [@gabrieldonadel](https://github.com/gabrieldonadel))
+
+## 11.0.8 — 2025-05-03
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.7 — 2025-04-30
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.6 — 2025-04-30
+
+### 🎉 New features
+
+Add remote build cache provider types ([#36448](https://github.com/expo/expo/pull/36448) by [@gabrieldonadel](https://github.com/gabrieldonadel))
+
+## 11.0.5 — 2025-04-25
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.4 — 2025-04-22
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.3 — 2025-04-14
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.2 — 2025-04-11
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.1 — 2025-04-09
+
+_This version does not introduce any user-facing changes._
+
+## 11.0.0 — 2025-04-04
+
+### 🛠 Breaking changes
+
+- Remove getAccountUsername from package exports ([#33249](https://github.com/expo/expo/pull/33249) by [@wschurman](https://github.com/wschurman))
+
+## 10.0.11 - 2025-03-11
+
+_This version does not introduce any user-facing changes._
 
 ## 10.0.10 - 2025-02-14
 

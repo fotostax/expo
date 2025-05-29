@@ -4,21 +4,99 @@
 
 ### 🛠 Breaking changes
 
+### 🎉 New features
+
+### 🐛 Bug fixes
+
+- [Android] Remove `testDebug` variant from npm package. ([#36845](https://github.com/expo/expo/pull/36845) by [@lukmccall](https://github.com/lukmccall))
+
+### 💡 Others
+
+## 5.1.11 — 2025-05-01
+
+_This version does not introduce any user-facing changes._
+
+## 5.1.10 — 2025-04-30
+
+_This version does not introduce any user-facing changes._
+
+## 5.1.9 — 2025-04-30
+
+### 🐛 Bug fixes
+
+- Fixed Property "require" doesn't exist error. ([#36484](https://github.com/expo/expo/pull/36484) by [@kudo](https://github.com/kudo))
+
+## 5.1.8 — 2025-04-28
+
+_This version does not introduce any user-facing changes._
+
+## 5.1.7 — 2025-04-28
+
+_This version does not introduce any user-facing changes._
+
+## 5.1.6 — 2025-04-25
+
+### 💡 Others
+
+- [iOS] Remove usage of deprecated `SFAuthenticationSession` for user login. ([#36395](https://github.com/expo/expo/pull/36395) by [@alanjhughes](https://github.com/alanjhughes))
+- [Android] Enable edge-to-edge. ([#36363](https://github.com/expo/expo/pull/36363) by [@behenate](https://github.com/behenate))
+
+## 5.1.5 — 2025-04-23
+
+### 🐛 Bug fixes
+
+- Fix duplicated modals ([#36326](https://github.com/expo/expo/pull/36326) by [@jakex7](https://github.com/jakex7))
+
+## 5.1.4 — 2025-04-21
+
+_This version does not introduce any user-facing changes._
+
+## 5.1.3 — 2025-04-14
+
+_This version does not introduce any user-facing changes._
+
+## 5.1.2 — 2025-04-09
+
+_This version does not introduce any user-facing changes._
+
+## 5.1.1 — 2025-04-08
+
+_This version does not introduce any user-facing changes._
+
+## 5.1.0 — 2025-04-04
+
+### 🛠 Breaking changes
+
 - upgrade RN to 0.78 ([#35050](https://github.com/expo/expo/pull/35050) by [@vonovak](https://github.com/vonovak))
 
 ### 🎉 New features
 
 - support react-native 0.77 ([#33379](https://github.com/expo/expo/pull/33379) by [@vonovak](https://github.com/vonovak))
-
-### 🐛 Bug fixes
+- Bump version of React Navigation ([#35595](https://github.com/expo/expo/pull/35595) by [@marklawlor](https://github.com/marklawlor))
 
 ### 💡 Others
 
+- use custom iOS dependencyProvider ([#35321](https://github.com/expo/expo/pull/35321) by [@vonovak](https://github.com/vonovak))
 - [6/n] upgrade to react-native 0.77 - improve 0.76 compatibility ([#34078](https://github.com/expo/expo/pull/34078) by [@vonovak](https://github.com/vonovak))
 - Fixed broken local UI development on Android. ([#33714](https://github.com/expo/expo/pull/33714) by [@kudo](https://github.com/kudo))
 - [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
 - [apple] Migrate remaining `expo-module.config.json` to unified platform syntax. ([#34445](https://github.com/expo/expo/pull/34445) by [@reichhartd](https://github.com/reichhartd))
 - Removed remote debugging dead code. ([#34977](https://github.com/expo/expo/pull/34977) by [@kudo](https://github.com/kudo))
+- [android] Migrate DevLauncherInternalModule to Expo Modules API ([#35166](https://github.com/expo/expo/pull/35166) by [@gabrieldonadel](https://github.com/gabrieldonadel))
+- Refactored `RCTReactNativeFactory` integration. ([#35679](https://github.com/expo/expo/pull/35679) by [@kudo](https://github.com/kudo))
+- [Android] Specified Gradle project version. ([#35751](https://github.com/expo/expo/pull/35751) by [@lukmccall](https://github.com/lukmccall))
+
+## 5.0.33 - 2025-04-02
+
+_This version does not introduce any user-facing changes._
+
+## 5.0.32 - 2025-03-31
+
+_This version does not introduce any user-facing changes._
+
+## 5.0.31 - 2025-03-18
+
+_This version does not introduce any user-facing changes._
 
 ## 5.0.29 - 2025-02-10
 

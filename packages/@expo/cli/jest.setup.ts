@@ -1,7 +1,6 @@
 jest.mock('@expo/devcert');
 jest.mock('@expo/image-utils');
 jest.mock('@expo/osascript');
-jest.mock('@expo/rudder-sdk-node');
 jest.mock('@expo/spawn-async');
 jest.mock('@expo/webpack-config');
 jest.mock('@expo/package-manager');
@@ -10,7 +9,7 @@ jest.mock('fs');
 jest.mock('fs/promises');
 jest.mock('better-opn');
 jest.mock('env-editor');
-jest.mock('internal-ip');
+jest.mock('lan-network');
 jest.mock('ora');
 jest.mock('os');
 jest.mock('progress');

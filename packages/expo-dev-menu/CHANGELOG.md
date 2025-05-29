@@ -4,7 +4,64 @@
 
 ### 🛠 Breaking changes
 
+### 🎉 New features
+
+### 🐛 Bug fixes
+
+- [iOS] Fix custom menu actions not triggering their callbacks after a reload. ([#37084](https://github.com/expo/expo/pull/37084) by [@alanjhughes](https://github.com/alanjhughes))
+
+### 💡 Others
+
+## 6.1.10 — 2025-05-01
+
+_This version does not introduce any user-facing changes._
+
+## 6.1.9 — 2025-04-30
+
+_This version does not introduce any user-facing changes._
+
+## 6.1.8 — 2025-04-30
+
+### 🐛 Bug fixes
+
+- Fixed Property "require" doesn't exist error. ([#36484](https://github.com/expo/expo/pull/36484) by [@kudo](https://github.com/kudo))
+
+## 6.1.7 — 2025-04-28
+
+### 💡 Others
+
+- [Android] Enable edge-to-edge. ([#36370](https://github.com/expo/expo/pull/36370) by [@behenate](https://github.com/behenate))
+
+## 6.1.6 — 2025-04-25
+
+_This version does not introduce any user-facing changes._
+
+## 6.1.5 — 2025-04-23
+
+_This version does not introduce any user-facing changes._
+
+## 6.1.4 — 2025-04-21
+
+_This version does not introduce any user-facing changes._
+
+## 6.1.3 — 2025-04-14
+
+_This version does not introduce any user-facing changes._
+
+## 6.1.2 — 2025-04-09
+
+_This version does not introduce any user-facing changes._
+
+## 6.1.1 — 2025-04-08
+
+_This version does not introduce any user-facing changes._
+
+## 6.1.0 — 2025-04-04
+
+### 🛠 Breaking changes
+
 - upgrade RN to 0.78 ([#35050](https://github.com/expo/expo/pull/35050) by [@vonovak](https://github.com/vonovak))
+- Removed react-devtools integration from CLI. ([#35741](https://github.com/expo/expo/pull/35741) by [@kudo](https://github.com/kudo))
 
 ### 🎉 New features
 
@@ -17,12 +74,24 @@
 
 ### 💡 Others
 
+- use custom iOS dependencyProvider ([#35321](https://github.com/expo/expo/pull/35321) by [@vonovak](https://github.com/vonovak))
 - [6/n] upgrade to react-native 0.77 - improve 0.76 compatibility ([#34078](https://github.com/expo/expo/pull/34078) by [@vonovak](https://github.com/vonovak))
 - Fixed broken local UI development on Android. ([#33714](https://github.com/expo/expo/pull/33714) by [@kudo](https://github.com/kudo))
 - Fixed compatibility for React Native 0.78 nightlies. ([#33718](https://github.com/expo/expo/pull/33718) by [@kudo](https://github.com/kudo))
 - [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
 - [apple] Migrate remaining `expo-module.config.json` to unified platform syntax. ([#34445](https://github.com/expo/expo/pull/34445) by [@reichhartd](https://github.com/reichhartd))
 - Removed remote debugging dead code. ([#34977](https://github.com/expo/expo/pull/34977) by [@kudo](https://github.com/kudo))
+- Refactored `RCTReactNativeFactory` integration. ([#35679](https://github.com/expo/expo/pull/35679) by [@kudo](https://github.com/kudo))
+
+## 6.0.23 - 2025-04-01
+
+### 🐛 Bug fixes
+
+- [ios] Fixed build errors in XCode 16.3 ([#35811](https://github.com/expo/expo/pull/35811) by [@chrfalch](https://github.com/chrfalch))
+
+## 6.0.22 - 2025-03-31
+
+_This version does not introduce any user-facing changes._
 
 ## 6.0.19 - 2025-02-06
 

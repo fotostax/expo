@@ -8,14 +8,14 @@ import React, {
   PropsWithoutRef,
   ReactNode,
   RefAttributes,
-  isValidElement,
   useMemo,
 } from 'react';
 
 import { useContextKey } from '../Route';
 import { PickPartial } from '../types';
 import { useSortedScreens, ScreenProps } from '../useScreens';
-import { Screen } from '../views/Screen';
+import { isProtectedReactElement, Protected } from '../views/Protected';
+import { isScreen, Screen } from '../views/Screen';
 
 export function useFilterScreenChildren(
   children: ReactNode,
@@ -30,36 +30,51 @@ export function useFilterScreenChildren(
 ) {
   return useMemo(() => {
     const customChildren: any[] = [];
-    const screens = Children.map(children, (child) => {
-      if (isValidElement(child) && child && child.type === Screen) {
-        if (!child.props.name) {
-          throw new Error(
-            `<Screen /> component in \`default export\` at \`app${contextKey}/_layout\` must have a \`name\` prop when used as a child of a Layout Route.`
-          );
-        }
-        if (process.env.NODE_ENV !== 'production') {
-          if (['children', 'component', 'getComponent'].some((key) => key in child.props)) {
-            throw new Error(
-              `<Screen /> component in \`default export\` at \`app${contextKey}/_layout\` must not have a \`children\`, \`component\`, or \`getComponent\` prop when used as a child of a Layout Route`
-            );
-          }
-        }
-        return child.props;
-      } else {
-        if (isCustomNavigator) {
-          customChildren.push(child);
+
+    const screens: (ScreenProps & { name: string })[] = [];
+    const protectedScreens = new Set<string>();
+
+    function flattenChild(child: ReactNode, exclude = false) {
+      if (isScreen(child, contextKey)) {
+        if (exclude) {
+          protectedScreens.add(child.props.name);
         } else {
-          console.warn(
-            `Layout children must be of type Screen, all other children are ignored. To use custom children, create a custom <Layout />. Update Layout Route at: "app${contextKey}/_layout"`
-          );
+          screens.push(child.props);
         }
+        return;
       }
-    });
+
+      if (isProtectedReactElement(child)) {
+        if (child.props.guard) {
+          Children.forEach(child.props.children, (protectedChild) => flattenChild(protectedChild));
+        } else {
+          Children.forEach(child.props.children, (protectedChild) => {
+            flattenChild(protectedChild, true);
+          });
+        }
+        return;
+      }
+
+      if (isCustomNavigator) {
+        customChildren.push(child);
+        return null;
+      }
+
+      console.warn(
+        `Layout children must be of type Screen, all other children are ignored. To use custom children, create a custom <Layout />. Update Layout Route at: "app${contextKey}/_layout"`
+      );
+
+      return null;
+    }
+
+    Children.forEach(children, (child) => flattenChild(child));
 
     // Add an assertion for development
     if (process.env.NODE_ENV !== 'production') {
       // Assert if names are not unique
-      const names = screens?.map((screen) => screen.name);
+      const names = screens?.map(
+        (screen) => screen && typeof screen === 'object' && 'name' in screen && screen.name
+      );
       if (names && new Set(names).size !== names.length) {
         throw new Error('Screen names must be unique: ' + names);
       }
@@ -68,6 +83,7 @@ export function useFilterScreenChildren(
     return {
       screens,
       children: customChildren,
+      protectedScreens,
     };
   }, [children]);
 }
@@ -107,23 +123,18 @@ export function withLayoutContext<
   T extends ComponentType<any>,
   TState extends NavigationState,
   TEventMap extends EventMapBase,
->(
-  Nav: T,
-  processor?: (
-    options: ScreenProps<TOptions, TState, TEventMap>[]
-  ) => ScreenProps<TOptions, TState, TEventMap>[]
-) {
+>(Nav: T, processor?: (options: ScreenProps[]) => ScreenProps[]) {
   return Object.assign(
     forwardRef(({ children: userDefinedChildren, ...props }: any, ref) => {
       const contextKey = useContextKey();
 
-      const { screens } = useFilterScreenChildren(userDefinedChildren, {
+      const { screens, protectedScreens } = useFilterScreenChildren(userDefinedChildren, {
         contextKey,
       });
 
       const processed = processor ? processor(screens ?? []) : screens;
 
-      const sorted = useSortedScreens(processed ?? []);
+      const sorted = useSortedScreens(processed ?? [], protectedScreens);
 
       // Prevent throwing an error when there are no screens.
       if (!sorted.length) {
@@ -134,10 +145,12 @@ export function withLayoutContext<
     }),
     {
       Screen,
+      Protected,
     }
   ) as ForwardRefExoticComponent<
     PropsWithoutRef<PickPartial<ComponentProps<T>, 'children'>> & RefAttributes<unknown>
   > & {
     Screen: (props: ScreenProps<TOptions, TState, TEventMap>) => null;
+    Protected: typeof Protected;
   };
 }

@@ -1,4 +1,4 @@
-type CreateOptions = {
+export type CreateOptions = {
     /**
      * Whether to create intermediate directories if they do not exist.
      * @default false
@@ -13,7 +13,7 @@ type CreateOptions = {
 export declare class Directory {
     /**
      * Creates an instance of a directory.
-     * @param uris -  An array of: `file:///` string URIs, `File` instances, `Directory` instances representing an arbitrary location on the file system. The location does not need to exist, or it may already contain a file.
+     * @param uris An array of: `file:///` string URIs, `File` instances, `Directory` instances representing an arbitrary location on the file system. The location does not need to exist, or it may already contain a file.
      * @example
      * ```ts
      * const directory = new Directory("file:///path/to/directory");
@@ -37,7 +37,7 @@ export declare class Directory {
     delete(): void;
     /**
      * A boolean representing if a directory exists. `true` if the directory exists, `false` otherwise.
-     * Also `false` if the application does not have read access to the file.
+     * Also, `false` if the application does not have read access to the file.
      */
     exists: boolean;
     /**
@@ -61,13 +61,21 @@ export declare class Directory {
      */
     listAsRecords(): {
         isDirectory: string;
-        path: string;
+        uri: string;
     }[];
     /**
      * Lists the contents of a directory.
      */
     list(): (Directory | File)[];
 }
+export type DownloadOptions = {
+    /**
+     * The headers to send with the request.
+     */
+    headers?: {
+        [key: string]: string;
+    };
+};
 /**
  * Represents a file on the file system.
  */
@@ -75,7 +83,7 @@ export declare class File {
     /**
      * Creates an instance of File.
      *
-     * @param uri - A `file:///` URI representing an arbitrary location on the file system. The location does not need to exist, or it may already contain a directory.
+     * @param uris A `file:///` URI representing an arbitrary location on the file system. The location does not need to exist, or it may already contain a directory.
      */
     constructor(...uris: (string | File | Directory)[]);
     /**
@@ -83,8 +91,8 @@ export declare class File {
      */
     readonly uri: string;
     /**
-     * Validates a directory path.
      * @hidden This method is not meant to be used directly. It is called by the JS constructor.
+     * Validates a directory path.
      */
     validatePath(): void;
     /**
@@ -104,7 +112,7 @@ export declare class File {
     bytes(): Uint8Array;
     /**
      * Writes content to the file.
-     * @param content - The content to write into the file.
+     * @param content The content to write into the file.
      */
     write(content: string | Uint8Array): void;
     /**
@@ -115,7 +123,7 @@ export declare class File {
     delete(): void;
     /**
      * A boolean representing if a file exists. `true` if the file exists, `false` otherwise.
-     * Also `false` if the application does not have read access to the file.
+     * Also, `false` if the application does not have read access to the file.
      */
     exists: boolean;
     /**
@@ -147,17 +155,17 @@ export declare class File {
      * const file = await File.downloadFileAsync("https://example.com/image.png", new Directory(Paths.document));
      * ```
      */
-    static downloadFileAsync(url: string, destination: Directory | File): Promise<File>;
+    static downloadFileAsync(url: string, destination: Directory | File, options?: DownloadOptions): Promise<File>;
     /**
-     * A size of the file in bytes. Null if the file does not exist or it cannot be read.
+     * A size of the file in bytes. Null if the file does not exist, or it cannot be read.
      */
     size: number | null;
     /**
-     * An md5 hash of the file. Null if the file does not exist or it cannot be read.
+     * A md5 hash of the file. Null if the file does not exist, or it cannot be read.
      */
     md5: string | null;
     /**
-     * A mime type of the file. Null if the file does not exist or it cannot be read.
+     * A mime type of the file. Null if the file does not exist, or it cannot be read.
      */
     type: string | null;
 }
@@ -168,5 +176,4 @@ export declare class FileHandle {
     offset: number | null;
     size: number | null;
 }
-export {};
 //# sourceMappingURL=ExpoFileSystem.types.d.ts.map

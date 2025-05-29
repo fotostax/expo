@@ -8,7 +8,53 @@
 
 ### 🐛 Bug fixes
 
+- Update to `getenv@2.0.0` to support upper case boolean environment variables ([#36688](https://github.com/expo/expo/pull/36688) by [@stephenlacy](https://github.com/stephenlacy))
+
 ### 💡 Others
+
+- Remove "Please" from warnings and errors ([#36862](https://github.com/expo/expo/pull/36862) by [@brentvatne](https://github.com/brentvatne))
+
+## 1.13.3 — 2025-05-06
+
+_This version does not introduce any user-facing changes._
+
+## 1.13.2 — 2025-04-30
+
+_This version does not introduce any user-facing changes._
+
+## 1.13.1 — 2025-04-25
+
+_This version does not introduce any user-facing changes._
+
+## 1.13.0 — 2025-04-22
+
+### 🎉 New features
+
+- Add new check for compatible Xcode version. ([#32130](https://github.com/expo/expo/pull/35961) by [@betomoedano](https://github.com/betomoedano))
+
+## 1.12.11 — 2025-04-21
+
+### 💡 Others
+
+- Formatting improvements. ([#36151](https://github.com/expo/expo/pull/36151) by [@keith-kurak](https://github.com/keith-kurak))
+- Exclude `@expo/*` packages from the New Architecture compatibility check. ([#36175](https://github.com/expo/expo/pull/36175) by [@Simek](https://github.com/Simek))
+
+## 1.12.10 — 2025-04-14
+
+_This version does not introduce any user-facing changes._
+
+## 1.12.9 — 2025-04-08
+
+### 💡 Others
+
+- Added `.env` support. ([#33988](https://github.com/expo/expo/pull/33988) by [@kudo](https://github.com/kudo))
+
+## 1.12.8 — 2025-03-13
+
+### 💡 Others
+
+- Drop `fast-glob` in favor of `glob`. ([#35082](https://github.com/expo/expo/pull/35082) by [@kitten](https://github.com/kitten))
+- Output formatting improvements ([#35483](https://github.com/expo/expo/pull/35483) by [@keith-kurak](https://github.com/keith-kurak))
 
 ## 1.12.7 — 2025-02-14
 

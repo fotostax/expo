@@ -22,6 +22,10 @@ public final class ExpoUpdatesReactDelegateHandler: ExpoReactDelegateHandler, Ap
     initialProperties: [AnyHashable: Any]?,
     launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> UIView? {
+    if UpdatesUtils.isUsingCustomInitialization() {
+      return nil
+    }
+
     AppController.initializeWithoutStarting()
     let controller = AppController.sharedInstance
     if !controller.isActiveController {
@@ -41,12 +45,15 @@ public final class ExpoUpdatesReactDelegateHandler: ExpoReactDelegateHandler, Ap
     if let view = createSplashScreenview(), let rootView = self.deferredRootView {
       view.translatesAutoresizingMaskIntoConstraints = false
       // The deferredRootView needs to be dark mode aware so we set the color to be the same as the splashscreen background.
-      rootView.backgroundColor = UIColor(named: "SplashScreenBackground") ?? .white
+      let backgroundColor = view.backgroundColor ?? UIColor(named: "SplashScreenBackground")
+      rootView.backgroundColor = backgroundColor ?? .white
       rootView.addSubview(view)
 
       NSLayoutConstraint.activate([
-        view.centerXAnchor.constraint(equalTo: rootView.centerXAnchor),
-        view.centerYAnchor.constraint(equalTo: rootView.centerYAnchor)
+        view.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
+        view.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
+        view.topAnchor.constraint(equalTo: rootView.topAnchor),
+        view.bottomAnchor.constraint(equalTo: rootView.bottomAnchor)
       ])
     }
     return self.deferredRootView
@@ -59,12 +66,15 @@ public final class ExpoUpdatesReactDelegateHandler: ExpoReactDelegateHandler, Ap
   // MARK: AppControllerDelegate implementations
 
   public func appController(_ appController: AppControllerInterface, didStartWithSuccess success: Bool) {
+    if UpdatesUtils.isUsingCustomInitialization() {
+      return
+    }
     guard let reactDelegate = self.reactDelegate else {
       fatalError("`reactDelegate` should not be nil")
     }
 
-    guard let appDelegate = (UIApplication.shared.delegate as? ReactNativeFactoryProvider) ??
-      ((UIApplication.shared.delegate as? NSObject)?.value(forKey: "_expoAppDelegate") as? ReactNativeFactoryProvider) else {
+    guard let appDelegate = (UIApplication.shared.delegate as? (any ReactNativeFactoryProvider)) ??
+      ((UIApplication.shared.delegate as? NSObject)?.value(forKey: "_expoAppDelegate") as? (any ReactNativeFactoryProvider)) else {
       fatalError("`UIApplication.shared.delegate` must be an `ExpoAppDelegate` or `EXAppDelegateWrapper`")
     }
 

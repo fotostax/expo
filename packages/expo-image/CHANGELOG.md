@@ -4,20 +4,84 @@
 
 ### 🛠 Breaking changes
 
+### 🎉 New features
+
+- Add imperative api to lock/unlock/reload resource. ([#36912](https://github.com/expo/expo/pull/36912) by [@jakex7](https://github.com/jakex7))
+
+### 🐛 Bug fixes
+
+- Fix React Server Components support. ([#36801](https://github.com/expo/expo/pull/36801) by [@EvanBacon](https://github.com/EvanBacon))
+- [iOS] Fix PhotoLibrary assets being scaled twice. ([#36776](https://github.com/expo/expo/pull/36776) by [@alanjhughes](https://github.com/alanjhughes))
+- [iOS] Don't add transformers when unnecessary. ([#36884](https://github.com/expo/expo/pull/36884) by [@jakex7](https://github.com/jakex7))
+
+### 💡 Others
+
+## 2.1.7 — 2025-05-06
+
+_This version does not introduce any user-facing changes._
+
+## 2.1.6 — 2025-04-30
+
+_This version does not introduce any user-facing changes._
+
+## 2.1.5 — 2025-04-25
+
+### 🐛 Bug fixes
+
+- Fixed `CUICatalog: Invalid asset name supplied: ''` error on iOS when the path is empty. ([#36294](https://github.com/expo/expo/pull/36294) by [@Innei](https://github.com/Innei))
+
+## 2.1.4 — 2025-04-14
+
+### 🐛 Bug fixes
+
+- Fixed SVG image tinting on iOS. ([#35927](https://github.com/expo/expo/pull/35927) by [@kudo](https://github.com/kudo))
+- [Android] Fixed OutOfMemoryError crash when displaying some gif images ([#36097](https://github.com/expo/expo/pull/36097) by [@rahimrahman](https://github.com/rahimrahman))
+
+## 2.1.3 — 2025-04-11
+
+_This version does not introduce any user-facing changes._
+
+## 2.1.2 — 2025-04-09
+
+_This version does not introduce any user-facing changes._
+
+## 2.1.1 — 2025-04-08
+
+### 🐛 Bug fixes
+
+- Fixed SVG image tinting on iOS. ([#35927](https://github.com/expo/expo/pull/35927) by [@kudo](https://github.com/kudo))
+
+## 2.1.0 — 2025-04-04
+
+### 🛠 Breaking changes
+
 - upgrade RN to 0.78 ([#35050](https://github.com/expo/expo/pull/35050) by [@vonovak](https://github.com/vonovak))
 
 ### 🎉 New features
 
 - type-compatibility with react-native 0.77 ([#34027](https://github.com/expo/expo/pull/34027) by [@vonovak](https://github.com/vonovak))
+- Added `ImageSource.useAppleWebpCodec` on iOS to allow using libwebp codec for better animation performance on some images. ([#35802](https://github.com/expo/expo/pull/35802) by [@kudo](https://github.com/kudo))
 
 ### 🐛 Bug fixes
 
+- Rename `fetchpriority` prop to `fetchPriority` to silence web error. ([#35411](https://github.com/expo/expo/pull/35411) by [@EvanBacon](https://github.com/EvanBacon))
 - Fixed `tintColor="currentColor"` conflicts on web. ([#34604](https://github.com/expo/expo/pull/34604) by [@bradleyayers](https://github.com/bradleyayers))
 
 ### 💡 Others
 
 - Update `ImageProps` type so `children` are omitted. ([#33210](https://github.com/expo/expo/pull/33210) by [@ashaller2017](https://github.com/ashaller2017))
 - [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
+- [iOS] Fix warnings which will become errors in Swift 6. ([#35428](https://github.com/expo/expo/pull/35428) by [@behenate](https://github.com/behenate))
+
+### 📚 3rd party library updates
+
+- Bumped `SDWebImage` to 5.21.0. ([#35795](https://github.com/expo/expo/pull/35795) by [@kudo](https://github.com/kudo))
+
+## 2.0.7 - 2025-03-26
+
+### 🐛 Bug fixes
+
+- [iOS] Fixed image be cropped with `contentPosition` on New Architecture mode. ([#35630](https://github.com/expo/expo/pull/35630) by [@kudo](https://github.com/kudo))
 
 ## 2.0.6 - 2025-02-19
 

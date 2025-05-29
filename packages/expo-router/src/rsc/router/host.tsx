@@ -19,7 +19,6 @@ import {
   useCallback,
   useState,
   startTransition,
-  // @ts-expect-error
   use,
   useEffect,
 } from 'react';
@@ -31,6 +30,16 @@ import { fetch } from './fetch';
 import { encodeInput, encodeActionId } from './utils';
 import { getDevServer } from '../../getDevServer';
 import { getOriginFromConstants } from '../../head/url';
+
+declare namespace globalThis {
+  let __EXPO_RSC_RELOAD_LISTENERS__: undefined | (() => void)[];
+  let __EXPO_REFETCH_RSC__: undefined | (() => void);
+  let expo:
+    | undefined
+    | {
+        modules?: { ExpoGo?: unknown };
+      };
+}
 
 const { createFromFetch, encodeReply } = RSDWClient;
 
@@ -127,7 +136,16 @@ const ACTION_HEADERS = {
   'expo-platform': process.env.EXPO_OS!,
 };
 
-const checkStatus = async (responsePromise: Promise<Response>): Promise<Response> => {
+interface ResponseLike {
+  url: string;
+  ok: boolean;
+  status: number;
+  statusText: string;
+  headers: Headers;
+  text(): Promise<string>;
+}
+
+const checkStatus = async <T extends ResponseLike>(responsePromise: Promise<T>): Promise<T> => {
   // TODO: Combine with metro async fetch logic.
   const response = await responsePromise;
   if (!response.ok) {
@@ -135,7 +153,7 @@ const checkStatus = async (responsePromise: Promise<Response>): Promise<Response
     // This was tested against using a Class component in a server component.
     if (__DEV__ && (response.status === 500 || response.status === 404)) {
       const errorText = await response.text();
-      let errorJson;
+      let errorJson: any;
       try {
         errorJson = JSON.parse(errorText);
       } catch {
@@ -151,7 +169,7 @@ const checkStatus = async (responsePromise: Promise<Response>): Promise<Response
       throw new MetroServerError(errorJson, response.url);
     }
 
-    let responseText;
+    let responseText: string;
     try {
       responseText = await response.text();
     } catch {
@@ -267,7 +285,9 @@ export const fetchRSC = (
       fetchCache[SET_ELEMENTS]?.(() => data);
     };
     globalThis.__EXPO_RSC_RELOAD_LISTENERS__ ||= [];
-    const index = globalThis.__EXPO_RSC_RELOAD_LISTENERS__.indexOf(globalThis.__EXPO_REFETCH_RSC__);
+    const index = globalThis.__EXPO_RSC_RELOAD_LISTENERS__.indexOf(
+      globalThis.__EXPO_REFETCH_RSC__!
+    );
     if (index !== -1) {
       globalThis.__EXPO_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRsc);
     } else {
@@ -331,11 +351,11 @@ export const prefetchRSC = (input: string, params?: unknown): void => {
   }
 };
 
-const RefetchContext = createContext<(input: string, searchParams?: URLSearchParams) => void>(
-  () => {
-    throw new Error('Missing Root component');
-  }
-);
+const RefetchContext = createContext<
+  (input: string, searchParams?: URLSearchParams | string) => void
+>(() => {
+  throw new Error('Missing Root component');
+});
 const ElementsContext = createContext<Elements | null>(null);
 
 export const Root = ({

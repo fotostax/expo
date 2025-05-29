@@ -265,12 +265,40 @@ it('does works with shared groups', () => {
     }
   );
 
-  // expect(screen.getByTestId('apple')).toBeVisible();
-  // expect(screen).toHaveSegments(['(one)', '[fruit]']);
+  expect(screen.getByTestId('apple')).toBeVisible();
+  expect(screen).toHaveSegments(['(one)', '[fruit]']);
 
   fireEvent.press(screen.getByTestId('goto-orange'));
   expect(screen.getByTestId('orange')).toBeVisible();
   expect(screen).toHaveSegments(['(two)', '[fruit]']);
+});
+
+it('works with nested layouts', () => {
+  renderRouter({
+    _layout: () => (
+      <Tabs>
+        <TabList>
+          <TabTrigger name="index" href="/(group)">
+            <Text>Index</Text>
+          </TabTrigger>
+          <TabTrigger name="page" testID="goto-page" href="/page">
+            <Text>Page</Text>
+          </TabTrigger>
+        </TabList>
+        <TabSlot />
+      </Tabs>
+    ),
+    '(group)/_layout': () => <Stack />,
+    '(group)/index': () => <Text testID="index">Index</Text>,
+    page: () => <Text testID="page">Page</Text>,
+  });
+
+  expect(screen.getByTestId('index')).toBeVisible();
+  expect(screen).toHaveSegments(['(group)']);
+
+  fireEvent.press(screen.getByTestId('goto-page'));
+  expect(screen.getByTestId('page')).toBeVisible();
+  expect(screen).toHaveSegments(['page']);
 });
 
 describe('warnings/errors', () => {
@@ -311,7 +339,7 @@ describe('warnings/errors', () => {
     );
   });
 
-  it('should fail when there are no valid tabs', () => {
+  it('should warn when there are no valid tabs', () => {
     expect(() => {
       renderRouter({
         _layout: () => {
@@ -329,7 +357,7 @@ describe('warnings/errors', () => {
       "Couldn't find any screens for the navigator. Have you defined any screens as its children?"
     );
 
-    expect(error).toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledWith(
       "Tab trigger 'apple' has the href '/apple' which points to a +not-found route."
     );

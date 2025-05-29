@@ -76,6 +76,7 @@ exceptions:
   - '.*Developer Mode.*'
   - '.*Dynamic.*'
   - '.*detach.*'
+  - '.*DNS.*'
   - '.*E2E.*'
   - '.*EAS.*'
   - '.*EAS Build.*'
@@ -215,6 +216,7 @@ exceptions:
   - '.*Screen.*'
   - '.*Snack.*'
   - '.*SQLite.*'
+  - '.*SQLCipher.*'
   - '.*Static.*'
   - '.*Statically-typed.*'
   - '.*Storage Access Framework.*'
@@ -261,3 +263,5 @@ exceptions:
   - How can I implement a custom
   - Drizzle ORM
   - architecture?
+  - index.tsx files
+  - registerRootComponent

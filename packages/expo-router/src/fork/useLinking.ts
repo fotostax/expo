@@ -15,6 +15,7 @@ import * as React from 'react';
 import { createMemoryHistory } from './createMemoryHistory';
 import { appendBaseUrl } from './getPathFromState';
 import { ServerContext } from '../global-state/serverLocationContext';
+import { useExpoRouterStore } from '../global-state/storeContext';
 
 type ResultState = ReturnType<typeof getStateFromPathDefault>;
 
@@ -74,7 +75,7 @@ const linkingHandlers: symbol[] = [];
 type Options = LinkingOptions<ParamListBase>;
 
 export function useLinking(
-  ref: React.RefObject<NavigationContainerRef<ParamListBase>>,
+  ref: React.RefObject<NavigationContainerRef<ParamListBase> | null>,
   {
     enabled = true,
     config,
@@ -85,6 +86,8 @@ export function useLinking(
   onUnhandledLinking: (lastUnhandledLining: string | undefined) => void
 ) {
   const independent = useNavigationIndependentTree();
+
+  const store = useExpoRouterStore();
 
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'production') {
@@ -143,8 +146,14 @@ export function useLinking(
 
   const validateRoutesNotExistInRootState = React.useCallback(
     (state: ResultState) => {
-      const navigation = ref.current;
-      const rootState = navigation?.getRootState();
+      // START FORK
+      // Instead of using the rootState (which might be stale) we should use the focused state
+      // const navigation = ref.current;
+      // const rootState = navigation?.getRootState();
+      const rootState = store.state as NavigationState;
+
+      // END FORK
+
       // Make sure that the routes in the state exist in the root navigator
       // Otherwise there's an error in the linking configuration
       return state?.routes.some((r) => !rootState?.routeNames.includes(r.name));
@@ -152,7 +161,7 @@ export function useLinking(
     [ref]
   );
 
-  const server = React.useContext(ServerContext);
+  const server = React.use(ServerContext);
 
   const getInitialState = React.useCallback(() => {
     let value: ResultState | undefined;
@@ -341,14 +350,24 @@ export function useLinking(
     if (ref.current) {
       // We need to record the current metadata on the first render if they aren't set
       // This will allow the initial state to be in the history entry
-      const state = ref.current.getRootState();
+
+      // START FORK
+      // Instead of using the rootState (which might be stale) we should use the focused state
+      // const state = ref.current.getRootState();
+      const rootState = ref.current.getRootState();
+      const state = store.state as NavigationState;
+
+      // END FORK
 
       if (state) {
         const route = findFocusedRoute(state);
         const path = getPathForRoute(route, state);
 
         if (previousStateRef.current === undefined) {
-          previousStateRef.current = state;
+          // START FORK
+          // previousStateRef.current = state;
+          previousStateRef.current = rootState;
+          // END FORK
         }
 
         history.replace({ path, state });
@@ -363,7 +382,13 @@ export function useLinking(
       }
 
       const previousState = previousStateRef.current;
-      const state = navigation.getRootState();
+      // START FORK
+      // Instead of using the rootState (which might be stale) we should use the focused state
+      // const state = navigation.getRootState();
+      const rootState = navigation.getRootState();
+      const state = store.state as NavigationState;
+
+      // END FORK
 
       // root state may not available, for example when root navigators switch inside the container
       if (!state) {
@@ -374,7 +399,10 @@ export function useLinking(
       const route = findFocusedRoute(state);
       const path = getPathForRoute(route, state);
 
-      previousStateRef.current = state;
+      // START FORK
+      // previousStateRef.current = state;
+      previousStateRef.current = rootState;
+      // END FORK
       pendingPopStatePathRef.current = undefined;
 
       // To detect the kind of state change, we need to:

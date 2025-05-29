@@ -8,11 +8,44 @@
 
 ### 🐛 Bug fixes
 
+- [iOS] Call `createRootViewController` from the `ExpoReactNativeFactoryDelegate`. ([#36787](https://github.com/expo/expo/pull/36787) by [@alanjhughes](https://github.com/alanjhughes))
+
+### 💡 Others
+
+## 8.1.6 — 2025-05-06
+
+### 🐛 Bug fixes
+
+- [iOS] Fix the app becoming unresponsive when the orientation listener is used in `Split View` on iPad. ([#36667](https://github.com/expo/expo/pull/36667) by [@alanjhughes](https://github.com/alanjhughes))
+
+## 8.1.5 — 2025-04-30
+
+_This version does not introduce any user-facing changes._
+
+## 8.1.4 — 2025-04-25
+
+_This version does not introduce any user-facing changes._
+
+## 8.1.3 — 2025-04-14
+
+_This version does not introduce any user-facing changes._
+
+## 8.1.2 — 2025-04-11
+
+_This version does not introduce any user-facing changes._
+
+## 8.1.1 — 2025-04-09
+
+_This version does not introduce any user-facing changes._
+
+## 8.1.0 — 2025-04-04
+
 ### 💡 Others
 
 - [Android] Started using expo modules gradle plugin. ([#34176](https://github.com/expo/expo/pull/34176) by [@lukmccall](https://github.com/lukmccall))
 - [apple] Migrate remaining `expo-module.config.json` to unified platform syntax. ([#34445](https://github.com/expo/expo/pull/34445) by [@reichhartd](https://github.com/reichhartd))
 - Standardize platform key ordering in `expo-module.config.json`. ([#35003](https://github.com/expo/expo/pull/35003) by [@reichhartd](https://github.com/reichhartd))
+- [iOS] Fix warnings which will become errors in Swift 6. ([#35288](https://github.com/expo/expo/pull/35288) by [@behenate](https://github.com/behenate)), ([#35428](https://github.com/expo/expo/pull/35428) by [@behenate](https://github.com/behenate))
 
 ## 8.0.4 - 2025-01-10
 

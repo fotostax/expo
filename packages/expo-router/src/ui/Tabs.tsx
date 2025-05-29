@@ -14,7 +14,7 @@ import {
   ReactElement,
   ReactNode,
   isValidElement,
-  useContext,
+  use,
   useMemo,
   PropsWithChildren,
 } from 'react';
@@ -87,7 +87,14 @@ export function Tabs(props: TabsProps) {
 
   const { NavigationContent } = useTabsWithChildren({
     // asChild adds an extra layer, so we need to process the child's children
-    children: asChild && isValidElement(children) ? children.props.children : children,
+    children:
+      asChild &&
+      isValidElement(children) &&
+      children.props &&
+      typeof children.props === 'object' &&
+      'children' in children.props
+        ? (children.props.children as ReactNode)
+        : children,
     ...options,
   });
 
@@ -145,10 +152,10 @@ export function useTabsWithChildren(options: UseTabsWithChildrenOptions) {
 export function useTabsWithTriggers(options: UseTabsWithTriggersOptions): TabsContextValue {
   const { triggers, ...rest } = options;
   // Ensure we extend the parent triggers, so we can trigger them as well
-  const parentTriggerMap = useContext(TabTriggerMapContext);
+  const parentTriggerMap = use(TabTriggerMapContext);
   const routeNode = useRouteNode();
   const contextKey = useContextKey();
-  const linking = useContext(LinkingContext).options;
+  const linking = use(LinkingContext).options;
   const routeInfo = useRouteInfo();
 
   if (!routeNode || !linking) {
@@ -231,8 +238,14 @@ function parseTriggersFromChildren(
       let children = child.props.children;
 
       // <TabList asChild /> adds an extra layer. We need to parse the child's children
-      if (child.props.asChild && isValidElement(children)) {
-        children = children.props.children;
+      if (
+        child.props.asChild &&
+        isValidElement(children) &&
+        children.props &&
+        typeof children.props === 'object' &&
+        'children' in children.props
+      ) {
+        children = children.props.children as ReactNode;
       }
 
       return parseTriggersFromChildren(children, screenTriggers, isInTabList || isTabList(child));
