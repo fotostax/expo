@@ -3,12 +3,16 @@
 #include <jni.h>
 #include <thread>
 #include <android/log.h>
-#include <android/hardware_buffer_jni.h>
+#include <android/hardware_buffer.h>
 #include <jsi/jsi.h>
 #include "EXGLNativeApi.h"
 #include "EXPlatformUtils.h"
 #include <stdio.h>
 #include "EXGLImageUtils.h"
+#include "react-native-vision-camera/FrameHostObject.h"
+#include <memory> // Required for std::static_pointer_cast
+using namespace facebook::jsi;
+
 extern "C" {
 
 // JNIEnv is valid only inside the same thread that it was passed from
@@ -35,6 +39,96 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepare
   EXGLContextPrepare((void*) jsiPtr, exglCtxId, flushMethod);
 }
 
+JNIEXPORT void JNICALL
+Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(
+    JNIEnv *env,
+    jclass clazz,
+    jlong jsiPtr,
+    jstring pluginName) {
+  Runtime* runtime = reinterpret_cast<Runtime*>(jsiPtr);
+  const char* name = env->GetStringUTFChars(pluginName, nullptr);
+
+  auto uploadTexturePlugin = [=](Runtime& runtime, const Value& thisArg, const Value* args, size_t count) -> Value {
+    try {
+      // Check if exactly 2 arguments are provided
+      if (count != 2) {
+        throw JSError(runtime, "uploadTexturePlugin: Expected exactly 2 arguments (exglCtxId, frame)");
+      }
+
+      // Validate and extract exglCtxId from args[0]
+      if (!args[0].isNumber()) {
+        throw JSError(runtime, "First argument must be a number (exglCtxId)");
+      }
+      int exglCtxId = static_cast<int>(args[0].asNumber());
+      __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "exglCtxId: %d", exglCtxId);
+
+      // Validate and extract frameHostObject from args[1] using std::static_pointer_cast
+      if (!args[1].isObject()) {
+        throw JSError(runtime, "Second argument must be an object (frame)");
+      }
+      auto valueAsObject = args[1].getObject(runtime);
+      auto hostObject = valueAsObject.getHostObject(runtime); // Returns std::shared_ptr<jsi::HostObject>
+      auto frameHostObject = std::static_pointer_cast<vision::FrameHostObject>(hostObject);
+      if (!frameHostObject) {
+        throw JSError(runtime, "Failed to cast frame to FrameHostObject");
+      }
+
+      // Get the frame and then the hardwareBuffer
+      auto frame = frameHostObject->getFrame();
+      if (!frame) {
+        throw JSError(runtime, "Failed to get frame from FrameHostObject");
+      }
+      AHardwareBuffer* hardwareBuffer = frame->getHardwareBuffer();
+      if (!hardwareBuffer) {
+        throw JSError(runtime, "uploadTexturePlugin: Failed to get hardwareBuffer from frame");
+      }
+
+      // Describe the hardware buffer for logging
+      AHardwareBuffer_Desc desc;
+      AHardwareBuffer_describe(hardwareBuffer, &desc);
+      __android_log_print(ANDROID_LOG_INFO, "EXGLJni", 
+                          "Uploading texture Global: Width=%u, Height=%u, Format=%u",
+                          desc.width, desc.height, desc.format);
+
+      // Call EXGLContextUploadTexture with extracted values
+      int textureId = EXGLContextUploadTexture(&runtime, exglCtxId, hardwareBuffer);
+      if (textureId == 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Texture upload failed, returned ID 0");
+      } else {
+        __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Texture uploaded successfully, ID: %d", textureId);
+      }
+      return Value(textureId);
+    } catch (const std::exception& e) {
+      __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Exception in uploadTexturePlugin: %s", e.what());
+      throw JSError(runtime, std::string("uploadTexturePlugin error: ") + e.what());
+    }
+  };
+
+  runtime->global().setProperty(
+      *runtime,
+      name,
+      Function::createFromHostFunction(
+          *runtime,
+          PropNameID::forUtf8(*runtime, name),
+          2,  // Expecting exactly 2 arguments
+          uploadTexturePlugin
+      )
+  );
+
+  __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "Registered frame processor plugin: %s", name);
+  env->ReleaseStringUTFChars(pluginName, name);
+}
+
+JNIEXPORT void JNICALL
+Java_expo_modules_gl_GLObjectManagerModule_EXGLObjectManagerRegisterFrameProcessorPlugin(
+    JNIEnv *env,
+    jobject thiz,
+    jlong jsiPtr,
+    jstring pluginName) {
+  jclass clazz = env->GetObjectClass(thiz);
+  Java_expo_modules_gl_cpp_EXGL_EXGLRegisterFrameProcessorPlugin(env, clazz, jsiPtr, pluginName);
+  __android_log_print(ANDROID_LOG_INFO, "EXGLJni", "EXGLObjectManagerRegisterFrameProcessorPlugin called");
+}
 JNIEXPORT void JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextPrepareWorklet
 (JNIEnv *env, jclass clazz, jint exglCtxId) {
@@ -78,7 +172,7 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextGetObject
   return EXGLContextGetObject(exglCtxId, exglObjId);
 }
 
-JNIEXPORT bool JNICALL
+JNIEXPORT jboolean JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextNeedsRedraw
 (JNIEnv *env, jclass clazz, jint exglCtxId) {
   return EXGLContextNeedsRedraw(exglCtxId);
@@ -97,30 +191,58 @@ Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
     jclass clazz,
     jlong jsiPtr,
     jint exglCtxId,
-    jlong hardwareBuffer) 
+    jlong hardwareBuffer)
 {
     if (hardwareBuffer == 0) {
-        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "HardwareBuffer pointer is null");
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Error: hardwareBuffer handle is zero");
         return 0;
     }
 
-    // Cast jlong to AHardwareBuffer*
-    AHardwareBuffer *nativeBuffer = reinterpret_cast<AHardwareBuffer *>(hardwareBuffer);   
-
-    if (nativeBuffer == nullptr) {
-        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni", "Failed to cast jlong to AHardwareBuffer*");
+    AHardwareBuffer *nativeBuffer = reinterpret_cast<AHardwareBuffer *>(hardwareBuffer);
+    if (!nativeBuffer) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
+                            "Error: Failed to reinterpret jlong to AHardwareBuffer*");
         return 0;
     }
-    
+
     AHardwareBuffer_acquire(nativeBuffer);
 
-    AHardwareBuffer_Desc desc;
-    AHardwareBuffer_describe(nativeBuffer, &desc);
+    int textureId = 0;
+    try {
+        AHardwareBuffer_Desc desc;
+        AHardwareBuffer_describe(nativeBuffer, &desc);
+        __android_log_print(ANDROID_LOG_INFO, "EXGLJni",
+                            "Uploading texture: Width=%u, Height=%u, Format=%u, Layers=%u",
+                            desc.width, desc.height, desc.format, desc.layers);
 
-    int exlObj = EXGLContextUploadTexture(reinterpret_cast<void *>(jsiPtr), exglCtxId, nativeBuffer);
+        textureId = EXGLContextUploadTexture(
+            reinterpret_cast<Runtime*>(jsiPtr),
+            exglCtxId,
+            nativeBuffer
+        );
+    } catch (const std::exception &e) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
+                            "Exception: %s", e.what());
+    } catch (...) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
+                            "Unknown error occurred in EXGLContextUploadTexture");
+    }
+
     AHardwareBuffer_release(nativeBuffer);
-    return exlObj;
+    return textureId;
 }
+#else
+JNIEXPORT void JNICALL
+Java_expo_modules_gl_cpp_EXGL_EXGLContextUploadTexture(
+    JNIEnv *env,
+    jclass clazz,
+    jint exglCtxId,
+    jobject hardwareBuffer
+) {
+    __android_log_print(ANDROID_LOG_ERROR, "EXGLJni",
+                        "AHardwareBuffer not supported on this API level.");
+}
+#endif
 
 JNIEXPORT jlong JNICALL
 Java_expo_modules_gl_cpp_EXGL_EXGLContextCreateTestHardwareBuffer(

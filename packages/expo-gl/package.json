@@ -44,13 +44,16 @@
     "@types/offscreencanvas": "2019.6.4",
     "@types/webgl2": "^0.0.6",
     "expo-module-scripts": "^4.1.7",
+    "react-native-vision-camera": "^4.6.4",
     "react-test-renderer": "19.0.0"
   },
   "peerDependencies": {
     "expo": "*",
     "react": "*",
     "react-native": "*",
-    "react-native-web": "*"
+    "react-native-vision-camera": "*",
+    "react-native-web": "*",
+    "react-native-worklets-core": "*"
   },
   "peerDependenciesMeta": {
     "react-native-web": {

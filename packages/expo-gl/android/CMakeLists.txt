@@ -10,6 +10,16 @@ set(PACKAGE_NAME "expo-gl")
 set(BUILD_DIR ${CMAKE_SOURCE_DIR}/build)
 set(COMMON_DIR ${CMAKE_SOURCE_DIR}/../common)
 
+
+find_package(fbjni REQUIRED CONFIG)
+
+# Use find_package for react-native-vision-camera; its path is provided by build.gradle arguments.
+find_package(react-native-vision-camera REQUIRED CONFIG)
+
+get_target_property(INCLUDE_DIRS react-native-vision-camera::VisionCamera INTERFACE_INCLUDE_DIRECTORIES)
+message("Include directories for VisionCamera: ${INCLUDE_DIRS}")
+
+
 add_library(
     ${PACKAGE_NAME} SHARED
     ${COMMON_DIR}/EXGLNativeApi.cpp
@@ -46,4 +56,5 @@ target_compile_options(
             -Wno-unused-parameter
             -Wshorten-64-to-32
             -Wstrict-prototypes)
-target_link_libraries(${PACKAGE_NAME} ReactAndroid::jsi ${LOG_LIB} ${GLES_LIB} android)
+target_link_libraries(${PACKAGE_NAME} ReactAndroid::jsi ${LOG_LIB} ${GLES_LIB} android  fbjni::fbjni
+    react-native-vision-camera::VisionCamera)

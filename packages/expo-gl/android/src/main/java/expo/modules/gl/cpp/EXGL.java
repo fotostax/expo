@@ -1,8 +1,8 @@
 package expo.modules.gl.cpp;
 
 import com.facebook.soloader.SoLoader;
-import 	android.hardware.HardwareBuffer;
-// Java bindings for EXGLNativeApi.h interface
+import android.hardware.HardwareBuffer;
+
 public class EXGL {
   static {
     SoLoader.loadLibrary("expo-gl");
@@ -20,8 +20,10 @@ public class EXGL {
   public static native int EXGLContextGetObject(int exglCtxId, int exglObjId);
   public static native boolean EXGLContextNeedsRedraw(int exglCtxId);
   public static native void EXGLContextDrawEnded(int exglCtxId);
-  // Native Method to upload a texture to a pointer.
-  public static native int EXGLContextUploadTexture(long jsCtxPtr,int exglCtxId,long hardwareBuffer);
-  // Native method to create and return a Hardware Buffer pointer.
+  public static native int EXGLContextUploadTexture(long jsCtxPtr, int exglCtxId, long hardwareBuffer);
   public static native long EXGLContextCreateTestHardwareBuffer(int bufferFormat);
+  public static native void EXGLRegisterFrameProcessorPlugin(long jsiPtr, String pluginName);
+
+  // Add this method for GLObjectManagerModule
+  public static native void EXGLObjectManagerRegisterFrameProcessorPlugin(long jsiPtr, String pluginName);
 }
