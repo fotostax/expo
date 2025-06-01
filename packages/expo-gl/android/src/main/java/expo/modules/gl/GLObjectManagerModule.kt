@@ -16,8 +16,6 @@ import android.hardware.HardwareBuffer
 import android.util.Log
 import java.nio.ByteBuffer
 import expo.modules.gl.cpp.EXGL.*
-import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.JavaScriptContextHolder
 
 private class InvalidCameraViewException :
   CodedException("Provided view tag doesn't point to a valid instance of the camera view")
@@ -119,7 +117,7 @@ class GLObjectManagerModule : Module() {
     }
 
     // Added frame processor installation function
-    Function("installFrameProcessorPlugin") {
+    AsyncFunction("installFrameProcessorPlugin") {promise: Promise ->
       Log.d("GLObjectManagerModule", "installFrameProcessorPlugin() function called")
       val reactContext = appContext.reactContext as? ReactApplicationContext
       Log.d("GLObjectManagerModule", "reactContext available: ${reactContext != null}")
@@ -131,6 +129,7 @@ class GLObjectManagerModule : Module() {
         Log.d("GLObjectManagerModule", "Registering uploadTexturePlugin with JSI runtime")
         EXGLObjectManagerRegisterFrameProcessorPlugin(jsContext.get(), "uploadTexturePlugin") // Updated to match external declaration
         Log.d("GLObjectManagerModule", "uploadTexturePlugin registered successfully")
+        promise.resolve(true)
       } else {
         Log.e("GLObjectManagerModule", "JSI Runtime is not available")
         throw Exception("JSI Runtime is not available")
