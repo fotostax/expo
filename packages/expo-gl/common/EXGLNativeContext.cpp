@@ -34,211 +34,282 @@ static void checkGLError(const char* msg) {
         EXGLSysLog("OpenGL Error %d after %s", err, msg);
     }
 }
-int EXGLContext::uploadTextureToOpenGL(jsi::Runtime &runtime, AHardwareBuffer *hardwareBuffer) {
-    auto exglObjId = createObject();
 
-    // Acquire hardware buffer
-    AHardwareBuffer_acquire(hardwareBuffer);
+int EXGLContext::uploadTextureToOpenGL(
+  jsi::Runtime &runtime,
+  AHardwareBuffer *hardwareBuffer
+) {
+  // Check for null pointer
+  if (!hardwareBuffer) {
+    __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", "Null pointer exception: hardwareBuffer is null");
+    return 0;
+  }
+  __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Hardware buffer is valid");
+
+  // Create a new WebGL texture object ID in EXGL
+  int exglObjId = createObject();
+  __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Created EXGL object ID: %d", exglObjId);
+
+  try {
+    // Describe the buffer
     AHardwareBuffer_Desc desc = {};
     AHardwareBuffer_describe(hardwareBuffer, &desc);
+    __android_log_print(ANDROID_LOG_INFO, "EXGLContext", 
+                        "Hardware buffer: Width=%u, Height=%u, Format=%u", 
+                        desc.width, desc.height, desc.format);
 
-    if (desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM && desc.format != AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
-        EXGLSysLog("Unsupported hardware buffer format %d", desc.format);
-        AHardwareBuffer_release(hardwareBuffer);
-        return 0;
+    // Validate format
+    if (desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM &&
+        desc.format != AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
+      __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
+                          "Unsupported hardware buffer format %u", desc.format);
+      return 0;
     }
+    __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Format %u is supported", desc.format);
 
-    int width = desc.width;
-    int height = desc.height;
+    int width = static_cast<int>(desc.width);
+    int height = static_cast<int>(desc.height);
 
-   if (desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
-      AHardwareBuffer_Planes planes = {};
-      int32_t lock_result = AHardwareBuffer_lockPlanes(
+    if (desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420) {
+      __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Processing YUV format");
+      // --- YUV path ---
+      AHardwareBuffer_Planes planes;
+      int32_t lockResult = AHardwareBuffer_lockPlanes(
           hardwareBuffer,
           AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
-          -1,
-          nullptr,
+          -1,  // fence
+          nullptr,  // rect
           &planes
       );
+      if (lockResult != 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
+                            "Failed to lockPlanes() for YUV, error code: %d", lockResult);
+        return 0;
+      }
+      __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Successfully locked YUV planes");
 
-    if (lock_result != 0) {
-          EXGLSysLog("Failed to lock AHardwareBuffer");
-          AHardwareBuffer_release(hardwareBuffer);
-          return 0;
-    }
-    void* yPlane = planes.planes[0].data;
-    void* uPlane = planes.planes[1].data;
-    void* vPlane = planes.planes[2].data;
+      void* yPlane = planes.planes[0].data;
+      void* uPlane = planes.planes[1].data;
+      void* vPlane = planes.planes[2].data;
 
-    int yStride     = planes.planes[0].rowStride;
-    int uStride     = planes.planes[1].rowStride;
-    int vStride     = planes.planes[2].rowStride;
-    int pixelStride = planes.planes[1].pixelStride; 
+      int yStride = planes.planes[0].rowStride;
+      int uStride = planes.planes[1].rowStride;
+      int vStride = planes.planes[2].rowStride;
+      int pixelStride = planes.planes[1].pixelStride;
+      __android_log_print(ANDROID_LOG_INFO, "EXGLContext", 
+                          "YUV planes: yStride=%d, uStride=%d, vStride=%d, pixelStride=%d", 
+                          yStride, uStride, vStride, pixelStride);
 
-    auto uPlaneObjId = createObject();
-    auto vPlaneObjId = createObject();
+      // Create new EXGL object IDs for the U/V textures
+      int uPlaneObjId = createObject();
+      int vPlaneObjId = createObject();
+      __android_log_print(ANDROID_LOG_INFO, "EXGLContext", 
+                          "Created U/V plane IDs: %d, %d", uPlaneObjId, vPlaneObjId);
 
-    std::vector<uint8_t> yVec(height * width);
-    for (int row = 0; row < height; ++row) {
+      // Copy the Y plane into a std::vector
+      std::vector<uint8_t> yVec(height * width);
+      for (int row = 0; row < height; ++row) {
         std::memcpy(
             yVec.data() + (row * width),
             static_cast<uint8_t*>(yPlane) + (row * yStride),
             width
         );
-    }
-    std::vector<uint8_t> uVec((height / 2) * (width / 2));
-    std::vector<uint8_t> vVec((height / 2) * (width / 2));
+      }
 
-    auto* srcU = static_cast<uint8_t*>(uPlane);
-    auto* srcV = static_cast<uint8_t*>(vPlane);
+      // Copy the U and V planes
+      std::vector<uint8_t> uVec((height / 2) * (width / 2));
+      std::vector<uint8_t> vVec((height / 2) * (width / 2));
+      auto* srcU = static_cast<uint8_t*>(uPlane);
+      auto* srcV = static_cast<uint8_t*>(vPlane);
 
-    for (int row = 0; row < (height / 2); ++row) {
+      for (int row = 0; row < (height / 2); ++row) {
         for (int col = 0; col < (width / 2); ++col) {
-            int dstIndex = row * (width / 2) + col;
-            uVec[dstIndex] = srcU[row * uStride + col * pixelStride];
-            vVec[dstIndex] = srcV[row * vStride + col * pixelStride];
+          int dstIndex = row * (width / 2) + col;
+          uVec[dstIndex] = srcU[row * uStride + col * pixelStride];
+          vVec[dstIndex] = srcV[row * vStride + col * pixelStride];
         }
+      }
+      __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Copied YUV planes to vectors");
+
+      // Unlock the buffer now that CPU copy is done
+      int32_t unlockResult = AHardwareBuffer_unlock(hardwareBuffer, nullptr);
+      if (unlockResult != 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
+                            "Failed to unlock YUV buffer, error code: %d", unlockResult);
+      } else {
+        __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Unlocked YUV buffer");
+      }
+
+      // Flip Y/U/V images in CPU memory
+      gl_cpp::flipPixels(yVec.data(), width, height);
+      gl_cpp::flipPixels(uVec.data(), width / 2, height / 2);
+      gl_cpp::flipPixels(vVec.data(), width / 2, height / 2);
+      __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Flipped YUV images");
+
+      // Schedule GL upload on the queued thread
+      addToNextBatch([=, yVec{std::move(yVec)}, uVec{std::move(uVec)}, vVec{std::move(vVec)}] {
+        try {
+          __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Starting YUV texture upload batch");
+          glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+          GLuint textureY, textureU, textureV;
+          glGenTextures(1, &textureY);
+          glGenTextures(1, &textureU);
+          glGenTextures(1, &textureV);
+          __android_log_print(ANDROID_LOG_INFO, "EXGLContext", 
+                              "Generated YUV textures: Y=%u, U=%u, V=%u", 
+                              textureY, textureU, textureV);
+
+          // Upload Y-plane
+          glActiveTexture(GL_TEXTURE0);
+          glBindTexture(GL_TEXTURE_2D, textureY);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+          glTexImage2D(
+              GL_TEXTURE_2D,
+              0,
+              GL_LUMINANCE,
+              width,
+              height,
+              0,
+              GL_LUMINANCE,
+              GL_UNSIGNED_BYTE,
+              yVec.data()
+          );
+    
+
+          // Upload U-plane
+          glActiveTexture(GL_TEXTURE1);
+          glBindTexture(GL_TEXTURE_2D, textureU);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+          glTexImage2D(
+              GL_TEXTURE_2D,
+              0,
+              GL_LUMINANCE,
+              width / 2,
+              height / 2,
+              0,
+              GL_LUMINANCE,
+              GL_UNSIGNED_BYTE,
+              uVec.data()
+          );
+         
+          // Upload V-plane
+          glActiveTexture(GL_TEXTURE2);
+          glBindTexture(GL_TEXTURE_2D, textureV);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+          glTexImage2D(
+              GL_TEXTURE_2D,
+              0,
+              GL_LUMINANCE,
+              width / 2,
+              height / 2,
+              0,
+              GL_LUMINANCE,
+              GL_UNSIGNED_BYTE,
+              vVec.data()
+          );
+          __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Uploaded YUV textures");
+
+          // Register the Y/U/V textures with the EXGL object IDs
+          mapObject(exglObjId, textureY);
+          mapObject(uPlaneObjId, textureU);
+          mapObject(vPlaneObjId, textureV);
+        } catch (const std::exception &e) {
+          __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
+                              "Exception in YUV upload batch: %s", e.what());
+        }
+      });
+
+      __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Created JS WebGLTexture object with ID: %d", exglObjId);
+
+      return exglObjId;
+
+    } else {
+      __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Processing RGBA format");
+      // --- RGBA path ---
+      void *bufferData = nullptr;
+      int32_t lockResult = AHardwareBuffer_lock(
+          hardwareBuffer,
+          AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
+          -1,    // fence
+          nullptr,
+          &bufferData
+      );
+      if (lockResult != 0 || !bufferData) {
+        __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
+                            "Failed to lock RGBA buffer, error code: %d", lockResult);
+        return 0;
+      }
+      __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Locked RGBA buffer");
+
+      addToNextBatch([=, bufferData{bufferData}] {
+        try {
+          GLuint texId;
+          glGenTextures(1, &texId);
+          __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Generated RGBA texture: %u", texId);
+
+          glBindTexture(GL_TEXTURE_2D, texId);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+          glTexImage2D(
+              GL_TEXTURE_2D,
+              0,
+              GL_RGBA,
+              width,
+              height,
+              0,
+              GL_RGBA,
+              GL_UNSIGNED_BYTE,
+              bufferData
+          );
+          GLenum err = glGetError();
+          if (err != GL_NO_ERROR) {
+            __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
+                                "glTexImage2D (RGBA) failed, GL error: %u", err);
+          }
+
+          __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Uploaded RGBA texture");
+
+          mapObject(exglObjId, texId);
+
+          int32_t unlockResult = AHardwareBuffer_unlock(hardwareBuffer, nullptr);
+          if (unlockResult != 0) {
+            __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
+                                "Failed to unlock RGBA buffer, error code: %d", unlockResult);
+          } else {
+            __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Unlocked RGBA buffer");
+          }
+        } catch (const std::exception &e) {
+          __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", 
+                              "Exception in RGBA upload: %s", e.what());
+        }
+      });
+
+      __android_log_print(ANDROID_LOG_INFO, "EXGLContext", "Created JS WebGLTexture object with ID: %d", exglObjId);
+
+      return exglObjId;
     }
 
-    // Done reading from CPU memory
-    AHardwareBuffer_unlock(hardwareBuffer, nullptr);
-    AHardwareBuffer_release(hardwareBuffer);
-       // Flip U and V
-    gl_cpp::flipPixels(yVec.data(), width, height);
-    gl_cpp::flipPixels(uVec.data(), width / 2, height / 2);
-    gl_cpp::flipPixels(vVec.data(), width / 2, height / 2);
-
-    // 3. Queue the OpenGL upload
-    addToNextBatch([=, yVec{std::move(yVec)}, uVec{std::move(uVec)}, vVec{std::move(vVec)}] {
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        GLuint textureY, textureU, textureV;
-        glGenTextures(1, &textureY);
-        glGenTextures(1, &textureU);
-        glGenTextures(1, &textureV);
-
-        // -- Upload Y-plane
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureY);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_LUMINANCE,
-            width,
-            height,
-            0,
-            GL_LUMINANCE,
-            GL_UNSIGNED_BYTE,
-            yVec.data()
-        );
-
-        // -- Upload U-plane
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, textureU);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_LUMINANCE,
-            width / 2,
-            height / 2,
-            0,
-            GL_LUMINANCE,
-            GL_UNSIGNED_BYTE,
-            uVec.data()
-        );
-
-        // -- Upload V-plane
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, textureV);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_LUMINANCE,
-            width / 2,
-            height / 2,
-            0,
-            GL_LUMINANCE,
-            GL_UNSIGNED_BYTE,
-            vVec.data()
-        );
-
-        // Map object IDs
-        mapObject(exglObjId, textureY);
-        mapObject(uPlaneObjId, textureU);
-        mapObject(vPlaneObjId, textureV);
-  });
+  } catch (const std::exception &e) {
+    __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", "Exception in uploadTextureToOpenGL: %s", e.what());
+    return 0;
+  } catch (...) {
+    __android_log_print(ANDROID_LOG_ERROR, "EXGLContext", "Unknown exception in uploadTextureToOpenGL");
+    return 0;
+  }
 }
- else {
-        void *bufferData = nullptr;
-        int32_t lock_result = AHardwareBuffer_lock(
-            hardwareBuffer,
-            AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
-            -1,
-            nullptr,
-            &bufferData
-        );
-
-        if (lock_result != 0 || !bufferData) {
-            EXGLSysLog("Failed to lock AHardwareBuffer");
-            AHardwareBuffer_release(hardwareBuffer);
-            return 0;
-        }
-        EXGLSysLog("Locked Hardware Buffer");
-        addToNextBatch([=] {
-            assert(objects.find(exglObjId) == objects.end());
-
-            GLuint buffer;
-            glGenTextures(1, &buffer);
-            mapObject(exglObjId, buffer);
-
-            glBindTexture(GL_TEXTURE_2D, buffer);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-            glTexImage2D(
-                GL_TEXTURE_2D,
-                0,
-                GL_RGBA,
-                width,
-                height,
-                0,
-                GL_RGBA,
-                GL_UNSIGNED_BYTE,
-                bufferData
-            );
-
-            AHardwareBuffer_unlock(hardwareBuffer, nullptr);
-            AHardwareBuffer_release(hardwareBuffer);
-        });
-    }
-
-    jsi::Value id = jsi::Value(static_cast<double>(exglObjId));
-    jsi::Object webglObject = runtime.global()
-        .getProperty(runtime, jsi::PropNameID::forUtf8(runtime, getConstructorName(EXWebGLClass::WebGLTexture)))
-        .asObject(runtime)
-        .asFunction(runtime)
-        .callAsConstructor(runtime, {})
-        .asObject(runtime);
-
-    webglObject.setProperty(runtime, "id", id);
-
-    return static_cast<int>(exglObjId);
-}
-
-
 void EXGLContext::maybeResolveWorkletContext(jsi::Runtime &runtime) {
   jsi::Value workletRuntimeValue = runtime.global().getProperty(runtime, "_WORKLET_RUNTIME");
   if (!workletRuntimeValue.isObject()) {
