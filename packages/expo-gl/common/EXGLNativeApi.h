@@ -73,6 +73,16 @@ void EXGLContextMapObject(EXGLContextId exglCtxId, EXGLObjectId exglObjId, GLuin
 // [GL thread] Get the underlying OpenGL object an EXGL object maps to.
 GLuint EXGLContextGetObject(EXGLContextId exglCtxId, EXGLObjectId exglObjId);
 
+// Remember to implement an ifdef and include this for ios.
+EXGLObjectId EXGLContextUploadTexture(void *runtime,EXGLContextId exglCtxId, AHardwareBuffer* hardwareBuffer);
+
+#ifdef __cplusplus
+// Registers the upload texture plugin with a given JSI runtime.
+// This function wraps the native EXGLContextUploadTexture call into a JSI host function
+// and adds it to the runtime's global object so it can be accessed from JavaScript.
+void EXGLRegisterUploadTexturePlugin(facebook::jsi::Runtime &runtime);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
