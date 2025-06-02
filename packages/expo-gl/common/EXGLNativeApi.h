@@ -11,6 +11,7 @@
 
 #ifdef __cplusplus
 #include <functional>
+#include <jsi/jsi.h> // Include JSI header for registration function
 #else
 #include <stdbool.h>
 #endif
