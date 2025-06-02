@@ -16,6 +16,8 @@ import android.hardware.HardwareBuffer
 import android.util.Log
 import java.nio.ByteBuffer
 import expo.modules.gl.cpp.EXGL.*
+import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.JavaScriptContextHolder
 
 private class InvalidCameraViewException :
   CodedException("Provided view tag doesn't point to a valid instance of the camera view")
@@ -29,6 +31,9 @@ class GLObjectManagerModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("ExponentGLObjectManager")
+
+    // Log module initialization
+    Log.d("GLObjectManagerModule", "Module definition initialized")
 
     AsyncFunction("destroyObjectAsync") { exglObjId: Int ->
       val glObject = mGLObjects[exglObjId]
